@@ -3,8 +3,14 @@ using System.Management;
 namespace DriverUpdater;
 
 public sealed record ProblemDevice(string Name, string Meaning);
-public sealed record Disk(string Name, string Type, string Size, string Health);
+public sealed record Disk(string Name, string Type, string Size, string Health, string Wear, string Temperature);
+public sealed record Battery(string Name, string Designed, string FullCharge, string Health, string Cycles);
 public sealed record RestorePointResult(bool Ok, string Message);
+
+public sealed record Gpu(string Name, string Driver, string? VendorTool, string? VendorUrl)
+{
+    public bool HasVendorTool => VendorUrl is not null;
+}
 
 public sealed record InstalledDriver(string Version, DateTime? Date)
 {
@@ -71,13 +77,13 @@ public static class SystemInfo
 
     public static List<Disk> Disks()
     {
-        using var searcher = new ManagementObjectSearcher(
-            @"root\Microsoft\Windows\Storage",
-            "SELECT FriendlyName, MediaType, HealthStatus, Size FROM MSFT_PhysicalDisk");
+        using var searcher = new ManagementObjectSearcher(@"root\Microsoft\Windows\Storage", "SELECT * FROM MSFT_PhysicalDisk");
         using var results = searcher.Get();
         var list = new List<Disk>();
-        foreach (ManagementBaseObject disk in results)
+        foreach (ManagementObject disk in results)
             using (disk)
+            {
+                var (wear, temperature) = ReliabilityCounters(disk);
                 list.Add(new Disk(
                     disk["FriendlyName"] as string ?? "Disque",
                     Convert.ToInt32(disk["MediaType"]) switch { 3 => "HDD", 4 => "SSD", 5 => "SCM", _ => "Inconnu" },
@@ -88,9 +94,111 @@ public static class SystemInfo
                         1 => "Avertissement",
                         2 => "Défaillant",
                         _ => "Inconnu",
-                    }));
+                    },
+                    wear is { } w ? $"{w} %" : "—",
+                    temperature is > 0 and var t ? $"{t} °C" : "—"));
+            }
         return list;
     }
+
+    /// <summary>
+    /// SSD wear (percentage of the rated endurance used) and temperature. Many disks, and
+    /// most virtual ones, do not report them: those come back as null.
+    /// </summary>
+    static (int? Wear, int? Temperature) ReliabilityCounters(ManagementObject disk)
+    {
+        try
+        {
+            using var related = disk.GetRelated("MSFT_StorageReliabilityCounter");
+            foreach (ManagementBaseObject counter in related)
+                using (counter)
+                    return (ToInt(counter["Wear"]), ToInt(counter["Temperature"]));
+        }
+        catch (ManagementException)
+        {
+        }
+        return (null, null);
+    }
+
+    /// <summary>Laptop batteries: capacity left compared with new. Empty on a desktop.</summary>
+    public static List<Battery> Batteries()
+    {
+        var scope = new ManagementScope(@"\\.\root\wmi");
+        try
+        {
+            var full = ByInstance(scope, "SELECT InstanceName, FullChargedCapacity FROM BatteryFullChargedCapacity", "FullChargedCapacity");
+            var cycles = ByInstance(scope, "SELECT InstanceName, CycleCount FROM BatteryCycleCount", "CycleCount");
+            using var searcher = new ManagementObjectSearcher(scope, new ObjectQuery("SELECT InstanceName, DeviceName, DesignedCapacity FROM BatteryStaticData"));
+            using var results = searcher.Get();
+            var list = new List<Battery>();
+            foreach (ManagementBaseObject battery in results)
+                using (battery)
+                {
+                    var instance = (string)battery["InstanceName"];
+                    int designed = ToInt(battery["DesignedCapacity"]) ?? 0;
+                    int? charge = full.GetValueOrDefault(instance);
+                    list.Add(new Battery(
+                        (battery["DeviceName"] as string)?.Trim() is { Length: > 0 } name ? name : "Batterie",
+                        designed > 0 ? $"{designed / 1000.0:0.#} Wh" : "—",
+                        charge > 0 ? $"{charge / 1000.0:0.#} Wh" : "—",
+                        designed > 0 && charge > 0 ? $"{100 * charge / designed} %" : "—",
+                        cycles.GetValueOrDefault(instance) is > 0 and var c ? c.ToString() : "—"));
+                }
+            return list;
+        }
+        catch (ManagementException)
+        {
+            return []; // no battery, or a firmware without these classes
+        }
+    }
+
+    static Dictionary<string, int?> ByInstance(ManagementScope scope, string query, string property)
+    {
+        var values = new Dictionary<string, int?>();
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(scope, new ObjectQuery(query));
+            using var results = searcher.Get();
+            foreach (ManagementBaseObject item in results)
+                using (item)
+                    values[(string)item["InstanceName"]] = ToInt(item[property]);
+        }
+        catch (ManagementException)
+        {
+        }
+        return values;
+    }
+
+    public static List<Gpu> Gpus()
+    {
+        using var searcher = new ManagementObjectSearcher("SELECT Name, PNPDeviceID, DriverVersion, DriverDate FROM Win32_VideoController");
+        using var results = searcher.Get();
+        var list = new List<Gpu>();
+        foreach (ManagementBaseObject gpu in results)
+            using (gpu)
+            {
+                var device = gpu["PNPDeviceID"] as string ?? "";
+                if (device.StartsWith(@"ROOT\", StringComparison.OrdinalIgnoreCase)) continue; // virtual display adapters
+                var driver = gpu["DriverVersion"] is string version
+                    ? "Pilote " + new InstalledDriver(version, ParseDate(gpu["DriverDate"] as string))
+                    : "Pilote inconnu";
+                var (tool, url) = VendorTool(device);
+                list.Add(new Gpu(gpu["Name"] as string ?? "Carte graphique", driver, tool, url));
+            }
+        return list;
+    }
+
+    // Vendor IDs from the PCI ID: 10DE NVIDIA, 1002 AMD, 8086 Intel.
+    static (string? Tool, string? Url) VendorTool(string pnpDeviceId) =>
+        pnpDeviceId.ToUpperInvariant() switch
+        {
+            var id when id.Contains("VEN_10DE") => ("NVIDIA App", "https://www.nvidia.com/fr-fr/software/nvidia-app/"),
+            var id when id.Contains("VEN_1002") => ("AMD Software", "https://www.amd.com/fr/support/download/drivers.html"),
+            var id when id.Contains("VEN_8086") => ("l'Assistant Intel", "https://www.intel.com/content/www/fr/fr/support/intel-driver-support-assistant.html"),
+            _ => (null, null),
+        };
+
+    static int? ToInt(object? value) => value is null ? null : Convert.ToInt32(value);
 
     /// <summary>Creates a restore point, or reports a usable one from the last 24 hours.</summary>
     public static RestorePointResult CreateRestorePoint()

@@ -19,7 +19,8 @@ public sealed class TempCleanerTests : IDisposable
 
     string MakeFile(string relativePath, DateTime lastWriteUtc, int size = 10)
     {
-        var path = Path.Combine(root, relativePath);
+        // GetFullPath turns "temp/a.tmp" into "temp\a.tmp" on Windows, as the file system reports it.
+        var path = Path.GetFullPath(Path.Combine(root, relativePath));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllBytes(path, new byte[size]);
         File.SetLastWriteTimeUtc(path, lastWriteUtc);

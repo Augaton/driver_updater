@@ -11,7 +11,7 @@ on:
   schedule:
     - cron: "0 6 * * 3"
 
-# Read-only token: this workflow builds and uploads an artifact, nothing more.
+# Read-only by default; only the release job below gets more.
 permissions:
   contents: read
 
@@ -26,6 +26,8 @@ jobs:
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
       DOTNET_NOLOGO: "1"
+      # Signing runs once the SIGNING_CERT_PFX_BASE64 secret exists; until then it is skipped.
+      CAN_SIGN: ${{ secrets.SIGNING_CERT_PFX_BASE64 != '' }}
     steps:
       # Actions are pinned to a commit: a moved or hijacked tag cannot change what runs here.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,6 +43,14 @@ jobs:
       - name: Restore
         run: dotnet restore DriverUpdater.sln
 
+      # A tag v1.2.3 sets the version; otherwise the one in DriverUpdater.csproj.
+      - name: Version
+        run: |
+          $version = if ($env:GITHUB_REF -like 'refs/tags/v*') { $env:GITHUB_REF_NAME.Substring(1) }
+                     else { dotnet msbuild src/DriverUpdater -getProperty:Version }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Version invalide : '$version'" }
+          "APP_VERSION=$version" >> $env:GITHUB_ENV
+
       - name: Build
         run: dotnet build DriverUpdater.sln -c Release --no-restore
 
@@ -48,13 +58,38 @@ jobs:
         run: dotnet test DriverUpdater.sln -c Release --no-build
 
       - name: Publish
-        run: dotnet publish src/DriverUpdater -c Release -p:PublishProfile=win-x64
+        run: dotnet publish src/DriverUpdater -c Release -p:PublishProfile=win-x64 "-p:Version=$env:APP_VERSION"
 
-      - name: Checksums
+      - name: Sign the app
+        if: env.CAN_SIGN == 'true'
+        env:
+          SIGNING_CERT: ${{ secrets.SIGNING_CERT_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: ./build/sign.ps1 publish/DriverUpdater.exe
+
+      - name: Installer
         run: |
-          Get-FileHash publish/* -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
-            Set-Content publish/SHA256SUMS.txt
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Qp "/DAppVersion=$env:APP_VERSION" installer\DriverUpdater.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Sign the installer
+        if: env.CAN_SIGN == 'true'
+        env:
+          SIGNING_CERT: ${{ secrets.SIGNING_CERT_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: ./build/sign.ps1 "installer-out/DriverUpdater-Setup-$env:APP_VERSION.exe"
+
+      # Really installs into Program Files, then uninstalls.
+      - name: Test the installer
+        run: |
+          $exe = "$env:ProgramFiles\Driver Updater\DriverUpdater.exe"
+          Start-Process "installer-out\DriverUpdater-Setup-$env:APP_VERSION.exe" -Wait `
+            -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=install.log'
+          if (-not (Test-Path $exe)) { Get-Content install.log; throw "L'exe n'a pas été installé dans Program Files." }
+          Start-Process "$env:ProgramFiles\Driver Updater\unins000.exe" -Wait -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES'
+          # The uninstaller hands over to a copy of itself and returns at once: wait for that copy.
+          for ($i = 0; $i -lt 60 -and (Test-Path $exe); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path $exe) { throw "La désinstallation a laissé l'exe en place." }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -62,3 +97,48 @@ jobs:
           path: publish/
           if-no-files-found: error
           retention-days: 30
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: DriverUpdater-Setup
+          path: installer-out/
+          if-no-files-found: error
+          retention-days: 30
+
+  # A tag v1.2.3 publishes a GitHub release: installer, portable zip, checksums, and a
+  # provenance attestation proving the files were built by this workflow.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write     # create the release
+      id-token: write     # sign the attestation
+      attestations: write # store the attestation
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+
+      - name: Package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir release
+          cp artifacts/DriverUpdater-Setup/*.exe release/
+          (cd artifacts/DriverUpdater-win-x64 && zip -qr "../../release/DriverUpdater-${version}-win-x64.zip" .)
+          (cd release && sha256sum -- * > SHA256SUMS.txt)
+
+      # Attestations need a public repository (or GitHub Enterprise for a private one).
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: ${{ !github.event.repository.private }}
+        with:
+          subject-path: release/*
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" release/*
+          --repo "$GITHUB_REPOSITORY" --title "Driver Updater $GITHUB_REF_NAME"
+          --generate-notes --verify-tag

@@ -4,11 +4,15 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Only for NotifyIcon, the tray notification of the weekly check. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Driver Updater</Product>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
+    <!-- Application.ThemeMode (Windows 11 look, dark mode) is still flagged experimental. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
     <!-- Lets the project build from Linux or macOS; the app itself only runs on Windows. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!-- Listed so the lock file also pins the packages of the win-x64 publish. -->
@@ -22,6 +26,12 @@
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="10.0.13" />
+  </ItemGroup>
+
+  <!-- WPF and Windows Forms share names (Application, Button, MessageBox): keep only WPF's. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
   </ItemGroup>
 
 </Project>

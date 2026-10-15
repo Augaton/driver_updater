@@ -7,6 +7,7 @@ public sealed class DriverUpdate
     /// <summary>The Windows Update <c>IUpdate</c> COM object, handed back to install it.</summary>
     public required object Com { get; init; }
     public required string Title { get; init; }
+    public required string UpdateId { get; init; }
     public string? HardwareId { get; init; }
     public DateTime? Date { get; init; }
     public long Size { get; init; }
@@ -48,9 +49,7 @@ public static class WindowsUpdateDrivers
 
     public static List<DriverUpdate> Search()
     {
-        dynamic searcher = Session.Value.CreateUpdateSearcher();
-        searcher.ServerSelection = ServerWindowsUpdate;
-        dynamic updates = searcher.Search("IsInstalled=0 and Type='Driver' and IsHidden=0").Updates;
+        dynamic updates = Searcher().Search("IsInstalled=0 and Type='Driver' and IsHidden=0").Updates;
 
         var list = new List<DriverUpdate>();
         int count = updates.Count;
@@ -62,6 +61,7 @@ public static class WindowsUpdateDrivers
             {
                 Com = update,
                 Title = update.Title,
+                UpdateId = update.Identity.UpdateID,
                 HardwareId = update.DriverHardwareID,
                 Date = update.DriverVerDate,
                 Size = Convert.ToInt64(update.MaxDownloadSize),
@@ -102,6 +102,30 @@ public static class WindowsUpdateDrivers
         {
             return new(driver, false, $"0x{e.HResult:X8}", false);
         }
+    }
+
+    /// <summary>Stops offering this driver, here and in Windows Update settings.</summary>
+    public static void Hide(DriverUpdate driver)
+    {
+        dynamic update = driver.Com;
+        update.IsHidden = true;
+    }
+
+    /// <summary>Offers every hidden driver again; returns how many there were.</summary>
+    public static int UnhideAll()
+    {
+        dynamic updates = Searcher().Search("IsInstalled=0 and Type='Driver' and IsHidden=1").Updates;
+        int count = updates.Count;
+        for (int i = 0; i < count; i++)
+            updates[i].IsHidden = false;
+        return count;
+    }
+
+    static dynamic Searcher()
+    {
+        dynamic searcher = Session.Value.CreateUpdateSearcher();
+        searcher.ServerSelection = ServerWindowsUpdate;
+        return searcher;
     }
 
     static dynamic Create(string progId) =>

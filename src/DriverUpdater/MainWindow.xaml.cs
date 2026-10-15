@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using Microsoft.Win32;
 
 namespace DriverUpdater;
 
@@ -23,7 +24,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += async (_, _) => await Task.WhenAll(LoadProblemDevices(), LoadDisks());
+        Loaded += async (_, _) =>
+        {
+            LoadWeeklyCheck();
+            await Task.WhenAll(LoadProblemDevices(), LoadGpus(), LoadDisks(), LoadBatteries());
+        };
     }
 
     // Built from the profile folder, which a user cannot redirect, rather than from %TEMP%,
@@ -33,6 +38,8 @@ public partial class MainWindow : Window
         new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "Local", "Temp"), Recursive: true),
         new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp"), Recursive: true),
     ];
+
+    // ---- Loading -----------------------------------------------------------------------
 
     async Task LoadProblemDevices()
     {
@@ -50,6 +57,20 @@ public partial class MainWindow : Window
         }
     }
 
+    async Task LoadGpus()
+    {
+        try
+        {
+            var gpus = await Task.Run(SystemInfo.Gpus);
+            GpuList.ItemsSource = gpus;
+            GpuStatus.Text = gpus.Count == 0 ? "Aucune carte graphique détectée." : "";
+        }
+        catch (Exception e)
+        {
+            GpuStatus.Text = "Lecture impossible : " + Describe(e);
+        }
+    }
+
     async Task LoadDisks()
     {
         try
@@ -62,25 +83,70 @@ public partial class MainWindow : Window
         }
     }
 
+    async Task LoadBatteries()
+    {
+        try
+        {
+            var batteries = await Task.Run(SystemInfo.Batteries);
+            BatteryGrid.ItemsSource = batteries;
+            BatteryCard.Visibility = batteries.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+        catch (Exception)
+        {
+            // Battery data is a bonus: without it the card simply stays hidden.
+        }
+    }
+
+    void LoadWeeklyCheck()
+    {
+        if (!WeeklyCheck.InstalledInProgramFiles)
+        {
+            WeeklyCheckBox.IsEnabled = false;
+            WeeklyCheckNote.Text = "Disponible une fois l'application installée avec son installateur.";
+            return;
+        }
+        try
+        {
+            WeeklyCheckBox.IsChecked = WeeklyCheck.IsEnabled();
+        }
+        catch (COMException e)
+        {
+            WeeklyCheckBox.IsEnabled = false;
+            WeeklyCheckNote.Text = "Planificateur de tâches indisponible : " + Describe(e);
+        }
+    }
+
+    // ---- Drivers -----------------------------------------------------------------------
+
     async void OnSearch(object sender, RoutedEventArgs e) =>
         await RunBusy("Recherche sur Windows Update, cela peut prendre quelques minutes…", async () =>
         {
-            var installed = Task.Run(SystemInfo.InstalledDrivers);
-            drivers = await Task.Run(WindowsUpdateDrivers.Search);
-            try
-            {
-                var current = await installed;
-                foreach (var driver in drivers)
-                    if (driver.HardwareId is { } id && current.TryGetValue(id, out var match))
-                        driver.Installed = match.ToString();
-            }
-            catch (ManagementException)
-            {
-                // Installed versions are a bonus; the updates are still worth showing.
-            }
-            ShowDrivers();
+            var found = await Task.Run(WindowsUpdateDrivers.Search);
+            await ShowUpdates(found);
             return drivers.Count == 0 ? "Vos pilotes sont à jour." : $"{drivers.Count} mise(s) à jour trouvée(s).";
         });
+
+    /// <summary>Shows updates found here or by the weekly check, with the driver each one would replace.</summary>
+    public async Task ShowUpdates(List<DriverUpdate> found, string? status = null)
+    {
+        try
+        {
+            var installed = await Task.Run(SystemInfo.InstalledDrivers);
+            foreach (var driver in found)
+                if (driver.HardwareId is { } id && installed.TryGetValue(id, out var match))
+                    driver.Installed = match.ToString();
+        }
+        catch (ManagementException)
+        {
+            // Installed versions are a bonus; the updates are still worth showing.
+        }
+        drivers = found;
+        DriverGrid.ItemsSource = drivers;
+        DriverPlaceholder.Text = "Aucune mise à jour de pilote disponible.";
+        DriverPlaceholder.Visibility = drivers.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        UpdateButtons();
+        if (status is not null) SetStatus(status);
+    }
 
     async void OnInstall(object sender, RoutedEventArgs e)
     {
@@ -95,9 +161,8 @@ public partial class MainWindow : Window
 
         await RunBusy("Création d'un point de restauration, cela peut prendre une minute…", async () =>
         {
-            var point = await Task.Run(SystemInfo.CreateRestorePoint);
-            if (!point.Ok && Ask(point.Message + "\n\nContinuer sans point de restauration ?", MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                return "Installation annulée.";
+            var point = await SafetyRestorePoint();
+            if (point is null) return "Installation annulée.";
 
             installing = true;
             BusyBar.IsIndeterminate = false;
@@ -113,8 +178,7 @@ public partial class MainWindow : Window
             bool rebootRequired = outcomes.Any(o => o.RebootRequired);
 
             var installed = outcomes.Where(o => o.Succeeded).Select(o => o.Driver).ToHashSet();
-            drivers = drivers.Where(d => !installed.Contains(d)).ToList();
-            ShowDrivers();
+            await ShowUpdates(drivers.Where(d => !installed.Contains(d)).ToList());
 
             var lines = outcomes.Select(o => o.Succeeded ? "✔ " + o.Driver.Title : $"✘ {o.Driver.Title} ({o.Detail})");
             var report = point.Message + "\n\n" + string.Join("\n", lines);
@@ -125,6 +189,109 @@ public partial class MainWindow : Window
         });
         installing = false;
     }
+
+    async void OnHide(object sender, RoutedEventArgs e)
+    {
+        var selected = drivers.Where(d => d.Selected).ToList();
+        if (selected.Count == 0)
+        {
+            SetStatus("Cochez au moins un pilote.");
+            return;
+        }
+        if (Ask($"Masquer {selected.Count} pilote(s) ?\n\nWindows Update ne les proposera plus, ici comme dans les Paramètres. " +
+                "« Réafficher les pilotes masqués » les fait revenir.") != MessageBoxResult.Yes)
+            return;
+
+        await RunBusy("Masquage…", async () =>
+        {
+            await Task.Run(() => selected.ForEach(WindowsUpdateDrivers.Hide));
+            await ShowUpdates(drivers.Except(selected).ToList());
+            return $"{selected.Count} pilote(s) masqué(s).";
+        });
+    }
+
+    async void OnUnhide(object sender, RoutedEventArgs e) =>
+        await RunBusy("Recherche des pilotes masqués…", async () =>
+        {
+            int count = await Task.Run(WindowsUpdateDrivers.UnhideAll);
+            return count == 0 ? "Aucun pilote masqué." : $"{count} pilote(s) réaffiché(s) : relancez la recherche pour les voir.";
+        });
+
+    void OnWeeklyCheckClick(object sender, RoutedEventArgs e)
+    {
+        bool enable = WeeklyCheckBox.IsChecked == true;
+        try
+        {
+            if (enable) WeeklyCheck.Enable(Environment.ProcessPath!);
+            else WeeklyCheck.Disable();
+            SetStatus(enable
+                ? "Vérification activée : chaque mercredi à midi, ou au démarrage suivant si le PC était éteint."
+                : "Vérification hebdomadaire désactivée.");
+        }
+        catch (COMException ex)
+        {
+            WeeklyCheckBox.IsChecked = !enable;
+            SetStatus("Erreur : " + Describe(ex));
+        }
+    }
+
+    // Through explorer.exe, so the browser opens with normal rights instead of ours.
+    void OnOpenVendor(object sender, RoutedEventArgs e) =>
+        Process.Start(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"),
+            (string)((Button)sender).Tag);
+
+    // ---- Backup ------------------------------------------------------------------------
+
+    async void OnBackup(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Où enregistrer la sauvegarde des pilotes ?",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        await RunBusy("Sauvegarde des pilotes…", async () =>
+        {
+            var (folder, count) = await DriverBackup.ExportAsync(dialog.FolderName);
+            BackupStatus.Text = $"{count} pilote(s) sauvegardé(s) dans {folder}";
+            return "Sauvegarde terminée.";
+        });
+    }
+
+    async void OnRestoreBackup(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Dossier de sauvegarde à restaurer" };
+        if (dialog.ShowDialog(this) != true) return;
+        if (Ask($"Installer les pilotes de « {dialog.FolderName} » ?\n\nUn point de restauration système sera créé avant.") != MessageBoxResult.Yes)
+            return;
+
+        await RunBusy("Création d'un point de restauration, cela peut prendre une minute…", async () =>
+        {
+            if (await SafetyRestorePoint() is null) return "Restauration annulée.";
+            installing = true;
+            SetStatus("Installation des pilotes sauvegardés…");
+            bool reboot = await DriverBackup.ImportAsync(dialog.FolderName);
+            installing = false;
+            BackupStatus.Text = "Pilotes restaurés." + (reboot ? " Redémarrez l'ordinateur pour terminer." : "");
+            return "Restauration terminée.";
+        });
+        installing = false;
+    }
+
+    /// <summary>
+    /// Creates a restore point before touching drivers. Returns null if that failed and the
+    /// user chose not to go on without one.
+    /// </summary>
+    async Task<RestorePointResult?> SafetyRestorePoint()
+    {
+        var point = await Task.Run(SystemInfo.CreateRestorePoint);
+        if (!point.Ok && Ask(point.Message + "\n\nContinuer sans point de restauration ?", MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return null;
+        return point;
+    }
+
+    // ---- Temp files --------------------------------------------------------------------
 
     async void OnScanTemp(object sender, RoutedEventArgs e) =>
         await RunBusy("Analyse des fichiers temporaires…", async () =>
@@ -159,6 +326,8 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
     }
 
+    // ---- Plumbing ----------------------------------------------------------------------
+
     protected override void OnClosing(CancelEventArgs e)
     {
         // Quitting mid-install could leave a driver half installed.
@@ -168,13 +337,6 @@ public partial class MainWindow : Window
             SetStatus("Installation en cours : patientez avant de fermer.");
         }
         base.OnClosing(e);
-    }
-
-    void ShowDrivers()
-    {
-        DriverGrid.ItemsSource = drivers;
-        DriverPlaceholder.Text = "Aucune mise à jour de pilote disponible.";
-        DriverPlaceholder.Visibility = drivers.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     async Task RunBusy(string message, Func<Task<string>> work)
@@ -204,8 +366,12 @@ public partial class MainWindow : Window
     {
         SearchButton.IsEnabled = !busy;
         InstallButton.IsEnabled = !busy && drivers.Count > 0;
+        HideButton.IsEnabled = !busy && drivers.Count > 0;
+        UnhideButton.IsEnabled = !busy;
         ScanTempButton.IsEnabled = !busy;
         CleanTempButton.IsEnabled = !busy && tempScan is { Files.Count: > 0 };
+        BackupButton.IsEnabled = !busy;
+        RestoreBackupButton.IsEnabled = !busy;
     }
 
     void SetStatus(string text)

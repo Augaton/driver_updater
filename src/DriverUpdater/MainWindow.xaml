@@ -26,7 +26,7 @@
       </DockPanel>
     </Border>
 
-    <TabControl Grid.Row="1" Margin="12,12,12,0">
+    <TabControl x:Name="Tabs" Grid.Row="1" Margin="12,12,12,0" SelectionChanged="OnTabChanged">
 
       <!-- Drivers -->
       <TabItem Header="Pilotes">
@@ -148,12 +148,68 @@
         </Grid>
       </TabItem>
 
-      <!-- Software -->
-      <TabItem Header="Logiciels">
+      <!-- Drivers from the Microsoft Update Catalog -->
+      <TabItem x:Name="CatalogTab" Header="Pilotes récents">
         <Grid Margin="0,12,0,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <DockPanel Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button x:Name="SearchCatalogButton" Content="Rechercher" Click="OnSearchCatalog" Margin="0,0,8,0" />
+              <Button x:Name="InstallCatalogButton" Content="Installer la sélection" Style="{DynamicResource AccentButtonStyle}"
+                      Click="OnInstallCatalog" IsEnabled="False" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Text="Pilotes récents des fabricants" Style="{StaticResource Heading}" />
+              <TextBlock Style="{StaticResource Muted}"
+                         Text="NVIDIA, AMD, Intel, Realtek… publient leurs pilotes dans le catalogue Microsoft Update, signés par Microsoft, souvent avant que Windows Update ne les propose à votre PC. « Pour votre PC » : fait pour votre modèle exact. « Générique » : fait pour la puce en général ; si votre fabricant a adapté le pilote actuel (portable, audio), Windows le garde. Rien n'est coché d'office." />
+              <TextBlock Style="{StaticResource AdminNote}" Text="L'installation demande l'autorisation administrateur et crée d'abord un point de restauration." />
+            </StackPanel>
+          </DockPanel>
+
+          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+            <Grid>
+              <DataGrid x:Name="CatalogGrid" AutomationProperties.Name="Pilotes récents"
+                        AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                        GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+                <DataGrid.Columns>
+                  <DataGridTemplateColumn Width="44">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  AutomationProperties.Name="{Binding Device}" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Périphérique" Binding="{Binding Device}" Width="*" />
+                  <DataGridTextColumn Header="Installé" Binding="{Binding Installed}" Width="190" />
+                  <DataGridTextColumn Header="Disponible" Binding="{Binding Available}" Width="110" />
+                  <DataGridTextColumn Header="Publié le" Binding="{Binding Entry.Date, StringFormat=dd/MM/yyyy}" Width="85" />
+                  <DataGridTextColumn Header="Portée" Binding="{Binding Scope}" Width="105" />
+                  <DataGridTextColumn Header="Taille" Binding="{Binding SizeText}" Width="70" />
+                </DataGrid.Columns>
+              </DataGrid>
+              <TextBlock x:Name="CatalogPlaceholder" Style="{StaticResource Muted}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="16"
+                         Text="Lancez une recherche : une à deux minutes, le catalogue est interrogé pour chaque périphérique." />
+            </Grid>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Software: updates and installed programs -->
+      <TabItem x:Name="SoftwareTab" Header="Logiciels">
+        <Grid Margin="0,12,0,0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="2*" />
+            <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
 
           <DockPanel Margin="0,0,0,12">
@@ -195,11 +251,208 @@
                          Text="Lancez une recherche pour voir les logiciels à mettre à jour." />
             </Grid>
           </Border>
+
+          <DockPanel Grid.Row="2" Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
+              <TextBox x:Name="ProgramFilter" Width="200" Margin="0,0,8,0" VerticalContentAlignment="Center"
+                       TextChanged="OnProgramFilterChanged" AutomationProperties.Name="Filtrer les programmes" />
+              <Button x:Name="UninstallButton" Content="Désinstaller…" Click="OnUninstall" Margin="0,0,8,0" />
+              <Button x:Name="FindLeftoversButton" Content="Chercher les restes" Click="OnFindLeftovers" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Text="Programmes installés" Style="{StaticResource Heading}" />
+              <TextBlock Style="{StaticResource Muted}"
+                         Text="Désinstaller lance le désinstalleur du programme. Ensuite, « Chercher les restes » propose les dossiers qu'il a laissés ; ils partent à la corbeille, donc rien n'est perdu. Le registre n'est pas « nettoyé » : ça ne fait rien gagner et c'est la cause de casse n° 1." />
+            </StackPanel>
+          </DockPanel>
+
+          <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0">
+            <DataGrid x:Name="ProgramGrid" AutomationProperties.Name="Programmes installés" SelectionMode="Single"
+                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Programme" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Éditeur" Binding="{Binding Publisher}" Width="180" />
+                <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="110" />
+                <DataGridTextColumn Header="Taille" Binding="{Binding SizeText}" SortMemberPath="Size" Width="80" />
+                <DataGridTextColumn Header="Installé le" Binding="{Binding InstalledOn, StringFormat=dd/MM/yyyy}" Width="90" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Border>
+
+          <Border x:Name="LeftoverCard" Grid.Row="4" Style="{StaticResource Card}" Margin="0,12,0,0" Visibility="Collapsed">
+            <StackPanel>
+              <DockPanel>
+                <Button x:Name="RecycleButton" DockPanel.Dock="Right" Content="Mettre à la corbeille" Style="{DynamicResource AccentButtonStyle}"
+                        Click="OnRecycleLeftovers" VerticalAlignment="Top" />
+                <TextBlock x:Name="LeftoverHeading" Style="{StaticResource Heading}" FontSize="14" TextWrapping="Wrap" />
+              </DockPanel>
+              <TextBlock Style="{StaticResource Muted}"
+                         Text="Cochés d'office : le dossier d'installation déclaré. Les autres portent seulement le même nom : vérifiez avant de cocher. Dossiers de Program Files et ProgramData : autorisation administrateur." />
+              <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                <ItemsControl x:Name="LeftoverList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" Margin="0,2">
+                        <TextBlock TextWrapping="Wrap">
+                          <Run Text="{Binding Path, Mode=OneWay}" />
+                          <Run Text=" — " />
+                          <Run Text="{Binding Reason, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </TextBlock>
+                      </CheckBox>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Startup programs and boot measurements -->
+      <TabItem x:Name="StartupTab" Header="Démarrage">
+        <Grid Margin="0,12,0,0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <DockPanel Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button x:Name="RefreshStartupButton" Content="Actualiser" Click="OnRefreshStartup" Margin="0,0,8,0" />
+              <Button x:Name="BootReportButton" Content="Mesurer leur impact" Style="{DynamicResource AccentButtonStyle}" Click="OnBootReport" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Text="Programmes au démarrage" Style="{StaticResource Heading}" />
+              <TextBlock Style="{StaticResource Muted}"
+                         Text="Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages." />
+              <TextBlock Style="{StaticResource AdminNote}" Text="Les entrées « Tous les utilisateurs », et parfois la mesure, demandent l'autorisation administrateur." />
+            </StackPanel>
+          </DockPanel>
+
+          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+            <DataGrid x:Name="StartupGrid" AutomationProperties.Name="Programmes au démarrage"
+                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Actif" Width="56">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <CheckBox IsChecked="{Binding Enabled, Mode=OneWay}" Click="OnStartupToggle"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                AutomationProperties.Name="{Binding Title}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Programme" Binding="{Binding Title}" Width="200" />
+                <DataGridTextColumn Header="Éditeur" Binding="{Binding Publisher}" Width="170" />
+                <DataGridTextColumn Header="Ralentit le démarrage" Binding="{Binding Impact}" Width="150" />
+                <DataGridTextColumn Header="Pour" Binding="{Binding Scope}" Width="140" />
+                <DataGridTextColumn Header="Commande" Binding="{Binding Command}" Width="*" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Border>
+
+          <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0" x:Name="BootCard" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock Text="Démarrages de Windows (30 derniers jours)" Style="{StaticResource Heading}" FontSize="14" />
+              <TextBlock x:Name="BootSummary" TextWrapping="Wrap" />
+              <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
+                <ItemsControl x:Name="SlowdownList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Margin="0,2" TextWrapping="Wrap">
+                        <Run Text="{Binding FriendlyName, Mode=OneWay}" FontWeight="SemiBold" />
+                        <Run Text=" — " />
+                        <Run Text="{Binding Kind, Mode=OneWay}" />
+                        <Run Text=" — " />
+                        <Run Text="{Binding AverageText, Mode=OneWay}" />
+                        <Run Text="en moyenne," Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Run Text="{Binding Times, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Run Text="fois" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                      </TextBlock>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- Performance -->
+      <TabItem x:Name="PerformanceTab" Header="Performances">
+        <Grid Margin="0,12,0,0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <DockPanel Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button Content="Gestionnaire des tâches" Tag="taskmgr.exe" Click="OnOpenSetting" Margin="0,0,8,0" />
+              <Button x:Name="MeasureButton" Content="Analyser (10 s)" Style="{DynamicResource AccentButtonStyle}" Click="OnMeasure" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Text="Ce qui ralentit le PC" Style="{StaticResource Heading}" />
+              <TextBlock Style="{StaticResource Muted}"
+                         Text="Observe le PC pendant 10 secondes et classe les applications par ce qu'elles consomment. Lancez-la quand le PC rame. Pour agir : onglet Démarrage (ce qui se lance tout seul) ou Logiciels (désinstaller)." />
+            </StackPanel>
+          </DockPanel>
+
+          <WrapPanel Grid.Row="1" x:Name="UsagePanel" Visibility="Collapsed">
+            <Border Style="{StaticResource Card}" Margin="0,0,12,12" MinWidth="150">
+              <StackPanel><TextBlock Text="Processeur" Style="{StaticResource Muted}" /><TextBlock x:Name="CpuValue" Style="{StaticResource Heading}" /></StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,12,12" MinWidth="150">
+              <StackPanel><TextBlock Text="Mémoire" Style="{StaticResource Muted}" /><TextBlock x:Name="MemoryValue" Style="{StaticResource Heading}" /></StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,12,12" MinWidth="150">
+              <StackPanel><TextBlock Text="Disque" Style="{StaticResource Muted}" /><TextBlock x:Name="DiskValue" Style="{StaticResource Heading}" /></StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,12,12" MinWidth="150">
+              <StackPanel><TextBlock Text="Carte graphique" Style="{StaticResource Muted}" /><TextBlock x:Name="GpuValue" Style="{StaticResource Heading}" /></StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,12,12" MinWidth="150">
+              <StackPanel><TextBlock Text="Alimentation" Style="{StaticResource Muted}" /><TextBlock x:Name="PowerValue" Style="{StaticResource Heading}" /></StackPanel>
+            </Border>
+          </WrapPanel>
+
+          <ItemsControl Grid.Row="2" x:Name="FindingList" Margin="0,0,0,12">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" Margin="0,2" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0">
+            <Grid>
+              <DataGrid x:Name="UsageGrid" AutomationProperties.Name="Consommation par application"
+                        AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                        GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Application" Binding="{Binding Name}" Width="*" />
+                  <DataGridTextColumn Header="Processeur" Binding="{Binding CpuText}" SortMemberPath="Cpu" Width="100" />
+                  <DataGridTextColumn Header="Mémoire" Binding="{Binding MemoryText}" SortMemberPath="Memory" Width="100" />
+                  <DataGridTextColumn Header="Disque" Binding="{Binding DiskText}" SortMemberPath="DiskBytesPerSecond" Width="100" />
+                  <DataGridTextColumn Header="Carte graphique" Binding="{Binding GpuText}" SortMemberPath="Gpu" Width="120" />
+                  <DataGridTextColumn Header="Processus" Binding="{Binding Processes}" Width="80" />
+                </DataGrid.Columns>
+              </DataGrid>
+              <TextBlock x:Name="UsagePlaceholder" Style="{StaticResource Muted}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Text="Lancez une analyse pour voir ce qui consomme." />
+            </Grid>
+          </Border>
         </Grid>
       </TabItem>
 
       <!-- Health -->
-      <TabItem Header="Santé et nettoyage">
+      <TabItem x:Name="HealthTab" Header="Santé et nettoyage">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="0,12,0,0">
 
@@ -318,7 +571,7 @@
       </TabItem>
 
       <!-- History -->
-      <TabItem Header="Historique">
+      <TabItem x:Name="HistoryTab" Header="Historique">
         <Grid Margin="0,12,0,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

@@ -9,7 +9,8 @@ namespace DriverUpdater;
 
 /// <summary>
 /// The main window. It runs without administrator rights; each tab's actions live in their
-/// own partial file (MainWindow.Drivers.cs, .Software.cs, .Health.cs).
+/// own partial file (MainWindow.Drivers.cs, .Catalog.cs, .Software.cs, .Startup.cs,
+/// .Performance.cs, .Health.cs).
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -23,8 +24,22 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             LoadWeeklyCheck();
-            await Task.WhenAll(LoadProblemDevices(), LoadHardware(), LoadDisks(), LoadBatteries(), LoadHistory(), CheckForUpdate());
+            await Task.WhenAll(LoadProblemDevices(), LoadHardware(), CheckForUpdate());
         };
+    }
+
+    readonly HashSet<TabItem> openedTabs = [];
+
+    // Each tab reads the system only when first opened: WMI, Windows Update and the registry
+    // are slow to query, and most visits use one or two tabs.
+    async void OnTabChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Lists inside the tabs raise SelectionChanged too, and it bubbles up here.
+        if (e.OriginalSource != Tabs || Tabs.SelectedItem is not TabItem tab || !openedTabs.Add(tab)) return;
+        if (tab == HealthTab) await Task.WhenAll(LoadDisks(), LoadBatteries());
+        else if (tab == HistoryTab) await LoadHistory();
+        else if (tab == StartupTab) await LoadStartup();
+        else if (tab == SoftwareTab) await LoadPrograms();
     }
 
     async Task CheckForUpdate()
@@ -132,8 +147,11 @@ public partial class MainWindow : Window
                  {
                      SearchButton, UnhideButton, SearchSoftwareButton, HealthDetailsButton, ScanTempButton,
                      CleanWindowsTempButton, SfcButton, DismRestoreButton, DismCleanupButton, BackupButton, RestoreBackupButton,
+                     SearchCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
+                     BootReportButton, MeasureButton,
                  })
             button.IsEnabled = !busy;
+        InstallCatalogButton.IsEnabled = !busy && catalogDrivers.Count > 0;
         InstallButton.IsEnabled = HideButton.IsEnabled = !busy && drivers.Count > 0;
         UpgradeSoftwareButton.IsEnabled = !busy && software.Count > 0;
         CleanTempButton.IsEnabled = !busy && tempScan is { Files.Count: > 0 };

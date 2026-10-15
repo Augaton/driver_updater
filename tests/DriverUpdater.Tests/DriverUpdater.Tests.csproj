@@ -13,6 +13,17 @@
     <Compile Include="..\..\src\DriverUpdater\AdminCommand.cs" Link="AdminCommand.cs" />
     <Compile Include="..\..\src\DriverUpdater\WingetOutput.cs" Link="WingetOutput.cs" />
     <Compile Include="..\..\src\DriverUpdater\UpdateCheck.cs" Link="UpdateCheck.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Bytes.cs" Link="Bytes.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Catalog.cs" Link="Catalog.cs" />
+    <Compile Include="..\..\src\DriverUpdater\CommandLine.cs" Link="CommandLine.cs" />
+    <Compile Include="..\..\src\DriverUpdater\StartupApproval.cs" Link="StartupApproval.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Leftovers.cs" Link="Leftovers.cs" />
+    <Compile Include="..\..\src\DriverUpdater\PerfModel.cs" Link="PerfModel.cs" />
+    <Compile Include="..\..\src\DriverUpdater\BootEvents.cs" Link="BootEvents.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -24,6 +24,9 @@ public static class AdminHelper
             if (args.Length < 3) throw new ArgumentException("Arguments manquants.");
             channel = await HelperChannel.ConnectAsync(args[1]);
             var command = AdminCommand.Parse(args[2..]);
+            // "version" changes nothing, which lets the tests check the whole path.
+            if (command.Name != AdminCommand.Version && !channel.FromThisApp)
+                throw new UnauthorizedAccessException("Refusé : seule la fenêtre de Driver Updater peut commander ce module.");
             channel.Result(await ExecuteAsync(command, channel));
         }
         catch (Exception e)
@@ -87,6 +90,19 @@ public static class AdminHelper
             case AdminCommand.Sfc or AdminCommand.DismRestore or AdminCommand.DismCleanup:
                 return await Repair.RunAsync(command.Name, channel.Progress);
 
+            case AdminCommand.StartupSet:
+                StartupApps.SetEnabled(command.Args[0], command.Args[1], machine: true, enabled: command.Args[2] == "on");
+                return true;
+
+            case AdminCommand.Recycle:
+                return Recycle(command.Args);
+
+            case AdminCommand.BootReport:
+                return await Task.Run(BootLog.Read);
+
+            case AdminCommand.InstallCatalog:
+                return await InstallCatalogAsync(command.Args, channel);
+
             default:
                 throw new ArgumentException($"Commande non prise en charge : {command.Name}");
         }
@@ -110,6 +126,39 @@ public static class AdminHelper
         foreach (var missing in ids.Except(drivers.Select(d => d.UpdateId), StringComparer.OrdinalIgnoreCase))
             results.Add(new(missing, missing, false, "n'est plus proposé par Windows Update", false));
         return new InstallReport(point, false, results);
+    }
+
+    /// <summary>Moves leftover folders to the Recycle Bin, each checked again against the leftover rules.</summary>
+    static int Recycle(IReadOnlyList<string> folders)
+    {
+        var roots = LeftoverRoots.Current;
+        foreach (var folder in folders)
+            if (!Leftovers.IsSafeToRecycle(folder, roots, out _))
+                throw new ArgumentException($"Dossier refusé : {folder}");
+        foreach (var folder in folders)
+            Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(folder,
+                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+        return folders.Count;
+    }
+
+    static async Task<CatalogInstallReport> InstallCatalogAsync(IReadOnlyList<string> ids, HelperChannel channel)
+    {
+        var point = await RestorePointAsync(channel);
+        if (point is null) return new CatalogInstallReport("", true, []);
+        var results = new List<CatalogInstallResult>();
+        foreach (var id in ids)
+        {
+            channel.Progress($"Pilote {results.Count + 1} sur {ids.Count}…");
+            try
+            {
+                results.Add(await DriverCatalog.InstallAsync(id, channel.Progress));
+            }
+            catch (Exception e) when (e is System.Net.Http.HttpRequestException or IOException or TaskCanceledException)
+            {
+                results.Add(new CatalogInstallResult(id, false, false, Errors.Describe(e)));
+            }
+        }
+        return new CatalogInstallReport(point, false, results);
     }
 
     /// <summary>The restore point's message, or null if it failed and the user would rather stop.</summary>

@@ -21,6 +21,10 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
     public const string Sfc = "sfc";
     public const string DismRestore = "dism-restore";
     public const string DismCleanup = "dism-cleanup";
+    public const string StartupSet = "startup-set";
+    public const string Recycle = "recycle";
+    public const string BootReport = "boot-report";
+    public const string InstallCatalog = "install-catalog";
 
     /// <summary>Pipe names the app creates: anything else (such as \\server\pipe) is refused.</summary>
     public static bool IsPipeName(string name) => PipeNamePattern().IsMatch(name);
@@ -34,7 +38,7 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
         var rest = args.Skip(1).ToList();
         switch (name)
         {
-            case Install or Hide:
+            case Install or Hide or InstallCatalog:
                 if (rest.Count == 0) throw new ArgumentException("Aucune mise à jour indiquée.");
                 // Update IDs end up inside a Windows Update search string: only plain GUIDs pass.
                 return new(name, rest.Select(id => Guid.TryParseExact(id, "D", out var guid)
@@ -44,7 +48,18 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                 if (rest.Count != 1 || !Path.IsPathFullyQualified(rest[0]) || rest[0].StartsWith(@"\\", StringComparison.Ordinal))
                     throw new ArgumentException("Un dossier local, avec son chemin complet, est attendu.");
                 return new(name, rest);
-            case Version or Unhide or CleanWindowsTemp or Health or Sfc or DismRestore or DismCleanup:
+            case Recycle:
+                // Each folder is checked again against the leftover rules before anything moves.
+                if (rest.Count == 0 || rest.Any(f => !Path.IsPathFullyQualified(f) || f.StartsWith(@"\\", StringComparison.Ordinal)))
+                    throw new ArgumentException("Des dossiers locaux, avec leur chemin complet, sont attendus.");
+                return new(name, rest);
+            case StartupSet:
+                // <run|run32|folder> <name> <on|off>, for an entry of all users.
+                if (rest.Count != 3 || rest[0] is not ("run" or "run32" or "folder") || rest[2] is not ("on" or "off")
+                    || rest[1].Length is 0 or > 260 || rest[1].Any(char.IsControl))
+                    throw new ArgumentException("Entrée de démarrage invalide.");
+                return new(name, rest);
+            case Version or Unhide or CleanWindowsTemp or Health or Sfc or DismRestore or DismCleanup or BootReport:
                 if (rest.Count != 0) throw new ArgumentException($"« {name} » ne prend pas d'argument.");
                 return new(name, rest);
             default:

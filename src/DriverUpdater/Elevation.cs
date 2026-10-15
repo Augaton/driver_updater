@@ -95,12 +95,21 @@ public sealed class HelperChannel : IDisposable
     readonly StreamReader reader;
     readonly StreamWriter writer;
 
-    HelperChannel(NamedPipeClientStream pipe)
+    HelperChannel(NamedPipeClientStream pipe, bool fromThisApp)
     {
         this.pipe = pipe;
+        FromThisApp = fromThisApp;
         reader = new StreamReader(pipe, leaveOpen: true);
         writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
     }
+
+    /// <summary>
+    /// Whether the process at the other end runs this very exe, i.e. is Driver Updater's
+    /// window. Any program can start the helper with a valid command and get Windows to ask
+    /// "allow Driver Updater?"; a user would say yes to that name. Only our window may then
+    /// actually command it.
+    /// </summary>
+    public bool FromThisApp { get; }
 
     public static async Task<HelperChannel> ConnectAsync(string pipeName)
     {
@@ -110,8 +119,18 @@ public sealed class HelperChannel : IDisposable
         var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous,
             TokenImpersonationLevel.Identification);
         await pipe.ConnectAsync(10_000); // milliseconds
-        return new HelperChannel(pipe);
+        // Both paths read the same way, so short (8.3) or long spellings compare equal.
+        bool fromThisApp = GetNamedPipeServerProcessId(pipe.SafePipeHandle, out uint server)
+            && NativeProcess.ImagePath((int)server) is { } windowExe
+            && NativeProcess.ImagePath(Environment.ProcessId) is { } ownExe
+            && string.Equals(windowExe, ownExe, StringComparison.OrdinalIgnoreCase);
+        return new HelperChannel(pipe, fromThisApp);
     }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool GetNamedPipeServerProcessId(SafeHandle pipe, out uint serverProcessId);
 
     public void Progress(string text) => Send(new(ElevationMessage.Progress, text));
     public void Result(object? data) => Send(new(ElevationMessage.Result, Data: JsonSerializer.SerializeToElement(data)));

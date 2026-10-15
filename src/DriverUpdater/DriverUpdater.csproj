@@ -10,7 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Driver Updater</Product>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <!-- Application.ThemeMode (Windows 11 look, dark mode) is still flagged experimental. -->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
     <!-- Lets the project build from Linux or macOS; the app itself only runs on Windows. -->
@@ -25,6 +25,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.13" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.13" />
     <PackageReference Include="System.Management" Version="10.0.13" />
   </ItemGroup>
 

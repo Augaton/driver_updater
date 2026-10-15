@@ -34,7 +34,7 @@ public static class DriverBackup
         };
     }
 
-    static async Task<int> PnpUtilAsync(params string[] arguments)
+    internal static async Task<int> PnpUtilAsync(params string[] arguments)
     {
         // Full path: a bare "pnputil.exe" could be picked up from the current folder.
         var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "pnputil.exe"))

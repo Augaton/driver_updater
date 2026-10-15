@@ -33,7 +33,7 @@ public static class SystemInfo
             foreach (ManagementBaseObject driver in results)
                 using (driver)
                     if (driver["DeviceID"] is string device && driver["DriverVersion"] is string version)
-                        byDevice[device] = new InstalledDriver(version, ParseDate(driver["DriverDate"] as string));
+                        byDevice[device] = new InstalledDriver(version, ParseWmiDate(driver["DriverDate"] as string));
 
         // Compatible IDs are left out on purpose: they are generic (e.g. "USB\Class_03"),
         // shared by many devices, so they would pair updates with the wrong driver.
@@ -48,7 +48,7 @@ public static class SystemInfo
         return byHardwareId;
     }
 
-    static DateTime? ParseDate(string? wmiDate)
+    internal static DateTime? ParseWmiDate(string? wmiDate)
     {
         try
         {
@@ -193,7 +193,7 @@ public static class SystemInfo
             if (url is not null) (maker, model) = (boardMaker, board.GetValueOrDefault("Product") as string ?? "");
         }
         var biosText = bios.GetValueOrDefault("SMBIOSBIOSVersion") is string biosVersion
-            ? "BIOS " + new InstalledDriver(biosVersion, ParseDate(bios.GetValueOrDefault("ReleaseDate") as string))
+            ? "BIOS " + new InstalledDriver(biosVersion, ParseWmiDate(bios.GetValueOrDefault("ReleaseDate") as string))
             : "BIOS inconnu";
         return new Hardware($"{maker.Trim()} {model.Trim()}".Trim() is { Length: > 0 } name ? name : "Ordinateur", biosText, tool, url);
     }
@@ -234,7 +234,7 @@ public static class SystemInfo
                 var device = gpu["PNPDeviceID"] as string ?? "";
                 if (device.StartsWith(@"ROOT\", StringComparison.OrdinalIgnoreCase)) continue; // virtual display adapters
                 var driver = gpu["DriverVersion"] is string version
-                    ? "Pilote " + new InstalledDriver(version, ParseDate(gpu["DriverDate"] as string))
+                    ? "Pilote " + new InstalledDriver(version, ParseWmiDate(gpu["DriverDate"] as string))
                     : "Pilote inconnu";
                 var (tool, url) = VendorTool(device);
                 list.Add(new Hardware(gpu["Name"] as string ?? "Carte graphique", driver, tool, url));

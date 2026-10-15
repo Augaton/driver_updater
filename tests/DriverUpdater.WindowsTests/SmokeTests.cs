@@ -2,8 +2,8 @@ using System.IO;
 using DriverUpdater;
 using Xunit;
 
-// Nothing here installs or deletes anything on the machine, except one scheduled task
-// that its own test creates and removes.
+// Nothing here installs or deletes anything on the machine, except a scheduled task and a
+// startup entry that their own tests create and remove.
 public sealed class SmokeTests
 {
     [Fact]
@@ -64,6 +64,78 @@ public sealed class SmokeTests
         var version = await Task.Run(() => Elevation.RunAsync<string>(AdminCommand.Version, [], new Progress<string>(), _ => false, exe));
 
         Assert.Equal(typeof(App).Assembly.GetName().Version!.ToString(), version);
+    }
+
+    // The tests run in another program than Driver Updater's window: any real command must
+    // be refused, even though Windows let the helper start as administrator.
+    [Fact(Timeout = 120_000)]
+    public async Task Administrator_helper_obeys_only_driver_updater_s_window()
+    {
+        var exe = AppExe();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(() =>
+            Elevation.RunAsync<HealthReport>(AdminCommand.Health, [], new Progress<string>(), _ => false, exe)));
+
+        Assert.Contains("Refusé", error.Message);
+    }
+
+    [Fact]
+    public void Lists_startup_programs_without_failing() => StartupApps.List();
+
+    [Fact]
+    public void Lists_installed_programs() => Assert.NotEmpty(InstalledPrograms.List());
+
+    [Fact]
+    public async Task Measures_performance()
+    {
+        var report = await PerfAnalyzer.MeasureAsync(TimeSpan.FromSeconds(1), new Progress<double>());
+
+        Assert.True(report.System.MemoryTotal > 0);
+        Assert.NotEmpty(report.Apps);
+        Assert.NotEmpty(report.Findings);
+    }
+
+    [Fact]
+    public void Reads_boot_measurements_without_failing() => BootLog.Read();
+
+    [Fact]
+    public void Switches_a_startup_entry_off_and_on_like_task_manager()
+    {
+        const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        var name = "DriverUpdater-test-" + Guid.NewGuid().ToString("N");
+        using (var run = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey))
+            run.SetValue(name, @"C:\does-not-exist\test.exe"); // never a real program, should cleanup fail
+        try
+        {
+            StartupApps.SetEnabled(StartupApps.Run, name, machine: false, enabled: false);
+            Assert.False(StartupApps.List().Single(e => e.Name == name).Enabled);
+            StartupApps.SetEnabled(StartupApps.Run, name, machine: false, enabled: true);
+            Assert.True(StartupApps.List().Single(e => e.Name == name).Enabled);
+        }
+        finally
+        {
+            using (var run = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, writable: true))
+                run?.DeleteValue(name, throwOnMissingValue: false);
+            using var approved = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run", writable: true);
+            approved?.DeleteValue(name, throwOnMissingValue: false);
+        }
+    }
+
+    // A canary on the live Microsoft Update Catalog: fails as soon as its pages change shape.
+    [Fact]
+    public async Task Microsoft_update_catalog_still_reads_and_resolves_downloads()
+    {
+        using var http = new System.Net.Http.HttpClient();
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) DriverUpdater");
+        var entries = Catalog.ParseSearch(await http.GetStringAsync(Catalog.SearchUrl + Uri.EscapeDataString(@"PCI\VEN_10EC&DEV_8168")));
+        var entry = Assert.Single(entries.Where(Catalog.Fits).Take(1));
+
+        var dialog = await http.PostAsync(Catalog.DownloadDialogUrl,
+            new System.Net.Http.FormUrlEncodedContent([new("updateIDs", Catalog.DownloadRequest(entry.UpdateId))]));
+        var download = Catalog.ParseDownload(await dialog.Content.ReadAsStringAsync());
+
+        Assert.NotNull(download);
+        Assert.True(Catalog.IsTrustedDownload(download.Value.Url), download.Value.Url);
     }
 
     // DriverUpdater.exe as built for this configuration, found from the repository root.

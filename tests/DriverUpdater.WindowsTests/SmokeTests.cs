@@ -29,20 +29,29 @@ public sealed class SmokeTests
                 var app = new App();
                 app.InitializeComponent();
                 app.ApplyTheme();
-                var window = new MainWindow();
+                var window = new MainWindow
+                {
+                    WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = 0,
+                    ShowActivated = false, ShowInTaskbar = false,
+                };
+                window.Show();
                 Pump(window.LoadLocalData());
 
-                var size = new Size(1240, 800);
                 var root = (FrameworkElement)window.Content;
+                var background = (Brush)app.Resources["Void"];
                 int index = 0;
                 foreach (var tab in window.Tabs.Items.OfType<TabItem>().Where(t => t.IsEnabled && t.Name.Length > 0))
                 {
                     window.Tabs.SelectedItem = tab;
-                    root.Measure(size);
-                    root.Arrange(new Rect(size));
-                    root.UpdateLayout();
-                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle); // let bindings settle
-                    Save(Render(root, size, (Brush)app.Resources["Void"]), Path.Combine(folder, $"{++index:00}-{tab.Name}.png"));
+                    Settle(root);
+                    Save(Render(root, background), Path.Combine(folder, $"{++index:00}-{tab.Name}.png"));
+                    if (tab.Content is ScrollViewer { ScrollableHeight: > 0 } scroller)
+                    {
+                        scroller.ScrollToEnd();
+                        Settle(root);
+                        Save(Render(root, background), Path.Combine(folder, $"{index:00}-{tab.Name}-fin.png"));
+                        scroller.ScrollToHome();
+                    }
                 }
                 window.Close();
             }
@@ -68,16 +77,27 @@ public sealed class SmokeTests
         task.GetAwaiter().GetResult();
     }
 
-    static RenderTargetBitmap Render(Visual root, Size size, Brush background)
+    // Layout, then everything the dispatcher queued behind it (bindings, Loaded, column
+    // sizing), then the layout that work asked for.
+    static void Settle(UIElement root)
     {
-        var picture = new DrawingVisual();
-        using (var drawing = picture.RenderOpen())
+        for (int pass = 0; pass < 3; pass++)
         {
-            drawing.DrawRectangle(background, null, new Rect(size));
-            drawing.DrawRectangle(new VisualBrush(root), null, new Rect(size));
+            root.UpdateLayout();
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         }
+    }
+
+    // The window's content as it is on screen, clipped to the window like the user sees it.
+    static RenderTargetBitmap Render(FrameworkElement root, Brush background)
+    {
+        var size = new Size(root.ActualWidth, root.ActualHeight);
+        var backdrop = new DrawingVisual();
+        using (var drawing = backdrop.RenderOpen())
+            drawing.DrawRectangle(background, null, new Rect(size));
         var bitmap = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(picture);
+        bitmap.Render(backdrop);
+        bitmap.Render(root);
         return bitmap;
     }
 

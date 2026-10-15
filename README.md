@@ -194,8 +194,8 @@ paquets.
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.7.0
-git push origin v0.7.0
+git tag v0.7.1
+git push origin v0.7.1
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`

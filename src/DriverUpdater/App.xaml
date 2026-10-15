@@ -94,9 +94,9 @@
       </Setter>
     </Style>
 
-    <!-- One sidebar entry: icon (in Tag) and name; the selected one glows. -->
+    <!-- One sidebar entry: icon (in Tag) and name; the selected one glows. Colors go to the icon
+         and the name, never to the TabItem: its section's content would inherit them. -->
     <Style x:Key="NavItem" TargetType="TabItem">
-      <Setter Property="Foreground" Value="{StaticResource InkMuted}" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
         <Setter.Value>
@@ -106,22 +106,24 @@
                 <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-14,1,0,1"
                         Background="{StaticResource NeonCyan}" Effect="{StaticResource Glow}" Visibility="Hidden" />
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="16" Width="18"
-                             VerticalAlignment="Center" Margin="0,0,14,0" Foreground="{TemplateBinding Foreground}" />
-                  <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
-                                    TextElement.Foreground="{TemplateBinding Foreground}" TextElement.FontSize="14" />
+                  <TextBlock x:Name="Icon" Text="{TemplateBinding Tag}" FontFamily="{StaticResource Icons}" FontSize="16" Width="18"
+                             VerticalAlignment="Center" Margin="0,0,14,0" Foreground="{StaticResource InkMuted}" />
+                  <ContentPresenter x:Name="Caption" ContentSource="Header" VerticalAlignment="Center"
+                                    TextElement.Foreground="{StaticResource InkMuted}" TextElement.FontSize="14" />
                 </StackPanel>
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#12FFFFFF" />
-                <Setter Property="Foreground" Value="{StaticResource Ink}" />
+                <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource Ink}" />
+                <Setter TargetName="Caption" Property="TextElement.Foreground" Value="{StaticResource Ink}" />
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#1A00E5FF" />
                 <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
-                <Setter Property="Foreground" Value="{StaticResource NeonCyan}" />
+                <Setter TargetName="Icon" Property="Foreground" Value="{StaticResource NeonCyan}" />
+                <Setter TargetName="Caption" Property="TextElement.Foreground" Value="{StaticResource NeonCyan}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>

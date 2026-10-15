@@ -1,0 +1,16 @@
+# Keeps the pinned actions and the NuGet packages up to date. The cooldown waits a week
+# after each release, so a compromised version has time to be caught before we take it.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

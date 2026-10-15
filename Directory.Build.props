@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <!-- Supply chain: packages.lock.json pins every package and its hash; CI refuses any drift. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+    <!-- Warn about known vulnerabilities in direct and transitive packages. -->
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <!-- Every security analyzer rule on. -->
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
+    <!-- CI fails on any warning, including a newly published vulnerability. -->
+    <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

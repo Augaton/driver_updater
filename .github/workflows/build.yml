@@ -1,0 +1,64 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+  # Weekly: picks up .NET security patches in the bundled runtime, and fails if a
+  # vulnerability has been published for a package we use.
+  schedule:
+    - cron: "0 6 * * 3"
+
+# Read-only token: this workflow builds and uploads an artifact, nothing more.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      # Actions are pinned to a commit: a moved or hijacked tag cannot change what runs here.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      # CI=true (set by GitHub) turns on locked restore and warnings-as-errors,
+      # see Directory.Build.props.
+      - name: Restore
+        run: dotnet restore DriverUpdater.sln
+
+      - name: Build
+        run: dotnet build DriverUpdater.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test DriverUpdater.sln -c Release --no-build
+
+      - name: Publish
+        run: dotnet publish src/DriverUpdater -c Release -p:PublishProfile=win-x64
+
+      - name: Checksums
+        run: |
+          Get-FileHash publish/* -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content publish/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: DriverUpdater-win-x64
+          path: publish/
+          if-no-files-found: error
+          retention-days: 30

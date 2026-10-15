@@ -1,0 +1,152 @@
+<Window x:Class="DriverUpdater.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Driver Updater" Width="1000" Height="680" MinWidth="760" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI" FontSize="13"
+        Background="{StaticResource PageBrush}">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <TabControl Margin="12,12,12,0" Padding="12" Background="{StaticResource PageBrush}">
+
+      <TabItem Header="Pilotes">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <DockPanel Margin="0,0,0,12">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+              <Button x:Name="SearchButton" Content="Rechercher les mises à jour" Click="OnSearch" Margin="0,0,8,0" />
+              <Button x:Name="InstallButton" Content="Installer la sélection" Style="{StaticResource PrimaryButton}"
+                      Click="OnInstall" IsEnabled="False" />
+            </StackPanel>
+            <StackPanel Margin="0,0,16,0">
+              <TextBlock Text="Mises à jour de pilotes" Style="{StaticResource Heading}" />
+              <TextBlock Style="{StaticResource Muted}"
+                         Text="Source : Windows Update, pilotes signés et validés par Microsoft. Les « facultatifs » ne servent qu'à corriger un problème précis : ils sont décochés par défaut." />
+            </StackPanel>
+          </DockPanel>
+
+          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+            <Grid>
+              <DataGrid x:Name="DriverGrid" AutomationProperties.Name="Pilotes disponibles">
+                <DataGrid.Columns>
+                  <DataGridTemplateColumn Width="44">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  AutomationProperties.Name="{Binding Title}" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                  <DataGridTextColumn Header="Mise à jour proposée" Binding="{Binding Title}" Width="*" />
+                  <DataGridTextColumn Header="Daté du" Binding="{Binding Date, StringFormat=dd/MM/yyyy}" Width="85" />
+                  <DataGridTextColumn Header="Pilote installé" Binding="{Binding Installed}" Width="190" />
+                  <DataGridTextColumn Header="Type" Binding="{Binding Kind}" Width="95" />
+                  <DataGridTextColumn Header="Taille" Binding="{Binding SizeText}" Width="70" />
+                </DataGrid.Columns>
+              </DataGrid>
+              <TextBlock x:Name="DriverPlaceholder" Style="{StaticResource Muted}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Text="Lancez une recherche pour voir les pilotes disponibles." />
+            </Grid>
+          </Border>
+
+          <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0">
+            <StackPanel>
+              <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Gestionnaire de périphériques" Tag="devmgmt.msc"
+                        Click="OnOpenSetting" />
+                <TextBlock x:Name="ProblemHeading" Text="Périphériques en erreur" Style="{StaticResource Heading}"
+                           FontSize="14" VerticalAlignment="Center" />
+              </DockPanel>
+              <TextBlock x:Name="ProblemStatus" Style="{StaticResource Muted}" Text="Chargement…" />
+              <ScrollViewer MaxHeight="110" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="ProblemList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Margin="0,2">
+                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" />
+                        <Run Text=" — " />
+                        <Run Text="{Binding Meaning, Mode=OneWay}" />
+                      </TextBlock>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Santé et nettoyage">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Disques" Style="{StaticResource Heading}" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="État rapporté par Windows. « Avertissement » ou « Défaillant » : sauvegardez vos données sans attendre." />
+                <DataGrid x:Name="DiskGrid" Margin="0,8,0,0" AutomationProperties.Name="Disques">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="Disque" Binding="{Binding Name}" Width="*" />
+                    <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="80" />
+                    <DataGridTextColumn Header="Taille" Binding="{Binding Size}" Width="90" />
+                    <DataGridTextColumn Header="État" Binding="{Binding Health}" Width="110" />
+                  </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock x:Name="DiskStatus" Style="{StaticResource Muted}" />
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Fichiers temporaires" Style="{StaticResource Heading}" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Fichiers de plus de 2 jours dans votre dossier temporaire et dans C:\Windows\Temp. Les fichiers en cours d'utilisation sont laissés en place." />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button x:Name="ScanTempButton" Content="Analyser" Click="OnScanTemp" Margin="0,0,8,0" />
+                  <Button x:Name="CleanTempButton" Content="Supprimer" Style="{StaticResource PrimaryButton}"
+                          Click="OnCleanTemp" IsEnabled="False" />
+                  <TextBlock x:Name="TempStatus" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Réglages Windows utiles" Style="{StaticResource Heading}" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Les outils intégrés font mieux qu'un « booster » : ils montrent l'impact réel de chaque élément." />
+                <WrapPanel Margin="0,10,0,0">
+                  <Button Content="Applications au démarrage" Tag="ms-settings:startupapps" Click="OnOpenSetting" Margin="0,0,8,8" />
+                  <Button Content="Assistant de stockage" Tag="ms-settings:storagesense" Click="OnOpenSetting" Margin="0,0,8,8" />
+                  <Button Content="Alimentation" Tag="ms-settings:powersleep" Click="OnOpenSetting" Margin="0,0,8,8" />
+                  <Button Content="Historique des mises à jour" Tag="ms-settings:windowsupdate-history" Click="OnOpenSetting" Margin="0,0,8,8" />
+                  <Button Content="Restaurer le système" Tag="rstrui.exe" Click="OnOpenSetting" Margin="0,0,8,8" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <DockPanel Grid.Row="1" Margin="14,8">
+      <ProgressBar x:Name="BusyBar" DockPanel.Dock="Right" Width="160" Height="6"
+                   IsIndeterminate="True" Visibility="Collapsed" />
+      <TextBlock x:Name="StatusText" Text="Prêt." VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                 AutomationProperties.LiveSetting="Polite" />
+    </DockPanel>
+  </Grid>
+</Window>

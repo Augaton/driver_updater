@@ -116,6 +116,10 @@ public static class WindowsUpdateDrivers
         }
     }
 
+    /// <summary>Windows updates (not drivers) waiting to be installed, as the security check counts them.</summary>
+    public static int CountPendingSoftware() =>
+        (int)Searcher().Search("IsInstalled=0 and Type='Software' and IsHidden=0").Updates.Count;
+
     /// <summary>Stops offering this driver, here and in Windows Update settings.</summary>
     public static void Hide(DriverUpdate driver)
     {

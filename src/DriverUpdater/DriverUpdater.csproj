@@ -12,7 +12,7 @@
     <!-- Drawn by installer/art/make-art.py. -->
     <ApplicationIcon>app.ico</ApplicationIcon>
     <Product>Driver Updater</Product>
-    <Version>0.6.0</Version>
+    <Version>0.7.0</Version>
     <!-- Application.ThemeMode (Windows 11 look, dark mode) is still flagged experimental. -->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
     <!-- Lets the project build from Linux or macOS; the app itself only runs on Windows. -->
@@ -25,6 +25,11 @@
          packages and match the lock file. -->
     <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The screenshot test loads the window's local data. -->
+    <InternalsVisibleTo Include="DriverUpdater.WindowsTests" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="10.0.13" />

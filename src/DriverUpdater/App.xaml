@@ -15,6 +15,8 @@
     <SolidColorBrush x:Key="NeonGreen" Color="#2BFF88" />
     <SolidColorBrush x:Key="NeonAmber" Color="#FFB020" />
     <SolidColorBrush x:Key="NeonPink" Color="#FF2E88" />
+    <!-- Chart bars: the neon cyan, deep enough for marks on the dark surface (checked with the dataviz validator). -->
+    <SolidColorBrush x:Key="ChartCyan" Color="#2299C8" />
     <LinearGradientBrush x:Key="NeonGradient" StartPoint="0,0" EndPoint="1,1">
       <GradientStop Color="#00E5FF" Offset="0" />
       <GradientStop Color="#B44DFF" Offset="1" />

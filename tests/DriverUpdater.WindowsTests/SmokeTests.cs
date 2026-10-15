@@ -1,4 +1,9 @@
 using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using DriverUpdater;
 using Xunit;
 
@@ -6,19 +11,40 @@ using Xunit;
 // startup entry that their own tests create and remove.
 public sealed class SmokeTests
 {
+    // XAML errors only surface at run time: build the real window, load what it can read
+    // locally, and render every section to a PNG. The pipeline publishes them, so the look of
+    // the app can be checked without a Windows PC at hand. One test for both: WPF allows a
+    // single Application per process.
     [Fact]
-    public void Main_window_and_its_resources_load_with_the_Windows_11_theme()
+    public void Main_window_loads_and_every_section_renders()
     {
-        // XAML errors only surface at run time, so build the real window on a UI thread.
+        var folder = Path.Combine(RepoRoot(), "screenshots");
+        Directory.CreateDirectory(folder);
         Exception? error = null;
         var thread = new Thread(() =>
         {
             try
             {
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
                 var app = new App();
                 app.InitializeComponent();
                 app.ApplyTheme();
-                new MainWindow().Close();
+                var window = new MainWindow();
+                Pump(window.LoadLocalData());
+
+                var size = new Size(1240, 800);
+                var root = (FrameworkElement)window.Content;
+                int index = 0;
+                foreach (var tab in window.Tabs.Items.OfType<TabItem>().Where(t => t.IsEnabled && t.Name.Length > 0))
+                {
+                    window.Tabs.SelectedItem = tab;
+                    root.Measure(size);
+                    root.Arrange(new Rect(size));
+                    root.UpdateLayout();
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle); // let bindings settle
+                    Save(Render(root, size, (Brush)app.Resources["Void"]), Path.Combine(folder, $"{++index:00}-{tab.Name}.png"));
+                }
+                window.Close();
             }
             catch (Exception e)
             {
@@ -27,9 +53,48 @@ public sealed class SmokeTests
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        thread.Join();
+        Assert.True(thread.Join(TimeSpan.FromMinutes(4)), "Le rendu des sections n'a pas fini à temps.");
 
         Assert.Null(error);
+        Assert.NotEmpty(Directory.GetFiles(folder, "*.png"));
+    }
+
+    // Runs the dispatcher until the task is done: its continuations need the UI thread.
+    static void Pump(Task task)
+    {
+        var frame = new DispatcherFrame();
+        task.ContinueWith(_ => frame.Continue = false, TaskScheduler.Default);
+        Dispatcher.PushFrame(frame);
+        task.GetAwaiter().GetResult();
+    }
+
+    static RenderTargetBitmap Render(Visual root, Size size, Brush background)
+    {
+        var picture = new DrawingVisual();
+        using (var drawing = picture.RenderOpen())
+        {
+            drawing.DrawRectangle(background, null, new Rect(size));
+            drawing.DrawRectangle(new VisualBrush(root), null, new Rect(size));
+        }
+        var bitmap = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(picture);
+        return bitmap;
+    }
+
+    static void Save(BitmapSource image, string path)
+    {
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(image));
+        using var file = File.Create(path);
+        encoder.Save(file);
+    }
+
+    static string RepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DriverUpdater.sln")))
+            directory = directory.Parent;
+        return directory?.FullName ?? AppContext.BaseDirectory;
     }
 
     [Fact]
@@ -217,5 +282,73 @@ public sealed class SmokeTests
             WeeklyCheck.Disable(name);
         }
         Assert.False(WeeklyCheck.IsEnabled(name));
+    }
+
+    // ---- "PC de guerre" and security -------------------------------------------------------
+
+    [Fact]
+    public void Reads_the_state_of_every_tweak_without_changing_it()
+    {
+        foreach (var tweak in TweakCatalog.All)
+        {
+            Tuner.State(tweak);
+            Tuner.CanUndo(tweak);
+        }
+    }
+
+    // The real registry, as the app uses it: undoing puts back exactly what was there.
+    [Fact]
+    public void Applies_and_undoes_a_user_tweak_exactly()
+    {
+        var tweak = TweakCatalog.Find("advertising-id-off")!;
+        var registry = new WindowsRegistry();
+        var before = tweak.Values.Select(v => registry.Get(v.Hive, v.Key, v.Name)).ToList();
+        Tuner.Apply(tweak);
+        Assert.Equal(TweakState.Applied, Tuner.State(tweak));
+        Assert.True(Tuner.CanUndo(tweak));
+        Tuner.Undo(tweak);
+        Assert.Equal(before, tweak.Values.Select(v => registry.Get(v.Hive, v.Key, v.Name)).ToList());
+        Assert.False(Tuner.CanUndo(tweak));
+    }
+
+    [Fact]
+    public void Runs_the_hardware_checks() => Assert.NotEmpty(PcChecks.Run());
+
+    [Fact]
+    public void Lists_screens_without_failing() => Displays.Screens();
+
+    [Fact]
+    public void Looks_for_steam_games_without_failing() => SteamGames.Find();
+
+    // What was checked is what runs: nobody can rewrite, rename or delete the installer meanwhile.
+    [Fact]
+    public void A_checked_installer_cannot_be_swapped_before_it_starts()
+    {
+        var folder = Directory.CreateTempSubdirectory("DriverUpdater-test-");
+        var path = Path.Combine(folder.FullName, "setup.exe");
+        File.WriteAllText(path, "checked");
+        try
+        {
+            using (new VerifiedInstaller(path, new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read)))
+            {
+                Assert.Throws<IOException>(() => File.WriteAllText(path, "swapped"));
+                Assert.Throws<IOException>(() => File.Move(path, path + ".old"));
+                Assert.Throws<IOException>(() => File.Delete(path));
+                Assert.Equal("checked", File.ReadAllText(path));
+            }
+            File.Delete(path);
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Reads_the_security_status()
+    {
+        var state = SecurityStatus.Read(askWindowsUpdate: false);
+        Assert.NotNull(state.FirewallOn);
+        Assert.Null(state.PendingUpdates);
     }
 }

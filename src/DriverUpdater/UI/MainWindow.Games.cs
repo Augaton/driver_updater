@@ -44,7 +44,7 @@ public partial class MainWindow
         {
             SetStatus("Lecture de la carte graphique impossible : " + Errors.Describe(e));
         }
-        await CheckComponents();
+        await Task.WhenAll(CheckComponents(), LoadGameTips());
     }
 
     void ShowGpus(IEnumerable<DeviceDriver> displays, IReadOnlyList<Hardware> tools, IReadOnlyList<CatalogDriver>? newer)

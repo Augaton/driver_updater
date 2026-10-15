@@ -9,6 +9,8 @@ namespace DriverUpdater.UI;
 public partial class MainWindow
 {
     TempCleaner.ScanResult? tempScan;
+    // Windows Update takes up to a minute to count: one search serves the tile and the card.
+    Task<SecurityState?>? fullSecurity;
     DateTime tempCutoff;
 
     // Built from the profile folder rather than from %TEMP%, which any program can repoint.
@@ -44,6 +46,64 @@ public partial class MainWindow
         BatteryGrid.ItemsSource = batteries;
         BatteryCard.Visibility = batteries.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    /// <summary>
+    /// Antivirus and firewall at once; the Windows updates waiting take Windows Update up to a
+    /// minute to count, so they follow. Null when nothing could be read.
+    /// </summary>
+    async Task<SecurityState?> LoadSecurity(bool askWindowsUpdate)
+    {
+        try
+        {
+            var quick = await Task.Run(() => SecurityStatus.Read(askWindowsUpdate: false));
+            ShowSecurity(quick, askWindowsUpdate ? "recherche en cours…" : "non vérifiées");
+            if (!askWindowsUpdate) return quick;
+            var full = await Task.Run(() => SecurityStatus.Read(askWindowsUpdate: true));
+            ShowSecurity(full, "Windows Update n'a pas répondu");
+            return full;
+        }
+        catch (Exception e)
+        {
+            SecuritySummary.Text = "Lecture impossible : " + Errors.Describe(e);
+            return null;
+        }
+    }
+
+    void ShowSecurity(SecurityState state, string updatesUnknown)
+    {
+        var lines = new List<string>();
+        lines.AddRange(state.Antiviruses.Count == 0
+            ? ["Antivirus : aucun déclaré à Windows (Security Center absent, comme sur Windows Server)."]
+            : state.Antiviruses.Select(a => $"{(a.Enabled && a.UpToDate ? "✔" : "✘")} {a.Name} : " +
+                                            $"{(a.Enabled ? "actif" : "inactif")}, {(a.UpToDate ? "à jour" : "pas à jour")}"));
+        lines.Add(state.FirewallOn switch
+        {
+            true => "✔ Pare-feu Windows : actif",
+            false => "✘ Pare-feu Windows : désactivé",
+            null => "Pare-feu Windows : état illisible",
+        });
+        lines.Add(state.PendingUpdates switch
+        {
+            0 => "✔ Mises à jour de Windows : aucune en attente",
+            > 0 => $"✘ Mises à jour de Windows : {state.PendingUpdates} en attente",
+            _ => "Mises à jour de Windows : " + updatesUnknown,
+        });
+        SecuritySummary.Text = string.Join("\n", lines);
+    }
+
+    async void OnRestorePoints(object sender, RoutedEventArgs e) =>
+        await RunBusy("En attente de l'autorisation administrateur…", async () =>
+        {
+            var points = await RunAdminAsync<List<RestorePointInfo>>(AdminCommand.RestorePoints);
+            RestorePointList.ItemsSource = points;
+            return points.Count == 0
+                ? "Aucun point de restauration : la protection du système est peut-être désactivée (Paramètres → Système → Informations système → Protection du système)."
+                : $"{points.Count} point(s) de restauration.";
+        });
+
+    async void OnCreateRestorePoint(object sender, RoutedEventArgs e) =>
+        await RunBusy("En attente de l'autorisation administrateur…", async () =>
+            (await RunAdminAsync<RestorePointResult>(AdminCommand.CreateRestorePoint)).Message);
 
     // Wear, temperature and often the battery are only readable as administrator.
     async void OnHealthDetails(object sender, RoutedEventArgs e) =>

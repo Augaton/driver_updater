@@ -96,3 +96,23 @@ public sealed class BootEventsTests
         Assert.Equal(("Spooler", "Service"), (report.Slowdowns[1].FriendlyName, report.Slowdowns[1].Kind));
     }
 }
+
+public sealed class SecurityCenterTests
+{
+    [Theory]
+    [InlineData(0x061100u, true, true)]   // Defender running, definitions current
+    [InlineData(0x060100u, false, true)]  // switched off
+    [InlineData(0x061110u, true, false)]  // running, definitions out of date
+    public void Decodes_antivirus_state(uint state, bool enabled, bool upToDate) =>
+        Assert.Equal((enabled, upToDate), (SecurityCenter.IsEnabled(state), SecurityCenter.IsUpToDate(state)));
+
+    [Fact]
+    public void Lists_only_real_problems()
+    {
+        var fine = new SecurityState([new("Microsoft Defender", true, true)], FirewallOn: true, PendingUpdates: 0);
+        var bad = new SecurityState([new("Microsoft Defender", true, false)], FirewallOn: false, PendingUpdates: 3);
+
+        Assert.Empty(fine.Problems);
+        Assert.Equal(3, bad.Problems.Count);
+    }
+}

@@ -10,13 +10,14 @@ namespace DriverUpdater.UI;
 /// <summary>
 /// The main window. It runs without administrator rights; each tab's actions live in their
 /// own partial file (MainWindow.Home.cs, .Drivers.cs, .Catalog.cs, .Inventory.cs, .Games.cs,
-/// .Software.cs, .Startup.cs, .Performance.cs, .Health.cs).
+/// .Tuning.cs, .Software.cs, .Startup.cs, .Performance.cs, .Health.cs).
 /// </summary>
 public partial class MainWindow : Window
 {
     readonly List<string> log = [];
     bool busy;
     bool adminRunning;
+    AppRelease? newerRelease;
 
     public MainWindow()
     {
@@ -31,6 +32,19 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>
+    /// Everything the app reads locally, without the network or administrator rights: lets the
+    /// screenshot test show each section with real content.
+    /// </summary>
+    internal async Task LoadLocalData()
+    {
+        await Task.WhenAll(LoadHardware(), LoadInventory(), LoadStartup(), LoadPrograms(), LoadDisks(), LoadBatteries(), LoadHistory(),
+            LoadTuning(), LoadSecurity(askWindowsUpdate: false));
+        report = DriverReport.Build(inventory, [], new Dictionary<string, DriverOffer>());
+        ShowReport();
+        await LoadGames();
+    }
+
     readonly HashSet<TabItem> openedTabs = [];
 
     // Each tab reads the system only when first opened: WMI, Windows Update and the registry
@@ -39,9 +53,10 @@ public partial class MainWindow : Window
     {
         // Lists inside the tabs raise SelectionChanged too, and it bubbles up here.
         if (e.OriginalSource != Tabs || Tabs.SelectedItem is not TabItem tab || !openedTabs.Add(tab)) return;
-        if (tab == HealthTab) await Task.WhenAll(LoadDisks(), LoadBatteries());
+        if (tab == HealthTab) await Task.WhenAll(LoadDisks(), LoadBatteries(), fullSecurity ??= LoadSecurity(askWindowsUpdate: true));
         else if (tab == InventoryTab && inventory.Count == 0) await LoadInventory();
         else if (tab == GamesTab) await LoadGames();
+        else if (tab == TuningTab) await LoadTuning();
         else if (tab == HistoryTab) await LoadHistory();
         else if (tab == StartupTab) await LoadStartup();
         else if (tab == SoftwareTab) await LoadPrograms();
@@ -55,12 +70,41 @@ public partial class MainWindow : Window
             if (await UpdateCheck.NewerReleaseAsync(current) is not { } release) return;
             UpdateBannerText.Text = $"La version {release.Version.ToString(3)} de Driver Updater est disponible.";
             UpdateBannerButton.Tag = release.Url;
+            UpdateInstallButton.Visibility = release.CanInstall ? Visibility.Visible : Visibility.Collapsed;
+            newerRelease = release;
             UpdateBanner.Visibility = Visibility.Visible;
         }
         catch (Exception)
         {
             // Offline or GitHub unreachable: simply no banner.
         }
+    }
+
+    /// <summary>
+    /// Downloads the new installer, checks it against the release's SHA-256 list, starts it and
+    /// closes the app so the installer can replace it.
+    /// </summary>
+    async void OnInstallAppUpdate(object sender, RoutedEventArgs e)
+    {
+        if (newerRelease is not { CanInstall: true } release) return;
+        if (Ask($"Installer la version {release.Version.ToString(3)} ?\n\nL'installateur est téléchargé depuis la page GitHub du projet, " +
+                "vérifié, puis lancé ; l'application se ferme pour qu'il la remplace.") != MessageBoxResult.Yes)
+            return;
+        await RunBusy("Téléchargement de la mise à jour…", async () =>
+        {
+            var current = typeof(MainWindow).Assembly.GetName().Version!;
+            using var installer = await UpdateCheck.DownloadInstallerAsync(release, current, new Progress<string>(SetStatus));
+            try
+            {
+                installer.Start();
+            }
+            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+            {
+                return "Mise à jour annulée.";
+            }
+            Application.Current.Shutdown();
+            return "Installation de la mise à jour…";
+        });
     }
 
     async void OnCopyDiagnostics(object sender, RoutedEventArgs e)
@@ -88,7 +132,7 @@ public partial class MainWindow : Window
         var target = (string)((Button)sender).Tag;
         // A bare file name would also be looked up in the current folder, where anyone could
         // drop a fake rstrui.exe.
-        if (!target.StartsWith("ms-settings:", StringComparison.Ordinal))
+        if (!target.StartsWith("ms-settings:", StringComparison.Ordinal) && !target.StartsWith("windowsdefender:", StringComparison.Ordinal))
             target = Path.Combine(Environment.SystemDirectory, target);
         Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
     }
@@ -154,7 +198,8 @@ public partial class MainWindow : Window
                      CleanWindowsTempButton, SfcButton, DismRestoreButton, DismCleanupButton, BackupButton, RestoreBackupButton,
                      SearchCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
                      BootReportButton, MeasureButton, ScanButton, RefreshInventoryButton, StoreScanButton, DeviceBannerButton,
-                     GpuCheckButton, ComponentsCheckButton,
+                     GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton,
+                     RestorePointsButton, CreateRestorePointButton, UpdateInstallButton,
                  })
             button.IsEnabled = !busy;
         StoreDeleteButton.IsEnabled = !busy && storeChoices.Any(c => c.Selected);

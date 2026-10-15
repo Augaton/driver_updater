@@ -7,6 +7,23 @@
         Background="{StaticResource Void}" Foreground="{StaticResource Ink}">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIf" />
+    <DataTemplate x:Key="TweakRowTemplate">
+      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding}" Click="OnTweakAction" IsEnabled="{Binding CanAct}"
+                  VerticalAlignment="Center" MinWidth="120" Margin="12,0,0,0" />
+          <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
+                     Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
+          <StackPanel>
+            <TextBlock TextWrapping="Wrap">
+              <Run Text="{Binding Tweak.Title, Mode=OneWay}" FontWeight="SemiBold" />
+              <Run Text="{Binding Badges, Mode=OneWay}" Foreground="{StaticResource InkMuted}" FontSize="11" />
+            </TextBlock>
+            <TextBlock Text="{Binding Tweak.Why}" Style="{StaticResource Muted}" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
     <Style x:Key="AdminNote" TargetType="TextBlock" BasedOn="{StaticResource Muted}">
       <Setter Property="Text" Value="Windows demandera l'autorisation administrateur pour ces actions." />
       <Setter Property="FontSize" Value="12" />
@@ -148,7 +165,7 @@
           </Border>
 
           <!-- The rest of the PC, checked by the same scan. -->
-          <UniformGrid Grid.Row="2" Columns="3">
+          <UniformGrid Grid.Row="2" Columns="4">
             <Button Style="{StaticResource Tile}" Tag="SoftwareTab" Click="OnTile">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="24"
@@ -168,6 +185,17 @@
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="DÉMARRAGE" Style="{StaticResource Kicker}" />
                   <TextBlock x:Name="TileStartupText" Text="programmes lancés avec Windows" Style="{StaticResource Muted}" />
+                </StackPanel>
+              </DockPanel>
+            </Button>
+            <Button Style="{StaticResource Tile}" Tag="HealthTab" Click="OnTile">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="24"
+                           Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <TextBlock DockPanel.Dock="Right" x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="28" VerticalAlignment="Center" />
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="SÉCURITÉ" Style="{StaticResource Kicker}" />
+                  <TextBlock x:Name="TileSecurityText" Text="antivirus, pare-feu, Windows" Style="{StaticResource Muted}" />
                 </StackPanel>
               </DockPanel>
             </Button>
@@ -389,6 +417,8 @@
                 <ComboBoxItem Content="Pilotes non signés" />
                 <ComboBoxItem Content="Pilotes de fabricants" />
               </ComboBox>
+              <Button x:Name="RollbackButton" Content="Revenir au pilote précédent" Click="OnRollback" Margin="0,0,8,0"
+                      ToolTip="Le périphérique sélectionné reprend le pilote qu'il avait avant sa dernière mise à jour." />
               <Button x:Name="RefreshInventoryButton" Content="Actualiser" Click="OnRefreshInventory" />
             </StackPanel>
             <StackPanel Margin="0,0,16,0">
@@ -609,6 +639,43 @@
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
+                <TextBlock Text="Conseils par jeu" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Les réglages que les communautés recommandent, pour les jeux Steam installés sur ce PC. Le cfg ajouté se retire d'un clic, vos propres lignes restent." />
+                <TextBlock x:Name="GameTipsStatus" Style="{StaticResource Muted}" Margin="0,8,0,0" />
+                <ItemsControl x:Name="GameTipList" Margin="0,8,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+                        <StackPanel>
+                          <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                              <Button Content="{Binding CfgAction}" Tag="{Binding}" Click="OnGameCfg" Margin="0,0,8,0"
+                                      Visibility="{Binding Game.HasCfg, Converter={StaticResource VisibleIf}}" />
+                              <Button Content="{Binding Game.Tip.LinkText}" ContentStringFormat="Ouvrir {0}" Tag="{Binding Game.Tip.Link}" Click="OnOpenLink"
+                                      Visibility="{Binding Game.HasLink, Converter={StaticResource VisibleIf}}" />
+                            </StackPanel>
+                            <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{StaticResource NeonViolet}"
+                                       VerticalAlignment="Center" Margin="0,0,12,0" />
+                            <TextBlock Text="{Binding Game.Tip.Game}" FontFamily="{StaticResource Display}" FontSize="16" VerticalAlignment="Center" />
+                          </DockPanel>
+                          <ItemsControl ItemsSource="{Binding Game.Tip.Tips}" Margin="32,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}" Style="{StaticResource Muted}" Margin="0,2" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
                 <TextBlock Text="Réglages de jeu de Windows" Style="{StaticResource Heading}" FontSize="17" />
                 <TextBlock Style="{StaticResource Muted}"
                            Text="Le « Game Boost » des boosters arrête des programmes pour libérer de la mémoire : le Mode jeu de Windows le fait déjà, proprement, à chaque partie. La planification GPU à accélération matérielle réduit la latence sur les cartes récentes. Pour voir ce qui consomme vraiment : onglet Performances." />
@@ -617,6 +684,88 @@
                   <Button Content="Graphiques et planification GPU" Tag="ms-settings:display-advancedgraphics" Click="OnOpenSetting" Margin="0,0,8,8" />
                   <Button Content="Xbox Game Bar" Tag="ms-settings:gaming-gamebar" Click="OnOpenSetting" Margin="0,0,8,8" />
                 </WrapPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- "PC de guerre": every setting worth changing for games, applied and undone exactly -->
+      <TabItem x:Name="TuningTab" Header="PC de guerre" Tag="&#xE945;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Grid Margin="0,0,0,16">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Grid Width="160" Height="160" Margin="0,0,28,0">
+                <local:Gauge x:Name="TuningGauge" Thickness="11" />
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                  <TextBlock x:Name="TuningScore" Text="—" FontFamily="{StaticResource Display}" FontSize="34" HorizontalAlignment="Center" />
+                  <TextBlock Text="OPTIMISÉS" Style="{StaticResource Kicker}" HorizontalAlignment="Center" />
+                </StackPanel>
+              </Grid>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="PC DE GUERRE" Style="{StaticResource Kicker}" />
+                <TextBlock Text="Tout ce qui se règle pour mieux jouer" Style="{StaticResource Heading}" FontSize="26" TextWrapping="Wrap" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Chaque réglage a un effet réel et s'annule exactement : la valeur d'origine est gardée. Les « boosts » sans effet mesurable (réglages réseau TCP, HPET, services coupés à l'aveugle) n'y sont pas." />
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
+                  <Button x:Name="TuneAllButton" Content="Tout optimiser" Style="{DynamicResource AccentButtonStyle}" Click="OnTuneAll" Margin="0,0,8,0" />
+                  <Button x:Name="TuningRefreshButton" Content="Actualiser" Click="OnTuningRefresh" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource AdminNote}"
+                           Text="« Tout optimiser » laisse de côté ce qui demande un choix (sensation de la souris, portable sur batterie) ; une seule autorisation administrateur pour les réglages qui en ont besoin." />
+              </StackPanel>
+            </Grid>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="À vérifier sur votre matériel" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}" Text="Ce qu'aucun réglage ne corrige d'ici, mais qui coûte le plus en jeu." />
+                <ItemsControl x:Name="CheckList" Margin="0,10,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+                        <DockPanel>
+                          <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding Action}" Click="OnCheckAction"
+                                  VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
+                          <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
+                                     Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                          <StackPanel>
+                            <TextBlock TextWrapping="Wrap">
+                              <Run Text="{Binding Check.Title, Mode=OneWay}" FontWeight="SemiBold" />
+                              <Run Text=" — " />
+                              <Run Text="{Binding Check.Finding, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Text="{Binding Check.Advice}" Style="{StaticResource Muted}" />
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Jeu" Style="{StaticResource Heading}" FontSize="17" />
+                <ItemsControl x:Name="TweakListGame" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Windows plus discret" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}" Text="Les réglages de confidentialité les plus suivis (ceux de WinUtil de Chris Titus, entre autres), sans ceux qui cassent quelque chose." />
+                <ItemsControl x:Name="TweakListPrivacy" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Espace disque" Style="{StaticResource Heading}" FontSize="17" />
+                <ItemsControl x:Name="TweakListSpace" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
               </StackPanel>
             </Border>
           </StackPanel>
@@ -776,6 +925,44 @@
             <StackPanel>
               <TextBlock Text="Démarrages de Windows (30 derniers jours)" Style="{StaticResource Heading}" FontSize="14" />
               <TextBlock x:Name="BootSummary" TextWrapping="Wrap" />
+              <Grid x:Name="BootChart" Margin="0,12,0,4" Visibility="Collapsed"
+                    AutomationProperties.Name="Durée des derniers démarrages, en secondes">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="44" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="130" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <!-- Recessive scale: the top of the scale, its half and the baseline. Bars are 110 px at the top. -->
+                <Border Grid.ColumnSpan="2" Height="110" VerticalAlignment="Bottom" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0" />
+                <Border Grid.ColumnSpan="2" Height="55" VerticalAlignment="Bottom" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,1" />
+                <TextBlock x:Name="BootScaleTop" Foreground="{StaticResource InkMuted}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,103" />
+                <TextBlock x:Name="BootScaleMid" Foreground="{StaticResource InkMuted}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,48" />
+                <ItemsControl x:Name="BootBars" Grid.Column="1">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <!-- The whole column answers the mouse, not only the bar. -->
+                      <Grid Height="130" Margin="1,0" Background="Transparent" ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+                        <StackPanel VerticalAlignment="Bottom">
+                          <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,3" />
+                          <Border Width="16" Height="{Binding Height}" CornerRadius="4,4,0,0" Background="{StaticResource ChartCyan}" />
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,4,0,0">
+                  <TextBlock x:Name="BootLastDate" DockPanel.Dock="Right" Foreground="{StaticResource InkMuted}" FontSize="11" />
+                  <TextBlock x:Name="BootFirstDate" Foreground="{StaticResource InkMuted}" FontSize="11" />
+                </DockPanel>
+              </Grid>
               <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
                 <ItemsControl x:Name="SlowdownList">
                   <ItemsControl.ItemTemplate>
@@ -803,6 +990,48 @@
       <TabItem x:Name="HealthTab" Header="Santé et nettoyage" Tag="&#xE95E;">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="0,12,0,0">
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <DockPanel>
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button Content="Sécurité Windows" Tag="windowsdefender:" Click="OnOpenSetting" Margin="0,0,8,0" />
+                    <Button Content="Windows Update" Tag="ms-settings:windowsupdate" Click="OnOpenSetting" />
+                  </StackPanel>
+                  <TextBlock Text="Sécurité" Style="{StaticResource Heading}" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Ce que Windows Security surveille déjà : antivirus actif et à jour, pare-feu actif, mises à jour de Windows en attente. Pas de « score » : des faits, et où agir." />
+                <TextBlock x:Name="SecuritySummary" Margin="0,8,0,0" TextWrapping="Wrap" Text="Chargement…" />
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <DockPanel>
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button x:Name="RestorePointsButton" Content="Afficher" Click="OnRestorePoints" Margin="0,0,8,0" />
+                    <Button x:Name="CreateRestorePointButton" Content="Créer maintenant" Click="OnCreateRestorePoint" Margin="0,0,8,0" />
+                    <Button Content="Restaurer le système" Tag="rstrui.exe" Click="OnOpenSetting" />
+                  </StackPanel>
+                  <TextBlock Text="Points de restauration" Style="{StaticResource Heading}" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="L'application en crée un avant chaque installation de pilote. Créez-en un vous-même avant de tester un réglage risqué ; « Restaurer le système » remet Windows à la date choisie, sans toucher à vos documents." />
+                <TextBlock Style="{StaticResource AdminNote}" Text="Windows demandera l'autorisation administrateur pour lire la liste et créer un point." />
+                <ItemsControl x:Name="RestorePointList" Margin="0,8,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Margin="0,2">
+                        <Run Text="{Binding Created, Mode=OneWay, StringFormat=dd/MM/yyyy HH:mm}" FontWeight="SemiBold" />
+                        <Run Text=" — " />
+                        <Run Text="{Binding Description, Mode=OneWay}" Foreground="{StaticResource InkMuted}" />
+                      </TextBlock>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -1024,7 +1253,9 @@
       <Border x:Name="UpdateBanner" Background="#1AB44DFF" BorderBrush="{StaticResource NeonViolet}" BorderThickness="0,1,0,0"
               Padding="20,10" Visibility="Collapsed">
         <DockPanel>
-          <Button x:Name="UpdateBannerButton" DockPanel.Dock="Right" Content="Voir la nouvelle version" Click="OnOpenLink" />
+          <Button x:Name="UpdateBannerButton" DockPanel.Dock="Right" Content="Voir les nouveautés" Click="OnOpenLink" />
+          <Button x:Name="UpdateInstallButton" DockPanel.Dock="Right" Content="Installer la mise à jour" Style="{DynamicResource AccentButtonStyle}"
+                  Click="OnInstallAppUpdate" Margin="0,0,8,0" Visibility="Collapsed" />
           <TextBlock x:Name="UpdateBannerText" VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>

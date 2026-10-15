@@ -6,6 +6,7 @@ public sealed record ProblemDevice(string Name, string Meaning);
 public sealed record Disk(string Name, string Type, string Size, string Health, string Wear, string Temperature);
 public sealed record Battery(string Name, string Designed, string FullCharge, string Health, string Cycles);
 public sealed record RestorePointResult(bool Ok, string Message);
+public sealed record RestorePointInfo(DateTime Created, string Description, int Number);
 
 /// <summary>A piece of hardware, with the maker's own update tool when there is one.</summary>
 public sealed record Hardware(string Name, string Detail, string? Tool, string? Url)
@@ -208,14 +209,41 @@ public static class SystemInfo
     static int? ToInt(object? value) => value is null ? null : Convert.ToInt32(value);
 
     /// <summary>Creates a restore point, or reports a usable one from the last 24 hours.</summary>
-    public static RestorePointResult CreateRestorePoint()
+    public static RestorePointResult CreateRestorePoint() => CreateRestorePoint(onDemand: false);
+
+    /// <param name="onDemand">
+    /// Asked for by the user: Windows' one-point-a-day limit is lifted for this one point (as
+    /// Windows' own control panel does), then put back as it was.
+    /// </param>
+    public static RestorePointResult CreateRestorePoint(bool onDemand)
+    {
+        const string Settings = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore";
+        const string Frequency = "SystemRestorePointCreationFrequency";
+        using var key = onDemand ? Microsoft.Win32.Registry.LocalMachine.OpenSubKey(Settings, writable: true) : null;
+        var previous = key?.GetValue(Frequency);
+        key?.SetValue(Frequency, 0, Microsoft.Win32.RegistryValueKind.DWord);
+        try
+        {
+            return CreatePoint(onDemand ? "Driver Updater : point créé à la demande" : "Driver Updater : avant installation de pilotes");
+        }
+        finally
+        {
+            if (key is not null)
+            {
+                if (previous is null) key.DeleteValue(Frequency, throwOnMissingValue: false);
+                else key.SetValue(Frequency, previous, Microsoft.Win32.RegistryValueKind.DWord);
+            }
+        }
+    }
+
+    static RestorePointResult CreatePoint(string description)
     {
         try
         {
             var scope = new ManagementScope(@"\\.\root\default");
             using var restore = new ManagementClass(scope, new ManagementPath("SystemRestore"), null);
             using var args = restore.GetMethodParameters("CreateRestorePoint");
-            args["Description"] = "Driver Updater : avant installation de pilotes";
+            args["Description"] = description;
             args["RestorePointType"] = 10u; // DEVICE_DRIVER_INSTALL
             args["EventType"] = 100u;       // BEGIN_SYSTEM_CHANGE
             using var result = restore.InvokeMethod("CreateRestorePoint", args, null);
@@ -236,6 +264,22 @@ public static class SystemInfo
         {
             return new(false, "Points de restauration indisponibles : " + e.Message);
         }
+    }
+
+    /// <summary>Every restore point, newest first (administrator side: the list needs the rights).</summary>
+    public static List<RestorePointInfo> RestorePoints()
+    {
+        using var searcher = new ManagementObjectSearcher(new ManagementScope(@"\\.\root\default"),
+            new ObjectQuery("SELECT CreationTime, Description, SequenceNumber FROM SystemRestore"));
+        using var results = searcher.Get();
+        var list = new List<RestorePointInfo>();
+        foreach (ManagementBaseObject point in results)
+            using (point)
+                list.Add(new RestorePointInfo(
+                    ManagementDateTimeConverter.ToDateTime((string)point["CreationTime"]),
+                    point["Description"] as string ?? "",
+                    Convert.ToInt32(point["SequenceNumber"])));
+        return list.OrderByDescending(p => p.Created).ToList();
     }
 
     static DateTime? LatestRestorePoint(ManagementScope scope)

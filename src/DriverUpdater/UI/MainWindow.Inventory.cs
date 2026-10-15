@@ -62,6 +62,32 @@ public partial class MainWindow
 
     async void OnRefreshInventory(object sender, RoutedEventArgs e) => await LoadInventory();
 
+    /// <summary>Device Manager's "Roll back driver" for the selected device.</summary>
+    async void OnRollback(object sender, RoutedEventArgs e)
+    {
+        if (InventoryGrid.SelectedItem is not DeviceDriver device)
+        {
+            SetStatus("Sélectionnez un périphérique dans la liste.");
+            return;
+        }
+        if (!device.HasDriver)
+        {
+            SetStatus($"{device.Name} n'a pas de pilote : rien à remettre.");
+            return;
+        }
+        if (Ask($"Remettre le pilote précédent de « {device.Name} » ?\n\nWindows reprend la version qu'il utilisait avant la dernière " +
+                "mise à jour, s'il l'a gardée. Utile quand un nouveau pilote cause des problèmes.") != MessageBoxResult.Yes)
+            return;
+
+        await RunBusy("En attente de l'autorisation administrateur…", async () =>
+        {
+            bool reboot = await RunAdminAsync<bool>(AdminCommand.Rollback, device.DeviceId);
+            await LoadInventory();
+            await LoadHistory();
+            return $"{device.Name} : pilote précédent remis." + (reboot ? " Redémarrez l'ordinateur pour terminer." : "");
+        });
+    }
+
     // ---- Driver store ------------------------------------------------------------------
 
     async void OnStoreScan(object sender, RoutedEventArgs e) =>

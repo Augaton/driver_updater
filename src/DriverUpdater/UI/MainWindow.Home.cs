@@ -31,7 +31,7 @@ public partial class MainWindow
                 ScanStatus.Text = "Inventaire des périphériques…";
                 var devices = await LoadInventory();
                 ReportTotal.Text = devices.Count.ToString();
-                var otherChecks = Task.WhenAll(CheckSoftwareTile(), CheckStartupTile(), CheckDisksTile());
+                var otherChecks = Task.WhenAll(CheckSoftwareTile(), CheckStartupTile(), CheckDisksTile(), CheckSecurityTile());
 
                 ScanStatus.Text = "Comparaison avec Windows Update et les fabricants : une à deux minutes…";
                 var windowsUpdate = Task.Run(WindowsUpdateDrivers.Search);
@@ -163,6 +163,13 @@ public partial class MainWindow
         DiskGrid.ItemsSource = list;
         var bad = list.Where(d => d.Health is not "Bon").ToList();
         return bad.Count == 0 ? ("OK", $"{list.Count} disque(s) en bon état") : (bad.Count.ToString(), "disque(s) à surveiller");
+    });
+
+    Task CheckSecurityTile() => Tile(TileSecurityValue, TileSecurityText, async () =>
+    {
+        // A new analysis asks again; the "Santé" card shows the same answer.
+        if (await (fullSecurity = LoadSecurity(askWindowsUpdate: true)) is not { } state) return ("!", "lecture impossible");
+        return state.Problems.Count == 0 ? ("OK", "antivirus, pare-feu et Windows à jour") : (state.Problems.Count.ToString(), "point(s) à régler");
     });
 
     /// <summary>Runs one check for one tile; a failure shows on that tile and spares the others.</summary>

@@ -30,6 +30,11 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
     /// <summary>Windows Update and catalog drivers in one go, under one consent: "wu:&lt;id&gt;" or "catalog:&lt;id&gt;".</summary>
     public const string InstallAll = "install-all";
     public const string FromWindowsUpdate = "wu:", FromCatalog = "catalog:";
+    public const string Rollback = "rollback";
+    public const string TweakApply = "tweak-apply";
+    public const string TweakUndo = "tweak-undo";
+    public const string RestorePoints = "restore-points";
+    public const string CreateRestorePoint = "create-restore-point";
 
     /// <summary>Pipe names the app creates: anything else (such as \\server\pipe) is refused.</summary>
     public static bool IsPipeName(string name) => PipeNamePattern().IsMatch(name);
@@ -69,6 +74,16 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                         ? prefix + guid.ToString("D")
                         : throw new ArgumentException($"Identifiant de mise à jour invalide : {item}");
                 }).ToList());
+            case Rollback:
+                // A device instance ID ("PCI\VEN_10DE&DEV_2504&…\4&2B6DDD8&0&0008"): only looked up, never a path.
+                if (rest.Count != 1 || rest[0].Length is 0 or > 260 || rest[0].Any(char.IsControl))
+                    throw new ArgumentException("Identifiant de périphérique invalide.");
+                return new(name, rest);
+            case TweakApply or TweakUndo:
+                // Only tweaks of the catalog that need these rights: never a registry key from outside.
+                if (rest.Count == 0 || rest.Any(id => DriverUpdater.Tuning.TweakCatalog.Find(id) is not { NeedsAdmin: true }))
+                    throw new ArgumentException("Réglage inconnu ou ne demandant pas l'administrateur.");
+                return new(name, rest);
             case DeleteDrivers:
                 // Published driver package names only ("oem12.inf"), checked again against the store.
                 if (rest.Count == 0 || !rest.All(n => DriverPackageName().IsMatch(n)))
@@ -80,7 +95,7 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                     || rest[1].Length is 0 or > 260 || rest[1].Any(char.IsControl))
                     throw new ArgumentException("Entrée de démarrage invalide.");
                 return new(name, rest);
-            case Version or Unhide or CleanWindowsTemp or Health or Sfc or DismRestore or DismCleanup or BootReport or DriverStore:
+            case Version or Unhide or CleanWindowsTemp or Health or Sfc or DismRestore or DismCleanup or BootReport or DriverStore or RestorePoints or CreateRestorePoint:
                 if (rest.Count != 0) throw new ArgumentException($"« {name} » ne prend pas d'argument.");
                 return new(name, rest);
             default:

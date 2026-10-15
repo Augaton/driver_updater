@@ -106,6 +106,26 @@ public static class AdminHelper
             case AdminCommand.InstallAll:
                 return await InstallAllAsync(command.Args, channel);
 
+            case AdminCommand.Rollback:
+                channel.Progress("Retour au pilote précédent…");
+                return await Task.Run(() => DriverRollback.RollBack(command.Args[0]));
+
+            case AdminCommand.TweakApply or AdminCommand.TweakUndo:
+                foreach (var tweak in command.Args.Select(id => DriverUpdater.Tuning.TweakCatalog.Find(id)!))
+                {
+                    channel.Progress(tweak.Title + "…");
+                    if (command.Name == AdminCommand.TweakApply) await Task.Run(() => DriverUpdater.Tuning.Tuner.Apply(tweak));
+                    else await Task.Run(() => DriverUpdater.Tuning.Tuner.Undo(tweak));
+                }
+                return command.Args.Count;
+
+            case AdminCommand.RestorePoints:
+                return await Task.Run(SystemInfo.RestorePoints);
+
+            case AdminCommand.CreateRestorePoint:
+                channel.Progress("Création du point de restauration, cela peut prendre une minute…");
+                return await Task.Run(() => SystemInfo.CreateRestorePoint(onDemand: true));
+
             case AdminCommand.DriverStore:
                 return await DriverStore.RemovableAsync(channel.Progress);
 

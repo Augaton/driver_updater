@@ -24,6 +24,10 @@
     <Compile Include="..\..\src\DriverUpdater\Drivers\DriverReport.cs" Link="Drivers\DriverReport.cs" />
     <Compile Include="..\..\src\DriverUpdater\Software\GameComponents.cs" Link="Software\GameComponents.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\InstalledDriver.cs" Link="Drivers\InstalledDriver.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Tuning\Tweak.cs" Link="Tuning\Tweak.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Tuning\TweakCatalog.cs" Link="Tuning\TweakCatalog.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Tuning\GameTips.cs" Link="Tuning\GameTips.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Maintenance\SecurityModel.cs" Link="Maintenance\SecurityModel.cs" />
   </ItemGroup>
 
   <ItemGroup>

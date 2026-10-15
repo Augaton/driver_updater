@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace DriverUpdater;
 
 public sealed class DriverUpdate
@@ -98,9 +96,11 @@ public static class WindowsUpdateDrivers
             bool ok = code is ResultSucceeded or ResultSucceededWithErrors;
             return new(driver, ok, ok ? "" : $"code {code}, 0x{(int)result.HResult:X8}", (bool)result.RebootRequired);
         }
-        catch (COMException e)
+        catch (Exception e)
         {
-            return new(driver, false, $"0x{e.HResult:X8}", false);
+            // Late-bound COM maps an error code to any .NET exception type (COMException,
+            // UnauthorizedAccessException…): report it, and let the next driver go ahead.
+            return new(driver, false, $"{e.Message} (0x{e.HResult:X8})", false);
         }
     }
 

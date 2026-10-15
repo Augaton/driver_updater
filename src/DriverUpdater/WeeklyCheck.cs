@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
 using System.Xml.Linq;
@@ -22,6 +21,8 @@ public static class WeeklyCheck
     const string NotifiedValue = "NotifiedUpdates";
 
     const int TaskCreateOrUpdate = 6, TaskLogonInteractiveToken = 3;
+    // Matched on HResult, not on the exception type: late-bound COM turns this code into a
+    // FileNotFoundException, not a COMException.
     const int FileNotFound = unchecked((int)0x80070002);
 
     /// <summary>
@@ -39,7 +40,7 @@ public static class WeeklyCheck
             TaskFolder().GetTask(taskName);
             return true;
         }
-        catch (COMException e) when (e.HResult == FileNotFound)
+        catch (Exception e) when (e.HResult == FileNotFound)
         {
             return false;
         }
@@ -54,7 +55,7 @@ public static class WeeklyCheck
         {
             TaskFolder().DeleteTask(taskName, 0);
         }
-        catch (COMException e) when (e.HResult == FileNotFound)
+        catch (Exception e) when (e.HResult == FileNotFound)
         {
         }
     }

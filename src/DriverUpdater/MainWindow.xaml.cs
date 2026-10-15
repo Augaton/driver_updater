@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Management;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
@@ -109,7 +108,7 @@ public partial class MainWindow : Window
         {
             WeeklyCheckBox.IsChecked = WeeklyCheck.IsEnabled();
         }
-        catch (COMException e)
+        catch (Exception e)
         {
             WeeklyCheckBox.IsEnabled = false;
             WeeklyCheckNote.Text = "Planificateur de tâches indisponible : " + Describe(e);
@@ -228,7 +227,7 @@ public partial class MainWindow : Window
                 ? "Vérification activée : chaque mercredi à midi, ou au démarrage suivant si le PC était éteint."
                 : "Vérification hebdomadaire désactivée.");
         }
-        catch (COMException ex)
+        catch (Exception ex)
         {
             WeeklyCheckBox.IsChecked = !enable;
             SetStatus("Erreur : " + Describe(ex));
@@ -384,7 +383,8 @@ public partial class MainWindow : Window
     MessageBoxResult Ask(string text, MessageBoxImage icon = MessageBoxImage.Question) =>
         MessageBox.Show(this, text, Title, MessageBoxButton.YesNo, icon);
 
-    // Windows Update errors are only meaningful with their HRESULT (e.g. 0x8024402C = no network).
+    // Windows errors are only meaningful with their code (e.g. 0x8024402C = no network), and
+    // late-bound COM can raise them as any exception type. Codes in 0x8013xxxx are .NET's own.
     static string Describe(Exception e) =>
-        e is COMException ? $"{e.Message} (0x{e.HResult:X8})" : e.Message;
+        (uint)e.HResult >> 16 == 0x8013 ? e.Message : $"{e.Message} (0x{e.HResult:X8})";
 }

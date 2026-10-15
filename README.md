@@ -11,20 +11,26 @@ elle ne propose que ce qui marche vraiment.
   cochés ; les « facultatifs » ne le sont pas, car Microsoft ne les conseille que pour
   corriger un problème précis. Un pilote refusé peut être masqué pour ne plus revenir.
 - **Vérification hebdomadaire.** Option : chaque mercredi, l'application cherche en
-  silence et affiche une notification seulement s'il y a du nouveau. Elle n'est
-  disponible qu'une fois l'application installée (voir Sécurité).
-- **Carte graphique.** Windows Update livre ces pilotes avec retard : l'application
-  affiche le pilote installé et ouvre l'outil du fabricant (NVIDIA App, AMD Software,
-  Assistant Intel).
-- **Périphériques en erreur.** Ceux que le Gestionnaire de périphériques signale.
+  silence et affiche une notification seulement s'il y a du nouveau.
+- **BIOS et carte graphique.** Windows Update les livre avec retard, ou pas du tout :
+  l'application affiche les versions installées et ouvre l'outil du fabricant (Lenovo,
+  Dell, HP, ASUS, Acer, MSI, Gigabyte, ASRock ; NVIDIA, AMD, Intel).
+- **Logiciels.** Mise à jour des logiciels installés via winget, le gestionnaire de
+  logiciels intégré à Windows.
+- **Historique.** Les pilotes installés par Windows Update, quand, et avec quel résultat.
 - **Santé.** État des disques, usure et température des SSD, état de la batterie d'un
   portable.
+- **Réparer Windows.** SFC, DISM et le nettoyage des composants Windows, les outils
+  officiels de Microsoft.
 - **Sauvegarde des pilotes.** Copie tous les pilotes des fabricants dans un dossier, et
   les réinstalle en une fois après une réinstallation de Windows.
 - **Fichiers temporaires.** Suppression des fichiers de plus de 2 jours dans
-  `AppData\Local\Temp` et `C:\Windows\Temp`.
-- **Raccourcis** vers les réglages Windows utiles : démarrage, stockage, alimentation,
-  historique des mises à jour, restauration du système.
+  `AppData\Local\Temp` et, sur demande, `C:\Windows\Temp`.
+- **Copier le diagnostic.** Un rapport texte (versions, matériel, actions récentes) à
+  coller dans un signalement de bug.
+- **Nouvelle version.** Un bandeau prévient quand une version plus récente est publiée
+  sur GitHub. L'application interroge pour cela l'API publique de GitHub à chaque
+  démarrage ; elle n'envoie rien d'autre.
 
 L'interface suit le thème de Windows 11, clair ou sombre.
 
@@ -37,7 +43,7 @@ récentes publiées directement par les fabricants sont parfois des bêtas.
 Téléchargez `DriverUpdater-Setup-x.y.z.exe` depuis la page
 [Releases](https://github.com/Augaton/driver_updater/releases). Il installe l'application
 dans `C:\Program Files\Driver Updater` et l'ajoute au menu Démarrer. Le zip « portable »
-fonctionne aussi, mais sans la vérification hebdomadaire.
+fonctionne aussi.
 
 Pour vérifier qu'un fichier a bien été produit par le pipeline de ce dépôt :
 
@@ -47,24 +53,25 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
 
 ## Sécurité
 
-L'application tourne en administrateur. Elle part donc du principe qu'un autre programme
-pourrait essayer de la détourner.
-
-- **Emplacement.** L'installateur place l'application dans `Program Files`, que seul un
-  administrateur peut modifier. Lancée depuis Téléchargements, n'importe quel programme
-  pourrait glisser une DLL piégée à côté de l'exe. C'est aussi pourquoi la vérification
-  hebdomadaire, qui démarre l'application avec tous les droits sans rien demander, refuse
-  de s'activer ailleurs.
+- **Pas de droits administrateur par défaut.** La fenêtre tourne avec les droits de
+  l'utilisateur. Chaque action qui en a besoin (installer ou masquer un pilote, point de
+  restauration, sauvegarde, `C:\Windows\Temp`, réparation, lecture de l'usure des
+  disques) relance l'application en administrateur pour cette seule action : Windows
+  demande l'autorisation, l'action se fait, le processus se termine. Aucun processus
+  administrateur ne reste ouvert pour qu'un autre programme lui parle.
+- **Module administrateur.** Il n'accepte qu'une liste fermée de commandes, et vérifie
+  leurs arguments : identifiants de mise à jour au format GUID, dossiers locaux en chemin
+  complet, nom de canal généré par l'application. Il rend compte par un canal nommé privé
+  (réservé au compte, contrôle du processus à l'autre bout, sans possibilité pour la
+  fenêtre d'emprunter ses droits).
 - **Nettoyage.** Les liens (jonctions, liens symboliques) ne sont jamais suivis. Sous
   Windows, chaque fichier est supprimé via un handle, après avoir vérifié l'emplacement
   réel du fichier ouvert : un dossier remplacé par un lien en cours de route ne peut pas
-  rediriger la suppression. Les dossiers à nettoyer sont calculés depuis le profil, pas
-  depuis `%TEMP%`, qu'un programme peut faire pointer n'importe où.
-- **État de la vérification hebdomadaire.** Il est rangé dans `HKLM`, modifiable par les
-  seuls administrateurs, et non dans un fichier du profil qu'un lien pourrait détourner.
-- **Programmes et sites lancés.** Les outils Windows sont appelés par leur chemin complet
-  dans `System32`, jamais par leur seul nom. Les sites des fabricants s'ouvrent via
-  l'Explorateur, donc dans un navigateur sans droits administrateur.
+  rediriger la suppression.
+- **Emplacement.** L'installateur place l'application dans `Program Files`, que seul un
+  administrateur peut modifier : personne ne peut remplacer l'exe que Windows élèvera.
+- **Programmes lancés.** Les outils Windows sont appelés par leur chemin complet dans
+  `System32`, jamais par leur seul nom.
 - **DLL.** Les DLL natives sont livrées à côté de l'exe, pas décompressées dans `%TEMP%`.
 - **Dépendances.** Elles sont verrouillées (`packages.lock.json`) et contrôlées contre les
   vulnérabilités connues. Tous les analyseurs de sécurité .NET sont actifs. En CI, le
@@ -87,43 +94,66 @@ ISCC installer\DriverUpdater.iss             # installateur (Inno Setup 6)
 
 `.github/workflows/build.yml` tourne sur Windows à chaque push, pull request et chaque
 semaine (correctifs .NET, nouvelles vulnérabilités). Il restaure en mode verrouillé,
-compile, lance tous les tests (y compris ceux qui interrogent le vrai Windows), publie,
-construit l'installateur, puis l'installe et le désinstalle pour de vrai. Dependabot tient
-à jour les actions et les paquets.
+compile, lance tous les tests (y compris ceux qui interrogent le vrai Windows et un
+aller-retour réel avec le module administrateur), publie, construit l'installateur, puis
+l'installe et le désinstalle pour de vrai. Dependabot tient à jour les actions et les
+paquets.
 
 **Publier une version :** changez `<Version>` dans `src/DriverUpdater/DriverUpdater.csproj`,
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`
 et attestation de provenance.
 
-**Signer l'exe** (supprime l'avertissement SmartScreen) : achetez un certificat de
-signature de code au format `.pfx`, puis ajoutez deux secrets au dépôt (Settings →
-Secrets and variables → Actions) :
+## Signature de code
 
-- `SIGNING_CERT_PFX_BASE64` : le fichier en base64, obtenu sous Windows avec
-  `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))` ;
-- `SIGNING_CERT_PASSWORD` : son mot de passe.
+Une application signée n'affiche plus l'avertissement SmartScreen, et Windows montre
+l'éditeur dans sa demande d'autorisation administrateur. Deux possibilités, à choisir :
 
-Le pipeline signe alors l'application et l'installateur. Sans ces secrets, il les livre
-non signés.
+**SignPath Foundation (gratuit pour l'open source).** Le dépôt est sous licence MIT, ce
+qui remplit leur condition de licence open source. Ensuite :
+
+1. Demandez l'adhésion sur [signpath.org](https://signpath.org).
+2. Dans SignPath, créez deux configurations d'artefact : `app` (signe `DriverUpdater.exe`
+   à la racine de l'artefact) et `installer` (signe `DriverUpdater-Setup-*.exe`).
+3. Dans GitHub (Settings → Secrets and variables → Actions), ajoutez le secret
+   `SIGNPATH_API_TOKEN` et les variables `SIGNPATH_ORGANIZATION_ID`,
+   `SIGNPATH_PROJECT_SLUG` et `SIGNPATH_SIGNING_POLICY_SLUG`.
+
+**Votre propre certificat** (`.pfx`, payant) : ajoutez les secrets
+`SIGNING_CERT_PFX_BASE64` (le fichier en base64, obtenu sous Windows avec
+`[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))`) et
+`SIGNING_CERT_PASSWORD`.
+
+Sans l'un ou l'autre, le pipeline livre l'application non signée.
+
+## Licence
+
+MIT : voir [LICENSE](LICENSE).
 
 ## Code
 
 | Fichier | Rôle |
 |---|---|
-| `src/DriverUpdater/WindowsUpdateDrivers.cs` | Recherche, installation et masquage via l'API COM de Windows Update |
-| `src/DriverUpdater/SystemInfo.cs` | Pilotes installés, périphériques, cartes graphiques, disques, batterie, points de restauration (WMI) |
+| `src/DriverUpdater/Elevation.cs` | Lancement du module administrateur et canal privé avec la fenêtre |
+| `src/DriverUpdater/AdminCommand.cs` | Commandes admises par le module administrateur, et vérification de leurs arguments |
+| `src/DriverUpdater/AdminHelper.cs` | Exécution des commandes administrateur |
+| `src/DriverUpdater/WindowsUpdateDrivers.cs` | Recherche, installation, masquage et historique via l'API COM de Windows Update |
+| `src/DriverUpdater/SystemInfo.cs` | Pilotes installés, PC et BIOS, cartes graphiques, disques, batterie, points de restauration (WMI) |
+| `src/DriverUpdater/WinGet.cs`, `WingetOutput.cs` | Mises à jour de logiciels via winget |
+| `src/DriverUpdater/Repair.cs` | SFC et DISM |
 | `src/DriverUpdater/WeeklyCheck.cs` | Tâche planifiée hebdomadaire et notification |
 | `src/DriverUpdater/DriverBackup.cs` | Sauvegarde et restauration des pilotes (pnputil) |
 | `src/DriverUpdater/TempCleaner.cs` | Nettoyage des fichiers temporaires, résistant aux liens |
-| `src/DriverUpdater/MainWindow.xaml(.cs)` | Interface |
+| `src/DriverUpdater/UpdateCheck.cs` | Détection d'une nouvelle version sur GitHub |
+| `src/DriverUpdater/Diagnostics.cs` | Rapport de diagnostic |
+| `src/DriverUpdater/MainWindow.*` | Interface, un fichier par onglet |
 | `installer/DriverUpdater.iss` | Installateur Inno Setup |
-| `build/sign.ps1` | Signature de code, appelée par le pipeline |
-| `tests/DriverUpdater.Tests` | Tests du nettoyeur (dont l'attaque par lien, sous Windows) |
-| `tests/DriverUpdater.WindowsTests` | Tests de fumée sur le vrai Windows (fenêtre, WMI, Windows Update, tâche planifiée) |
+| `build/sign.ps1` | Signature avec votre propre certificat |
+| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, winget, versions |
+| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre, WMI, Windows Update, tâche planifiée, module administrateur |

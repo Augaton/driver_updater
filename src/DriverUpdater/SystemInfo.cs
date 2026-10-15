@@ -7,9 +7,10 @@ public sealed record Disk(string Name, string Type, string Size, string Health, 
 public sealed record Battery(string Name, string Designed, string FullCharge, string Health, string Cycles);
 public sealed record RestorePointResult(bool Ok, string Message);
 
-public sealed record Gpu(string Name, string Driver, string? VendorTool, string? VendorUrl)
+/// <summary>A piece of hardware, with the maker's own update tool when there is one.</summary>
+public sealed record Hardware(string Name, string Detail, string? Tool, string? Url)
 {
-    public bool HasVendorTool => VendorUrl is not null;
+    public bool HasTool => Url is not null;
 }
 
 public sealed record InstalledDriver(string Version, DateTime? Date)
@@ -169,11 +170,64 @@ public static class SystemInfo
         return values;
     }
 
-    public static List<Gpu> Gpus()
+    /// <summary>
+    /// The PC and its BIOS. Windows Update delivers BIOS updates late or not at all: the
+    /// maker's tool is the reliable source. A home-built PC is identified by its motherboard.
+    /// </summary>
+    public static Hardware Computer()
+    {
+        var system = First("SELECT Manufacturer, Model FROM Win32_ComputerSystem");
+        var product = First("SELECT Version FROM Win32_ComputerSystemProduct");
+        var board = First("SELECT Manufacturer, Product FROM Win32_BaseBoard");
+        var bios = First("SELECT SMBIOSBIOSVersion, ReleaseDate FROM Win32_BIOS");
+
+        string maker = system.GetValueOrDefault("Manufacturer") as string ?? "";
+        string model = system.GetValueOrDefault("Model") as string ?? "";
+        // Lenovo puts a part number in Model ("20HES2SF00") and the name in Version ("ThinkPad T470").
+        if (product.GetValueOrDefault("Version") is string { Length: > 0 } version && maker.Contains("LENOVO", StringComparison.OrdinalIgnoreCase))
+            model = version;
+        var (tool, url) = MakerTool(maker);
+        if (url is null && board.GetValueOrDefault("Manufacturer") is string boardMaker)
+        {
+            (tool, url) = MakerTool(boardMaker);
+            if (url is not null) (maker, model) = (boardMaker, board.GetValueOrDefault("Product") as string ?? "");
+        }
+        var biosText = bios.GetValueOrDefault("SMBIOSBIOSVersion") is string biosVersion
+            ? "BIOS " + new InstalledDriver(biosVersion, ParseDate(bios.GetValueOrDefault("ReleaseDate") as string))
+            : "BIOS inconnu";
+        return new Hardware($"{maker.Trim()} {model.Trim()}".Trim() is { Length: > 0 } name ? name : "Ordinateur", biosText, tool, url);
+    }
+
+    /// <summary>The first result's properties, copied out before the WMI objects are released.</summary>
+    static Dictionary<string, object?> First(string query)
+    {
+        using var searcher = new ManagementObjectSearcher(query);
+        using var results = searcher.Get();
+        foreach (ManagementBaseObject item in results)
+            using (item)
+                return item.Properties.Cast<PropertyData>().ToDictionary(p => p.Name, p => (object?)p.Value);
+        return [];
+    }
+
+    // Matched on the start of the name: "HP" must not catch "HPE", or "MSI" a random word.
+    static (string? Tool, string? Url) MakerTool(string maker) => maker.Trim().ToUpperInvariant() switch
+    {
+        var m when m.StartsWith("LENOVO") => ("Lenovo Support", "https://pcsupport.lenovo.com/"),
+        var m when m.StartsWith("DELL") => ("Dell SupportAssist", "https://www.dell.com/support/home/fr-fr"),
+        var m when m is "HP" || m.StartsWith("HP ") || m.StartsWith("HEWLETT") => ("HP Support", "https://support.hp.com/fr-fr/drivers"),
+        var m when m.StartsWith("ASUS") => ("ASUS Support", "https://www.asus.com/fr/support/download-center/"),
+        var m when m.StartsWith("ACER") => ("Acer Support", "https://www.acer.com/fr-fr/support/drivers-and-manuals"),
+        var m when m.StartsWith("MICRO-STAR") || m.StartsWith("MSI") => ("MSI Support", "https://www.msi.com/support/download"),
+        var m when m.StartsWith("GIGABYTE") => ("Gigabyte Support", "https://www.gigabyte.com/fr/Support"),
+        var m when m.StartsWith("ASROCK") => ("ASRock Support", "https://www.asrock.com/support/index.fr.asp"),
+        _ => (null, null), // Microsoft (Surface) and others: Windows Update is the channel
+    };
+
+    public static List<Hardware> Gpus()
     {
         using var searcher = new ManagementObjectSearcher("SELECT Name, PNPDeviceID, DriverVersion, DriverDate FROM Win32_VideoController");
         using var results = searcher.Get();
-        var list = new List<Gpu>();
+        var list = new List<Hardware>();
         foreach (ManagementBaseObject gpu in results)
             using (gpu)
             {
@@ -183,7 +237,7 @@ public static class SystemInfo
                     ? "Pilote " + new InstalledDriver(version, ParseDate(gpu["DriverDate"] as string))
                     : "Pilote inconnu";
                 var (tool, url) = VendorTool(device);
-                list.Add(new Gpu(gpu["Name"] as string ?? "Carte graphique", driver, tool, url));
+                list.Add(new Hardware(gpu["Name"] as string ?? "Carte graphique", driver, tool, url));
             }
         return list;
     }

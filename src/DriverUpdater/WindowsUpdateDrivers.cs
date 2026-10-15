@@ -27,6 +27,8 @@ public sealed class DriverUpdate
 
 public sealed record InstallOutcome(DriverUpdate Driver, bool Succeeded, string Detail, bool RebootRequired);
 
+public sealed record HistoryEntry(DateTime Date, string Title, string Result, string Via);
+
 /// <summary>
 /// Driver updates through the Windows Update Agent COM API, late-bound with
 /// <c>dynamic</c> so no interop assembly is needed.
@@ -41,13 +43,23 @@ public static class WindowsUpdateDrivers
     static readonly Lazy<dynamic> Session = new(() =>
     {
         dynamic session = Create("Microsoft.Update.Session");
-        session.ClientApplicationID = "Driver Updater";
+        session.ClientApplicationID = ClientName;
         return session;
     });
 
-    public static List<DriverUpdate> Search()
+    public static List<DriverUpdate> Search() => Find("IsInstalled=0 and Type='Driver' and IsHidden=0");
+
+    /// <summary>
+    /// The updates with these IDs, as the administrator helper finds them again: COM objects
+    /// cannot cross from the window's process. IDs must come from <see cref="AdminCommand"/>,
+    /// which lets only GUIDs into this search string.
+    /// </summary>
+    public static List<DriverUpdate> FindByIds(IEnumerable<string> ids) =>
+        Find(string.Join(" or ", ids.Select(id => $"UpdateID='{id}'")));
+
+    static List<DriverUpdate> Find(string criteria)
     {
-        dynamic updates = Searcher().Search("IsInstalled=0 and Type='Driver' and IsHidden=0").Updates;
+        dynamic updates = Searcher().Search(criteria).Updates;
 
         var list = new List<DriverUpdate>();
         int count = updates.Count;
@@ -119,6 +131,59 @@ public static class WindowsUpdateDrivers
         for (int i = 0; i < count; i++)
             updates[i].IsHidden = false;
         return count;
+    }
+
+    // The "Drivers" update classification of Windows Update.
+    const string DriversClassification = "ebfc1fc5-71a4-4f7b-9aca-3b9a503104a0";
+    const string ClientName = "Driver Updater";
+
+    /// <summary>Driver installs Windows Update remembers, newest first, whoever started them.</summary>
+    public static List<HistoryEntry> History(int max = 300)
+    {
+        dynamic searcher = Session.Value.CreateUpdateSearcher();
+        int total = searcher.GetTotalHistoryCount();
+        var list = new List<HistoryEntry>();
+        if (total == 0) return list;
+        dynamic entries = searcher.QueryHistory(0, Math.Min(total, max));
+        int count = entries.Count;
+        for (int i = 0; i < count; i++)
+        {
+            dynamic entry = entries[i];
+            const int OperationInstall = 1;
+            if ((int)entry.Operation != OperationInstall) continue;
+            bool ours = (entry.ClientApplicationID as string) == ClientName;
+            if (!ours && !IsDriver(entry)) continue;
+            int code = entry.ResultCode;
+            list.Add(new HistoryEntry(
+                ((DateTime)entry.Date).ToLocalTime(),
+                (string)entry.Title,
+                code switch
+                {
+                    ResultSucceeded => "Réussi",
+                    ResultSucceededWithErrors => "Réussi avec erreurs",
+                    5 => "Annulé",
+                    _ => $"Échec (0x{(int)entry.HResult:X8})",
+                },
+                ours ? ClientName : "Windows Update"));
+        }
+        return list;
+    }
+
+    static bool IsDriver(dynamic entry)
+    {
+        try
+        {
+            dynamic categories = entry.Categories;
+            int count = categories.Count;
+            for (int i = 0; i < count; i++)
+                if (string.Equals((string)categories[i].CategoryID, DriversClassification, StringComparison.OrdinalIgnoreCase))
+                    return true;
+        }
+        catch (Exception)
+        {
+            // Older entries may carry no categories: not identifiable as a driver.
+        }
+        return false;
     }
 
     static dynamic Searcher()

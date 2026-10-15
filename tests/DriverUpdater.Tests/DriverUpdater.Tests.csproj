@@ -10,6 +10,9 @@
   <!-- The app targets Windows only; linking its portable logic lets the tests run anywhere. -->
   <ItemGroup>
     <Compile Include="..\..\src\DriverUpdater\TempCleaner.cs" Link="TempCleaner.cs" />
+    <Compile Include="..\..\src\DriverUpdater\AdminCommand.cs" Link="AdminCommand.cs" />
+    <Compile Include="..\..\src\DriverUpdater\WingetOutput.cs" Link="WingetOutput.cs" />
+    <Compile Include="..\..\src\DriverUpdater\UpdateCheck.cs" Link="UpdateCheck.cs" />
   </ItemGroup>
 
   <ItemGroup>

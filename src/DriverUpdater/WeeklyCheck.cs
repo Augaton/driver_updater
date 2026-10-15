@@ -8,30 +8,22 @@ namespace DriverUpdater;
 
 /// <summary>
 /// The weekly background check: a scheduled task starts the app with <see cref="Argument"/>;
-/// it searches quietly and shows a notification only when a driver update is new.
+/// it searches quietly and shows a notification only when a driver update is new. Searching
+/// needs no administrator rights, so the task runs with the user's own: it cannot be used to
+/// gain rights, whatever folder the app sits in.
 /// </summary>
 public static class WeeklyCheck
 {
     public const string Argument = "--check";
     public const string TaskName = "Driver Updater weekly check"; // also in installer\DriverUpdater.iss
 
-    // Under HKLM, which only administrators can write. A file in the user's profile could be
-    // swapped for a link that makes this administrator process overwrite a system file.
-    const string StateKey = @"SOFTWARE\Driver Updater";
+    const string StateKey = @"Software\Driver Updater"; // under HKEY_CURRENT_USER
     const string NotifiedValue = "NotifiedUpdates";
 
     const int TaskCreateOrUpdate = 6, TaskLogonInteractiveToken = 3;
     // Matched on HResult, not on the exception type: late-bound COM turns this code into a
     // FileNotFoundException, not a COMException.
     const int FileNotFound = unchecked((int)0x80070002);
-
-    /// <summary>
-    /// The task starts the app with full rights and no prompt, so the exe must sit where only
-    /// administrators can replace it: Program Files, where the installer puts it.
-    /// </summary>
-    public static bool InstalledInProgramFiles =>
-        Environment.ProcessPath is { } exe
-        && exe.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles) + @"\", StringComparison.OrdinalIgnoreCase);
 
     public static bool IsEnabled(string taskName = TaskName)
     {
@@ -87,7 +79,7 @@ public static class WeeklyCheck
             new XElement(ns + "Principals",
                 new XElement(ns + "Principal", new XAttribute("id", "Author"),
                     new XElement(ns + "LogonType", "InteractiveToken"),
-                    new XElement(ns + "RunLevel", "HighestAvailable"))),
+                    new XElement(ns + "RunLevel", "LeastPrivilege"))),
             new XElement(ns + "Settings",
                 new XElement(ns + "MultipleInstancesPolicy", "IgnoreNew"),
                 new XElement(ns + "DisallowStartIfOnBatteries", false),
@@ -124,13 +116,13 @@ public static class WeeklyCheck
 
     static HashSet<string> Notified()
     {
-        using var key = Registry.LocalMachine.OpenSubKey(StateKey);
+        using var key = Registry.CurrentUser.OpenSubKey(StateKey);
         return (key?.GetValue(NotifiedValue) as string[] ?? []).ToHashSet();
     }
 
     static void SaveNotified(IEnumerable<string> ids)
     {
-        using var key = Registry.LocalMachine.CreateSubKey(StateKey);
+        using var key = Registry.CurrentUser.CreateSubKey(StateKey);
         key.SetValue(NotifiedValue, ids.ToArray(), RegistryValueKind.MultiString);
     }
 

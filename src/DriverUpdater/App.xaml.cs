@@ -9,7 +9,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
         ApplyTheme();
-        if (e.Args.Contains(WeeklyCheck.Argument))
+        if (e.Args.Length > 0 && e.Args[0] == Elevation.Argument)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _ = AdminHelper.RunAsync(this, e.Args);
+        }
+        else if (e.Args.Contains(WeeklyCheck.Argument))
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _ = WeeklyCheck.RunAsync(this);

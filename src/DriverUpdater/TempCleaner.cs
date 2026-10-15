@@ -13,6 +13,9 @@ namespace DriverUpdater;
 /// </summary>
 public static class TempCleaner
 {
+    /// <summary>Younger temp files may still belong to a running installer or app.</summary>
+    public static readonly TimeSpan MinAge = TimeSpan.FromDays(2);
+
     public sealed record Target(string Folder, bool Recursive);
 
     /// <param name="Root">The target folder's real path; deletion never leaves it.</param>

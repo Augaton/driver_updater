@@ -1,4 +1,3 @@
-using DriverUpdater;
 using Xunit;
 
 // Deleting the wrong folder loses data: these pin down what may ever be offered.

@@ -1,4 +1,3 @@
-using DriverUpdater;
 using Xunit;
 
 // The helper runs as administrator with whatever arguments it is started with: these are
@@ -58,5 +57,25 @@ public sealed class AdminCommandTests
         Assert.False(AdminCommand.IsPipeName(@"\\attacker\pipe\x"));
         Assert.False(AdminCommand.IsPipeName("DriverUpdater-" + new string('a', 31)));
         Assert.False(AdminCommand.IsPipeName("DriverUpdater-" + new string('a', 32) + "\n"));
+    }
+
+    [Fact]
+    public void Accepts_only_published_driver_package_names()
+    {
+        Assert.Equal(["oem12.inf"], AdminCommand.Parse([AdminCommand.DeleteDrivers, "OEM12.INF"]).Args);
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.DeleteDrivers, "nvlddmkm.inf"]));
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.DeleteDrivers, @"..\oem1.inf"]));
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.DeleteDrivers, "oem1.inf\n"]));
+    }
+
+    [Fact]
+    public void Install_all_accepts_only_known_sources_and_guids()
+    {
+        var command = AdminCommand.Parse([AdminCommand.InstallAll, "wu:" + Guid1.ToUpperInvariant(), "catalog:" + Guid1]);
+
+        Assert.Equal(["wu:" + Guid1, "catalog:" + Guid1], command.Args);
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallAll, "http:" + Guid1]));
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallAll, "wu:not-a-guid"]));
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallAll]));
     }
 }

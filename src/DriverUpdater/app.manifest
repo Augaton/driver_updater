@@ -5,7 +5,7 @@
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
         <!-- The window runs with the user's own rights. Actions that need administrator
-             rights start this exe again as administrator, one at a time (see Elevation.cs). -->
+             rights start this exe again as administrator, one at a time (see Admin/Elevation.cs). -->
         <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>

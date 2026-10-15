@@ -9,17 +9,21 @@
 
   <!-- The app targets Windows only; linking its portable logic lets the tests run anywhere. -->
   <ItemGroup>
-    <Compile Include="..\..\src\DriverUpdater\TempCleaner.cs" Link="TempCleaner.cs" />
-    <Compile Include="..\..\src\DriverUpdater\AdminCommand.cs" Link="AdminCommand.cs" />
-    <Compile Include="..\..\src\DriverUpdater\WingetOutput.cs" Link="WingetOutput.cs" />
-    <Compile Include="..\..\src\DriverUpdater\UpdateCheck.cs" Link="UpdateCheck.cs" />
-    <Compile Include="..\..\src\DriverUpdater\Bytes.cs" Link="Bytes.cs" />
-    <Compile Include="..\..\src\DriverUpdater\Catalog.cs" Link="Catalog.cs" />
-    <Compile Include="..\..\src\DriverUpdater\CommandLine.cs" Link="CommandLine.cs" />
-    <Compile Include="..\..\src\DriverUpdater\StartupApproval.cs" Link="StartupApproval.cs" />
-    <Compile Include="..\..\src\DriverUpdater\Leftovers.cs" Link="Leftovers.cs" />
-    <Compile Include="..\..\src\DriverUpdater\PerfModel.cs" Link="PerfModel.cs" />
-    <Compile Include="..\..\src\DriverUpdater\BootEvents.cs" Link="BootEvents.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Maintenance\TempCleaner.cs" Link="Maintenance\TempCleaner.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Admin\AdminCommand.cs" Link="Admin\AdminCommand.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Software\WingetOutput.cs" Link="Software\WingetOutput.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Common\UpdateCheck.cs" Link="Common\UpdateCheck.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Common\Bytes.cs" Link="Common\Bytes.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Drivers\Catalog.cs" Link="Drivers\Catalog.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Software\CommandLine.cs" Link="Software\CommandLine.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Maintenance\StartupApproval.cs" Link="Maintenance\StartupApproval.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Software\Leftovers.cs" Link="Software\Leftovers.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Maintenance\PerfModel.cs" Link="Maintenance\PerfModel.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Maintenance\BootEvents.cs" Link="Maintenance\BootEvents.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Drivers\DriverModel.cs" Link="Drivers\DriverModel.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Drivers\DriverReport.cs" Link="Drivers\DriverReport.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Software\GameComponents.cs" Link="Software\GameComponents.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Drivers\InstalledDriver.cs" Link="Drivers\InstalledDriver.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -41,8 +41,6 @@ public sealed class SmokeTests
         Assert.All(disks, d => Assert.False(string.IsNullOrEmpty(d.Health)));
     }
 
-    [Fact]
-    public void Lists_problem_devices_without_failing() => SystemInfo.ProblemDevices();
 
     [Fact]
     public void Lists_graphics_cards_without_failing() => SystemInfo.Gpus();
@@ -76,6 +74,41 @@ public sealed class SmokeTests
             Elevation.RunAsync<HealthReport>(AdminCommand.Health, [], new Progress<string>(), _ => false, exe)));
 
         Assert.Contains("Refusé", error.Message);
+    }
+
+    [Fact]
+    public void Takes_the_inventory_of_every_device()
+    {
+        var devices = DriverInventory.Scan();
+
+        Assert.Contains(devices, d => d.HasDriver);
+        CatalogScope.Select(devices); // must not fail on real hardware IDs
+    }
+
+    // Reads the real driver store through Get-WindowsDriver (JSON), deletes nothing.
+    [Fact]
+    public async Task Reads_the_driver_store() => await DriverStore.RemovableAsync(_ => { });
+
+    [Fact]
+    public void Watches_devices_without_failing() => new DeviceWatcher().Dispose();
+
+    [Fact]
+    public void Reports_on_every_device()
+    {
+        var devices = DriverInventory.Scan();
+
+        var report = DriverReport.Build(devices, [], new Dictionary<string, DriverOffer>());
+
+        Assert.Equal(devices.Count, report.Count);
+        Assert.DoesNotContain(report, r => r.Selected); // nothing on offer, nothing ticked
+    }
+
+    [Fact]
+    public void Detects_game_components_from_installed_programs()
+    {
+        var names = InstalledPrograms.List().Select(p => p.Name).ToList();
+
+        foreach (var component in GameComponent.All) component.IsIn(names); // must not fail on real names
     }
 
     [Fact]
@@ -157,7 +190,7 @@ public sealed class SmokeTests
     [Fact]
     public void Reads_installed_driver_versions()
     {
-        var drivers = SystemInfo.InstalledDrivers();
+        var drivers = InstalledDrivers.ByHardwareId(DriverInventory.Scan());
 
         Assert.NotEmpty(drivers);
         Assert.All(drivers.Values, d => Assert.False(string.IsNullOrEmpty(d.Version)));

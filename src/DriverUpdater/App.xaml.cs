@@ -26,10 +26,10 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Windows 11 look, light or dark like Windows. Set here rather than in App.xaml so it
+    /// Windows 11 controls in their dark variant, under the app's neon palette. Set here rather than in App.xaml so it
     /// merges into the resources App.xaml has already loaded instead of racing them.
     /// </summary>
-    public void ApplyTheme() => ThemeMode = ThemeMode.System;
+    public void ApplyTheme() => ThemeMode = ThemeMode.Dark;
 
     void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {

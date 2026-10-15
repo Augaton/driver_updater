@@ -139,17 +139,25 @@ jobs:
           Remove-Item installer-out -Recurse -Force
           Rename-Item installer-signed installer-out
 
-      # Really installs into Program Files, then uninstalls.
+      # Really installs into Program Files, runs the same setup again (the repair path), then
+      # uninstalls; each step checks what it left behind.
       - name: Test the installer
         run: |
-          $exe = "$env:ProgramFiles\Driver Updater\DriverUpdater.exe"
-          Start-Process "installer-out\DriverUpdater-Setup-$env:APP_VERSION.exe" -Wait `
-            -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=install.log'
-          if (-not (Test-Path $exe)) { Get-Content install.log; throw "L'exe n'a pas été installé dans Program Files." }
-          Start-Process "$env:ProgramFiles\Driver Updater\unins000.exe" -Wait -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES'
+          $setup = "installer-out\DriverUpdater-Setup-$env:APP_VERSION.exe"
+          $dir = "$env:ProgramFiles\Driver Updater"
+          function Install($log) {
+            Start-Process $setup -Wait -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$log"
+          }
+          Install install.log
+          if (-not (Test-Path "$dir\DriverUpdater.exe")) { Get-Content install.log; throw "L'exe n'a pas été installé dans Program Files." }
+          if (-not (Test-Path "$dir\setup\DriverUpdater-Setup.exe")) { throw "La copie de l'installateur (bouton Modifier) manque." }
+          Install repair.log
+          if (-not (Test-Path "$dir\DriverUpdater.exe")) { Get-Content repair.log; throw "La réparation a perdu l'exe." }
+          Start-Process "$dir\unins000.exe" -Wait -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES'
           # The uninstaller hands over to a copy of itself and returns at once: wait for that copy.
-          for ($i = 0; $i -lt 60 -and (Test-Path $exe); $i++) { Start-Sleep -Seconds 1 }
-          if (Test-Path $exe) { throw "La désinstallation a laissé l'exe en place." }
+          for ($i = 0; $i -lt 60 -and (Test-Path $dir); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path "$dir\DriverUpdater.exe") { throw "La désinstallation a laissé l'exe en place." }
+          if (Test-Path "$dir\setup") { throw "La désinstallation a laissé la copie de l'installateur." }
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

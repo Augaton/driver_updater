@@ -5,17 +5,41 @@ elle ne propose que ce qui marche vraiment.
 
 ## Ce qu'elle fait
 
+- **Analyse de tous les pilotes.** Le gros bouton de l'accueil compare chaque périphérique
+  aux dernières versions de Windows Update et des fabricants, et rend un rapport : version
+  installée, version disponible, source, et un verdict (à jour, mise à jour, aucun pilote,
+  erreur). Tout ce qui est à mettre à jour arrive coché ; un bouton installe la sélection
+  en une seule fois, sous une seule autorisation administrateur, après un point de
+  restauration. Le même passage vérifie aussi logiciels, démarrage et disques.
+- **Jeux.** Le pilote graphique comparé au dernier publié (les pilotes « Game Ready » de
+  NVIDIA et AMD arrivent signés par Microsoft dans le catalogue) et l'outil du fabricant ;
+  les composants que les jeux réclament (Visual C++ 2005 à 2022, DirectX 9, XNA, OpenAL,
+  PhysX), détectés et installés via winget ; les réglages de jeu de Windows (Mode jeu,
+  planification GPU). Pas de « Game Boost » : le Mode jeu de Windows fait déjà ce travail.
 - **Pilotes.** Elle cherche les mises à jour de pilotes sur Windows Update, avec, en face
   de chacune, le pilote installé aujourd'hui. Elle installe ceux que vous cochez, un par un,
   après avoir créé un point de restauration système. Les pilotes « recommandés » sont
   cochés ; les « facultatifs » ne le sont pas, car Microsoft ne les conseille que pour
   corriger un problème précis. Un pilote refusé peut être masqué pour ne plus revenir.
+- **Inventaire.** Chaque périphérique avec son pilote, sa date, son fournisseur, sa
+  signature et son état, filtrable (à problème, sans pilote, plus de 3 ans, non signés).
+  Il se met à jour tout seul quand on branche ou débranche un périphérique ; un nouveau
+  périphérique sans pilote est signalé avec un bouton pour lui en chercher un.
+- **Anciennes versions de pilotes.** Windows garde chaque version installée (près de 1 Go
+  par mise à jour de pilote graphique). Celles qu'aucun périphérique n'utilise et qu'une
+  version plus récente remplace sont proposées à la suppression ; Windows refuse de toute
+  façon de supprimer un pilote utilisé.
 - **Pilotes récents des fabricants.** NVIDIA, AMD, Intel, Realtek… publient leurs pilotes
   dans le catalogue Microsoft Update, signés par Microsoft, souvent avant que Windows
   Update ne les propose. L'application y cherche une version plus récente pour chaque
   périphérique, la télécharge depuis les serveurs de Microsoft, vérifie son empreinte et
   laisse Windows l'installer : il garde le pilote actuel s'il est plus adapté au PC
-  (pilote adapté par le fabricant du portable, par exemple).
+  (pilote adapté par le fabricant du portable, par exemple). Couvre les cartes PCI,
+  l'audio, l'USB, le chipset (ACPI) et les pavés tactiles (HID), et cherche aussi un
+  pilote de fabricant pour le graphique, le réseau, l'audio, le Bluetooth et les caméras
+  qui tournent sur un pilote générique de Windows. On peut choisir la version à installer
+  (l'avant-dernière, si la dernière pose problème). Les contrôleurs de stockage ne sont
+  jamais touchés : un mauvais pilote à cet endroit empêche Windows de démarrer.
 - **Vérification hebdomadaire.** Option : chaque mercredi, l'application cherche en
   silence et affiche une notification seulement s'il y a du nouveau.
 - **BIOS et carte graphique.** Windows Update les livre avec retard, ou pas du tout :
@@ -47,7 +71,8 @@ elle ne propose que ce qui marche vraiment.
   sur GitHub. L'application interroge pour cela l'API publique de GitHub à chaque
   démarrage ; elle n'envoie rien d'autre.
 
-L'interface suit le thème de Windows 11, clair ou sombre.
+Interface sombre aux accents néon, barre latérale rangée par thèmes (Pilotes, Jeux,
+Système, Logiciels), jauges circulaires pour les performances.
 
 Pourquoi Windows Update et pas « la toute dernière version » : les pilotes de Windows
 Update sont signés et validés par Microsoft pour votre matériel. Les versions plus
@@ -59,6 +84,14 @@ Téléchargez `DriverUpdater-Setup-x.y.z.exe` depuis la page
 [Releases](https://github.com/Augaton/driver_updater/releases). Il installe l'application
 dans `C:\Program Files\Driver Updater` et l'ajoute au menu Démarrer. Le zip « portable »
 fonctionne aussi.
+
+Lancé alors que Driver Updater est déjà installé, l'installateur indique la version en
+place et propose ce qui a du sens : mettre à jour, réparer (même version : tous les
+fichiers sont réinstallés), revenir à une version plus ancienne (avec avertissement) ou
+désinstaller. Le bouton « Modifier » de Windows (Paramètres → Applications) ouvre la même
+page, grâce à une copie de l'installateur gardée dans `Driver Updater\setup`. Si la
+vérification hebdomadaire était activée depuis une autre copie de l'application (le zip
+portable, par exemple), elle est redirigée vers la copie installée.
 
 Pour vérifier qu'un fichier a bien été produit par le pipeline de ce dépôt :
 
@@ -72,7 +105,7 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
   l'utilisateur. Chaque action qui en a besoin (installer ou masquer un pilote, point de
   restauration, sauvegarde, `C:\Windows\Temp`, réparation, lecture de l'usure des
   disques, pilotes du catalogue, programmes au démarrage de tous les utilisateurs,
-  restes dans Program Files) relance l'application en administrateur pour cette seule action : Windows
+  restes dans Program Files, anciennes versions de pilotes) relance l'application en administrateur pour cette seule action : Windows
   demande l'autorisation, l'action se fait, le processus se termine. Aucun processus
   administrateur ne reste ouvert pour qu'un autre programme lui parle.
 - **Seule la fenêtre de Driver Updater commande le module administrateur.** N'importe quel
@@ -133,8 +166,8 @@ paquets.
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.5.0
-git push origin v0.5.0
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`
@@ -168,27 +201,25 @@ MIT : voir [LICENSE](LICENSE).
 
 ## Code
 
-| Fichier | Rôle |
+Le code de l'application est rangé par domaine, un dossier par espace de noms
+(`DriverUpdater.Drivers`, `DriverUpdater.Maintenance`…). La logique qui ne dépend pas de
+Windows est testée sous Linux comme sous Windows ; le reste l'est sur un vrai Windows par
+le pipeline.
+
+| Dossier de `src/DriverUpdater` | Contenu |
 |---|---|
-| `src/DriverUpdater/Elevation.cs` | Lancement du module administrateur et canal privé avec la fenêtre |
-| `src/DriverUpdater/AdminCommand.cs` | Commandes admises par le module administrateur, et vérification de leurs arguments |
-| `src/DriverUpdater/AdminHelper.cs` | Exécution des commandes administrateur |
-| `src/DriverUpdater/WindowsUpdateDrivers.cs` | Recherche, installation, masquage et historique via l'API COM de Windows Update |
-| `src/DriverUpdater/SystemInfo.cs` | Pilotes installés, PC et BIOS, cartes graphiques, disques, batterie, points de restauration (WMI) |
-| `src/DriverUpdater/Catalog.cs`, `DriverCatalog.cs` | Pilotes du catalogue Microsoft Update : lecture, recherche, installation |
-| `src/DriverUpdater/WinGet.cs`, `WingetOutput.cs` | Mises à jour de logiciels via winget |
-| `src/DriverUpdater/InstalledPrograms.cs`, `Leftovers.cs` | Programmes installés, désinstallation, restes |
-| `src/DriverUpdater/StartupApps.cs`, `StartupApproval.cs` | Programmes au démarrage |
-| `src/DriverUpdater/BootEvents.cs`, `BootLog.cs` | Mesures de démarrage de Windows |
-| `src/DriverUpdater/PerfAnalyzer.cs`, `PerfModel.cs` | Analyse des performances et verdicts |
-| `src/DriverUpdater/Repair.cs` | SFC et DISM |
-| `src/DriverUpdater/WeeklyCheck.cs` | Tâche planifiée hebdomadaire et notification |
-| `src/DriverUpdater/DriverBackup.cs` | Sauvegarde et restauration des pilotes (pnputil) |
-| `src/DriverUpdater/TempCleaner.cs` | Nettoyage des fichiers temporaires, résistant aux liens |
-| `src/DriverUpdater/UpdateCheck.cs` | Détection d'une nouvelle version sur GitHub |
-| `src/DriverUpdater/Diagnostics.cs` | Rapport de diagnostic |
-| `src/DriverUpdater/MainWindow.*` | Interface, un fichier par onglet |
-| `installer/DriverUpdater.iss` | Installateur Inno Setup |
+| `Admin/` | Élévation : lancement du module administrateur, canal privé avec la fenêtre, commandes admises et leur vérification, exécution |
+| `Drivers/` | Windows Update, catalogue Microsoft Update, inventaire, détection des branchements, rapport de tous les pilotes, magasin de pilotes, sauvegarde, vérification hebdomadaire |
+| `Maintenance/` | Matériel et santé (WMI), performances, démarrage de Windows, programmes au démarrage, réparation (SFC, DISM), fichiers temporaires, diagnostic |
+| `Software/` | winget, programmes installés et désinstallation, restes, composants de jeu |
+| `Common/` | Messages d'erreur, tailles, détection d'une nouvelle version de l'application |
+| `UI/` | La fenêtre, un fichier par section (`MainWindow.Home.cs`, `.Games.cs`…), la jauge |
+| (racine) | `App.xaml` (thème néon), manifeste, icône, projet |
+
+| Ailleurs | Contenu |
+|---|---|
+| `installer/DriverUpdater.iss` | Installateur Inno Setup : thème sombre, mise à jour, réparation, désinstallation |
+| `installer/art/make-art.py` | Dessine l'icône et les images de l'installateur |
 | `build/sign.ps1` | Signature avec votre propre certificat |
-| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, winget, catalogue, restes, démarrage, verdicts |
-| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, catalogue en direct |
+| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants |
+| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |

@@ -1,4 +1,3 @@
-using DriverUpdater;
 using Xunit;
 
 // Fixtures are excerpts of real catalog pages (Realtek network card, NVIDIA RTX 3060).

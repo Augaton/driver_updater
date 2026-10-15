@@ -1,4 +1,3 @@
-using DriverUpdater;
 using Xunit;
 
 public sealed class UpdateCheckTests

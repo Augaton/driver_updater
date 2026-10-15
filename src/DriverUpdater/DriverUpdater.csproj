@@ -25,9 +25,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.13" />
-    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.13" />
     <PackageReference Include="System.Management" Version="10.0.13" />
+    <!-- EventLog and PerformanceCounter come with the Windows Desktop framework (WPF): a
+         package reference would be redundant, and the Windows build rejects it (NU1510). -->
   </ItemGroup>
 
   <!-- WPF and Windows Forms share names (Application, Button, MessageBox): keep only WPF's. -->

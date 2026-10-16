@@ -8,6 +8,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        UseLanguage(L.Resolve(Settings.Language, System.Globalization.CultureInfo.CurrentUICulture));
         ApplyTheme();
         if (e.Args.Length > 0 && e.Args[0] == Elevation.Argument)
         {
@@ -23,6 +24,16 @@ public partial class App : Application
         {
             new MainWindow().Show();
         }
+    }
+
+    /// <summary>
+    /// The texts' language, chosen before anything is read or shown: the administrator helper
+    /// and the weekly check speak it too.
+    /// </summary>
+    public static void UseLanguage(string language)
+    {
+        L.Use(language);
+        if (L.Language == "en") UI.Translator.Install();
     }
 
     /// <summary>

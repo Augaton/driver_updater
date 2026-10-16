@@ -102,17 +102,17 @@ public static class UpdateCheck
     /// </summary>
     public static async Task<VerifiedInstaller> DownloadInstallerAsync(AppRelease release, Version current, IProgress<string> progress)
     {
-        if (!release.CanInstall) throw new InvalidOperationException("Cette version n'a pas d'installateur téléchargeable.");
+        if (!release.CanInstall) throw new InvalidOperationException(L.T("Cette version n'a pas d'installateur téléchargeable."));
         using var http = Client(current, TimeSpan.FromMinutes(15));
         var fileName = Path.GetFileName(new Uri(release.SetupUrl!).LocalPath);
-        progress.Report("Téléchargement des empreintes…");
+        progress.Report(L.T("Téléchargement des empreintes…"));
         var expected = ExpectedHash(await http.GetStringAsync(release.ChecksumsUrl), fileName)
-            ?? throw new InvalidOperationException("L'empreinte de l'installateur manque dans SHA256SUMS.txt.");
+            ?? throw new InvalidOperationException(L.T("L'empreinte de l'installateur manque dans SHA256SUMS.txt."));
 
         CleanOldDownloads();
         var folder = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriverUpdater-" + Guid.NewGuid().ToString("N")));
         var path = Path.Combine(folder.FullName, fileName);
-        progress.Report($"Téléchargement de {fileName}…");
+        progress.Report(L.F("Téléchargement de {0}…", fileName));
         using (var response = await http.GetAsync(release.SetupUrl, HttpCompletionOption.ResponseHeadersRead))
         {
             response.EnsureSuccessStatusCode();
@@ -132,7 +132,7 @@ public static class UpdateCheck
         }
         await file.DisposeAsync();
         folder.Delete(recursive: true);
-        throw new InvalidOperationException("L'installateur téléchargé ne correspond pas à son empreinte publiée : il n'est pas lancé.");
+        throw new InvalidOperationException(L.T("L'installateur téléchargé ne correspond pas à son empreinte publiée : il n'est pas lancé."));
     }
 
     // 0.3.0 and 0.3.0.0 are the same version.

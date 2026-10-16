@@ -1,6 +1,6 @@
 ﻿; Inno Setup script. The CI pipeline builds it after `dotnet publish`:
 ;   ISCC /DAppVersion=1.2.3 installer\DriverUpdater.iss
-; Saved as UTF-8 with a byte order mark: Inno Setup needs it to read the accents in [Code].
+; Saved as UTF-8 with a byte order mark: Inno Setup needs it to read the accents.
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
@@ -41,9 +41,35 @@ SetupIconFile=..\src\DriverUpdater\app.ico
 AppModifyPath="{app}\setup\DriverUpdater-Setup.exe" /modify
 VersionInfoVersion={#AppVersion}
 VersionInfoProductName=Driver Updater
+; French for a French Windows, English for any other: the same rule as the app. No dialog.
+ShowLanguageDialog=no
 
 [Languages]
+; The first one is used when Windows' language matches none.
+Name: "en"; MessagesFile: "compiler:Default.isl"
 Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+
+[CustomMessages]
+en.AlreadyInstalled=Driver Updater is already installed
+fr.AlreadyInstalled=Driver Updater est déjà installé
+en.Versions=Installed version: %1. This setup: {#AppVersion}.
+fr.Versions=Version installée : %1. Cette installation : {#AppVersion}.
+en.WhatToDo=What do you want to do?
+fr.WhatToDo=Que voulez-vous faire ?
+en.ChoiceUpdate=Update to version {#AppVersion} (your settings are kept)
+fr.ChoiceUpdate=Mettre à jour vers la version {#AppVersion} (vos réglages sont conservés)
+en.ChoiceRepair=Repair: reinstall all the app's files
+fr.ChoiceRepair=Réparer : réinstaller tous les fichiers de l'application
+en.ChoiceOlder=Go back to version {#AppVersion}, an older one (not advised)
+fr.ChoiceOlder=Revenir à la version {#AppVersion}, plus ancienne (déconseillé)
+en.ChoiceRemove=Uninstall Driver Updater
+fr.ChoiceRemove=Désinstaller Driver Updater
+en.MemoInstall=Installing Driver Updater {#AppVersion}.
+fr.MemoInstall=Installation de Driver Updater {#AppVersion}.
+en.MemoRepair=Repairing Driver Updater %1: every file will be reinstalled.
+fr.MemoRepair=Réparation de Driver Updater %1 : tous les fichiers seront réinstallés.
+en.MemoUpdate=Moving from version %1 to version {#AppVersion}.
+fr.MemoUpdate=Passage de la version %1 à la version {#AppVersion}.
 
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion
@@ -105,16 +131,16 @@ begin
     Exit;
   Comparison := CompareWithInstalled;
   MaintenancePage := CreateInputOptionPage(wpWelcome,
-    'Driver Updater est déjà installé',
-    'Version installée : ' + InstalledVersion + '. Cette installation : {#AppVersion}.',
-    'Que voulez-vous faire ?', True, False);
+    CustomMessage('AlreadyInstalled'),
+    FmtMessage(CustomMessage('Versions'), [InstalledVersion]),
+    CustomMessage('WhatToDo'), True, False);
   if Comparison > 0 then
-    MaintenancePage.Add('Mettre à jour vers la version {#AppVersion} (vos réglages sont conservés)')
+    MaintenancePage.Add(CustomMessage('ChoiceUpdate'))
   else if Comparison = 0 then
-    MaintenancePage.Add('Réparer : réinstaller tous les fichiers de l''application')
+    MaintenancePage.Add(CustomMessage('ChoiceRepair'))
   else
-    MaintenancePage.Add('Revenir à la version {#AppVersion}, plus ancienne (déconseillé)');
-  MaintenancePage.Add('Désinstaller Driver Updater');
+    MaintenancePage.Add(CustomMessage('ChoiceOlder'));
+  MaintenancePage.Add(CustomMessage('ChoiceRemove'));
   MaintenancePage.SelectedValueIndex := 0;
 end;
 
@@ -146,10 +172,10 @@ function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoType
   MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 begin
   if InstalledVersion = '' then
-    Result := 'Installation de Driver Updater {#AppVersion}.'
+    Result := CustomMessage('MemoInstall')
   else if CompareWithInstalled = 0 then
-    Result := 'Réparation de Driver Updater ' + InstalledVersion + ' : tous les fichiers seront réinstallés.'
+    Result := FmtMessage(CustomMessage('MemoRepair'), [InstalledVersion])
   else
-    Result := 'Passage de la version ' + InstalledVersion + ' à la version {#AppVersion}.';
+    Result := FmtMessage(CustomMessage('MemoUpdate'), [InstalledVersion]);
   Result := Result + NewLine + NewLine + MemoDirInfo;
 end;

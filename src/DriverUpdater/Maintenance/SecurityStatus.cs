@@ -16,6 +16,11 @@ public static class SecurityStatus
         return new SecurityState(Antiviruses(), Firewall(), askWindowsUpdate ? PendingWindowsUpdates() : null);
     }
 
+    /// <summary>An antivirus other than Microsoft Defender is registered: Defender then stays passive on purpose.</summary>
+    public static bool OtherAntivirus() =>
+        Antiviruses().Any(a => !a.Name.Contains("Defender", StringComparison.OrdinalIgnoreCase)
+                               && !a.Name.Contains("Microsoft", StringComparison.OrdinalIgnoreCase));
+
     // Security Center does not exist on Windows Server: no antivirus listed then.
     static List<Antivirus> Antiviruses()
     {

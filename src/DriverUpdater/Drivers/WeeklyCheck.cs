@@ -18,7 +18,7 @@ public static class WeeklyCheck
     public const string TaskName = "Driver Updater weekly check"; // also in installer\DriverUpdater.iss
 
     const string StateKey = @"Software\Driver Updater"; // under HKEY_CURRENT_USER
-    const string NotifiedValue = "NotifiedUpdates";
+    const string NotifiedValue = "NotifiedUpdates", NotifiedNvidiaValue = "NotifiedNvidia", NotifiedSoftwareValue = "NotifiedSoftware";
 
     const int TaskCreateOrUpdate = 6, TaskLogonInteractiveToken = 3;
     // Matched on HResult, not on the exception type: late-bound COM turns this code into a
@@ -78,7 +78,7 @@ public static class WeeklyCheck
     static dynamic TaskFolder()
     {
         dynamic service = Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service")
-            ?? throw new InvalidOperationException("Planificateur de tâches introuvable."))!;
+            ?? throw new InvalidOperationException(L.T("Planificateur de tâches introuvable.")))!;
         service.Connect();
         return service.GetFolder(@"\");
     }
@@ -92,7 +92,7 @@ public static class WeeklyCheck
         XNamespace ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
         return new XElement(ns + "Task", new XAttribute("version", "1.2"),
             new XElement(ns + "RegistrationInfo",
-                new XElement(ns + "Description", "Cherche chaque semaine les mises à jour de pilotes et prévient s'il y en a de nouvelles.")),
+                new XElement(ns + "Description", L.T("Cherche chaque semaine les mises à jour de pilotes, NVIDIA et logiciels, et prévient s'il y en a de nouvelles."))),
             new XElement(ns + "Triggers",
                 new XElement(ns + "CalendarTrigger",
                     new XElement(ns + "StartBoundary", "2026-01-07T12:00:00"),
@@ -118,27 +118,54 @@ public static class WeeklyCheck
 
     public static async Task RunAsync(App app)
     {
-        List<DriverUpdate> found;
-        try
-        {
-            found = await Task.Run(WindowsUpdateDrivers.Search);
-        }
-        catch (Exception)
-        {
-            // Offline, Windows Update busy…: nothing to report, next week will tell.
-            app.Shutdown();
-            return;
-        }
-
         bool notified = false;
         try
         {
-            var current = found.Select(u => u.UpdateId).ToHashSet();
-            bool hasNew = current.Except(Notified()).Any();
-            SaveNotified(current);
-            if (hasNew)
+            // Each source on its own: one offline or failing must not silence the others.
+            List<DriverUpdate> drivers = [];
+            try
             {
-                Notify(app, found);
+                drivers = await Task.Run(WindowsUpdateDrivers.Search);
+            }
+            catch (Exception)
+            {
+            }
+            NvidiaRelease? nvidia = null;
+            if (Settings.WeeklyNvidia)
+            {
+                try
+                {
+                    var displays = (await Task.Run(DriverInventory.Scan)).Where(d => d.Class.Equals("Display", StringComparison.OrdinalIgnoreCase)).ToList();
+                    var releases = await NvidiaDrivers.LatestAsync(displays, Tuning.Machine.HasBattery);
+                    nvidia = displays.Where(d => releases.TryGetValue(d.DeviceId, out var r) && NvidiaModel.IsNewer(r, d))
+                        .Select(d => releases[d.DeviceId]).FirstOrDefault();
+                }
+                catch (Exception)
+                {
+                }
+            }
+            List<SoftwareUpdate> software = [];
+            if (Settings.WeeklySoftware && WinGet.IsAvailable)
+            {
+                try
+                {
+                    software = await WinGet.ListUpgradesAsync();
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            var driverIds = drivers.Select(u => u.UpdateId).ToHashSet();
+            var softwareIds = software.Select(s => $"{s.Id}@{s.Available}").ToHashSet();
+            var news = WeeklyDigest.Compute(driverIds, Notified(NotifiedValue), nvidia?.Version, NotifiedNvidia(),
+                softwareIds, Notified(NotifiedSoftwareValue));
+            Save(NotifiedValue, driverIds);
+            Save(NotifiedSoftwareValue, softwareIds);
+            if (nvidia is not null) SaveNvidia(nvidia.Version);
+            if (news.HasNew)
+            {
+                Notify(app, news, drivers, nvidia is not null, software);
                 notified = true; // the notification ends the app when it closes
             }
         }
@@ -149,19 +176,31 @@ public static class WeeklyCheck
         }
     }
 
-    static HashSet<string> Notified()
+    static HashSet<string> Notified(string name)
     {
         using var key = Registry.CurrentUser.OpenSubKey(StateKey);
-        return (key?.GetValue(NotifiedValue) as string[] ?? []).ToHashSet();
+        return (key?.GetValue(name) as string[] ?? []).ToHashSet();
     }
 
-    static void SaveNotified(IEnumerable<string> ids)
+    static string? NotifiedNvidia()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(StateKey);
+        return key?.GetValue(NotifiedNvidiaValue) as string;
+    }
+
+    static void Save(string name, IEnumerable<string> ids)
     {
         using var key = Registry.CurrentUser.CreateSubKey(StateKey);
-        key.SetValue(NotifiedValue, ids.ToArray(), RegistryValueKind.MultiString);
+        key.SetValue(name, ids.ToArray(), RegistryValueKind.MultiString);
     }
 
-    static void Notify(App app, List<DriverUpdate> found)
+    static void SaveNvidia(string version)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(StateKey);
+        key.SetValue(NotifiedNvidiaValue, version, RegistryValueKind.String);
+    }
+
+    static void Notify(App app, WeeklyNews news, List<DriverUpdate> drivers, bool nvidia, List<SoftwareUpdate> software)
     {
         var icon = new Forms.NotifyIcon
         {
@@ -178,12 +217,11 @@ public static class WeeklyCheck
             app.ShutdownMode = ShutdownMode.OnLastWindowClose;
             var window = new MainWindow();
             window.Show();
-            _ = window.ShowUpdates(found, "Trouvé par la vérification hebdomadaire.");
+            window.ShowWeekly(drivers, nvidia, software);
         }
         icon.BalloonTipClicked += (_, _) => Open();
         icon.MouseClick += (_, _) => Open();
-        icon.ShowBalloonTip(0, "Mises à jour de pilotes",
-            $"{found.Count} mise(s) à jour disponible(s). Cliquez pour les voir.", Forms.ToolTipIcon.Info);
+        icon.ShowBalloonTip(0, L.T("Mises à jour disponibles"), news.Message + L.T(". Cliquez pour les voir."), Forms.ToolTipIcon.Info);
 
         // Nobody clicked: leave quietly rather than sit in the tray until next week.
         var timeout = new DispatcherTimer { Interval = TimeSpan.FromHours(4) };

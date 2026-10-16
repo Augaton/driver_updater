@@ -16,6 +16,7 @@
     <Compile Include="..\..\src\DriverUpdater\Common\UpdateCheck.cs" Link="Common\UpdateCheck.cs" />
     <Compile Include="..\..\src\DriverUpdater\Common\Download.cs" Link="Common\Download.cs" />
     <Compile Include="..\..\src\DriverUpdater\Common\Bytes.cs" Link="Common\Bytes.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Common\L.cs" Link="Common\L.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\Catalog.cs" Link="Drivers\Catalog.cs" />
     <Compile Include="..\..\src\DriverUpdater\Software\CommandLine.cs" Link="Software\CommandLine.cs" />
     <Compile Include="..\..\src\DriverUpdater\Maintenance\StartupApproval.cs" Link="Maintenance\StartupApproval.cs" />
@@ -25,10 +26,13 @@
     <Compile Include="..\..\src\DriverUpdater\Drivers\DriverModel.cs" Link="Drivers\DriverModel.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\DriverReport.cs" Link="Drivers\DriverReport.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\NvidiaModel.cs" Link="Drivers\NvidiaModel.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Drivers\WeeklyDigest.cs" Link="Drivers\WeeklyDigest.cs" />
     <Compile Include="..\..\src\DriverUpdater\Software\GameComponents.cs" Link="Software\GameComponents.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\InstalledDriver.cs" Link="Drivers\InstalledDriver.cs" />
     <Compile Include="..\..\src\DriverUpdater\Tuning\Tweak.cs" Link="Tuning\Tweak.cs" />
     <Compile Include="..\..\src\DriverUpdater\Tuning\TweakCatalog.cs" Link="Tuning\TweakCatalog.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Tuning\FakeBoostCatalog.cs" Link="Tuning\FakeBoostCatalog.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Tuning\GpuPreference.cs" Link="Tuning\GpuPreference.cs" />
     <Compile Include="..\..\src\DriverUpdater\Tuning\GameTips.cs" Link="Tuning\GameTips.cs" />
     <Compile Include="..\..\src\DriverUpdater\Tuning\HardwareRules.cs" Link="Tuning\HardwareRules.cs" />
     <Compile Include="..\..\src\DriverUpdater\Maintenance\SecurityModel.cs" Link="Maintenance\SecurityModel.cs" />
@@ -36,6 +40,7 @@
 
   <ItemGroup>
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="..\..\src\DriverUpdater\Localization\en.json" LogicalName="DriverUpdater.Localization.en.json" />
   </ItemGroup>
 
   <ItemGroup>

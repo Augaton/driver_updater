@@ -116,3 +116,21 @@ public sealed class SecurityCenterTests
         Assert.Equal(3, bad.Problems.Count);
     }
 }
+
+public sealed class BootGainTests
+{
+    static BootEntry Boot(int day, double seconds) => new(new DateTime(2026, 10, day, 8, 0, 0), seconds, seconds * 0.7, seconds * 0.3);
+
+    [Fact]
+    public void Compares_the_boots_on_each_side_of_the_change()
+    {
+        var gain = BootGain.Since([Boot(1, 50), Boot(2, 40), Boot(5, 30), Boot(6, 34)], new DateTime(2026, 10, 3));
+
+        Assert.Equal((45.0, 32.0, 2), (gain!.BeforeSeconds, gain.AfterSeconds, gain.BootsAfter));
+        Assert.Equal(13.0, gain.Saved);
+    }
+
+    [Fact]
+    public void Says_nothing_without_a_boot_on_each_side() =>
+        Assert.Null(BootGain.Since([Boot(1, 50), Boot(2, 40)], new DateTime(2026, 10, 3)));
+}

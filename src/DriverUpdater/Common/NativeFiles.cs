@@ -78,10 +78,10 @@ public static class NativeFiles
     {
         root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         var parent = Path.GetDirectoryName(Path.GetFullPath(path))
-            ?? throw new ArgumentException($"Chemin sans dossier parent : {path}");
+            ?? throw new ArgumentException(L.F("Chemin sans dossier parent : {0}", path));
         var relative = Path.GetRelativePath(root, parent);
         if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
-            throw new ArgumentException($"{path} n'est pas dans {root}.");
+            throw new ArgumentException(L.F("{0} n'est pas dans {1}.", path, root));
 
         var handles = new List<SafeFileHandle>();
         try
@@ -92,10 +92,10 @@ public static class NativeFiles
                 current = Path.Combine(current, part);
                 var handle = Open(current, AccessListDirectory | AccessReadAttributes, FlagBackupSemantics | FlagOpenReparsePoint, FileShare.ReadWrite);
                 handles.Add(handle);
-                if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastPInvokeError(), $"Dossier inaccessible : {current}");
+                if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastPInvokeError(), L.F("Dossier inaccessible : {0}", current));
                 if (!File.GetAttributes(handle).HasFlag(FileAttributes.Directory) || Redirects(handle)
                     || !string.Equals(FinalPath(handle), @"\\?\" + current, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException($"Dossier redirigé par un lien, refusé : {current}");
+                    throw new InvalidOperationException(L.F("Dossier redirigé par un lien, refusé : {0}", current));
             }
             return new Pinned(handles);
         }
@@ -130,7 +130,7 @@ public static class NativeFiles
                 Descriptor = descriptor is null ? IntPtr.Zero : pinned.AddrOfPinnedObject(),
             };
             if (!CreateDirectoryW(path, ref attributes))
-                throw new Win32Exception(Marshal.GetLastPInvokeError(), $"Création du dossier impossible : {path}");
+                throw new Win32Exception(Marshal.GetLastPInvokeError(), L.F("Création du dossier impossible : {0}", path));
         }
         finally
         {
@@ -142,7 +142,7 @@ public static class NativeFiles
     public static IDisposable Pin(string folder)
     {
         var handle = Open(folder, AccessListDirectory | AccessReadAttributes, FlagBackupSemantics | FlagOpenReparsePoint, FileShare.ReadWrite);
-        if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastPInvokeError(), $"Dossier inaccessible : {folder}");
+        if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastPInvokeError(), L.F("Dossier inaccessible : {0}", folder));
         return handle;
     }
 
@@ -173,7 +173,7 @@ public static class NativeFiles
         int result = SHFileOperationW(ref operation);
         const int Cancelled = 1223;
         if (operation.AnyOperationsAborted || result == Cancelled) return false;
-        if (result != 0) throw new IOException($"Mise à la corbeille impossible ({result}) : {path}");
+        if (result != 0) throw new IOException(L.F("Mise à la corbeille impossible ({0}) : {1}", result, path));
         return true;
     }
 

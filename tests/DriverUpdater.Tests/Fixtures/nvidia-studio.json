@@ -1,0 +1,39 @@
+{
+ "criteria": {
+  "overallState": "true",
+  "IsSupported": {
+   "state": "true",
+   "IsPrimary": 0,
+   "DeviceID": "2684",
+   "Vendor": "10DE",
+   "SubSystemID": "null",
+   "SubVendorID": "null",
+   "SystemIsLaptopFlag": 0,
+   "DCfourPartsState": "null",
+   "overallStateDchNotEnabled": null,
+   "overallStateDchEnabled": null,
+   "isDCForced": "0",
+   "isgfXForced": "1"
+  },
+  "IsDispDriverNewer": {
+   "state": "true",
+   "installedDispDriverVersion": null,
+   "latestDispDriverVersion": "617.42",
+   "newFeaturePreviewOlderVersion": null
+  },
+  "IsDeviceOsBlackListed": []
+ },
+ "DriverAttributes": {
+  "ID": 280101,
+  "Name": "NVIDIA Studio Driver",
+  "ReleaseDateTime": "2026-10-06T00:00:00+0000",
+  "Version": "617.42",
+  "IsBeta": 0,
+  "IsWHQL": 0,
+  "IsDC": 1,
+  "IsCRD": 1,
+  "DetailsURL": "https://www.nvidia.com/en-us/drivers/details/280101/",
+  "DownloadURL": "https://international-gfe.download.nvidia.com/Windows/617.42/617.42-desktop-win10-win11-64bit-international-nsd-dch-whql-g.exe",
+  "DownloadURLAdmin": "https://us.download.nvidia.com/Windows/617.42/617.42-desktop-win10-win11-64bit-international-nsd-dch-whql.exe"
+ }
+}

@@ -37,6 +37,13 @@ public sealed class WindowsRegistry : IRegistry
         using var opened = root.OpenSubKey(key, writable: true);
         opened?.DeleteValue(name, throwOnMissingValue: false);
     }
+
+    public IReadOnlyList<string> ValueNames(Hive hive, string key)
+    {
+        using var root = Root(hive);
+        using var opened = root.OpenSubKey(key);
+        return opened?.GetValueNames() ?? [];
+    }
 }
 
 /// <summary>
@@ -56,6 +63,9 @@ public static partial class Tuner
         if (Environment.OSVersion.Version.Build < tweak.MinBuild) return TweakState.NotApplicable;
         return tweak.Id switch
         {
+            FakeBoostCatalog.BootTimers => FakeBoostFixes.PlatformClockForced() ? TweakState.NotApplied : TweakState.Applied,
+            FakeBoostCatalog.PageFile => FakeBoostFixes.NoPageFile() ? TweakState.NotApplied : TweakState.Applied,
+            FakeBoostCatalog.CoreParking => FakeBoostFixes.ParkingOff() ? TweakState.NotApplied : TweakState.Applied,
             TweakCatalog.PowerPlan => ActivePlan() is { } plan && (plan == HighPerformance || plan == CreatedPlan())
                 ? TweakState.Applied : TweakState.NotApplied,
             TweakCatalog.Hibernation => Registry.Get(Hive.LocalMachine, @"SYSTEM\CurrentControlSet\Control\Power", "HibernateEnabled") is 0
@@ -64,9 +74,15 @@ public static partial class Tuner
         };
     }
 
+    /// <summary>Whether a repair's fault is on this PC (the special ones, through <see cref="State"/>).</summary>
+    public static bool Found(FakeBoost repair) => repair.Tweak.Id is FakeBoostCatalog.BootTimers or FakeBoostCatalog.PageFile or FakeBoostCatalog.CoreParking
+        ? State(repair.Tweak) == TweakState.NotApplied
+        : repair.IsFound(Registry);
+
     /// <summary>Whether this app applied it, so "Annuler" has something to give back.</summary>
     public static bool CanUndo(Tweak tweak) => tweak.Id switch
     {
+        FakeBoostCatalog.BootTimers or FakeBoostCatalog.PageFile or FakeBoostCatalog.CoreParking => false, // Windows' default back: nothing to undo
         TweakCatalog.PowerPlan => Registry.Get(Hive.CurrentUser, PowerBackup, "previous") is string,
         TweakCatalog.Hibernation => Registry.Get(Hive.LocalMachine, TweakEngine.BackupKey + @"\" + tweak.Id, "was-on") is 1,
         _ => TweakEngine.HasBackup(tweak, Registry),
@@ -76,6 +92,15 @@ public static partial class Tuner
     {
         switch (tweak.Id)
         {
+            case FakeBoostCatalog.BootTimers:
+                FakeBoostFixes.RemoveTimerOverrides();
+                break;
+            case FakeBoostCatalog.PageFile:
+                FakeBoostFixes.SystemManagedPageFile();
+                break;
+            case FakeBoostCatalog.CoreParking:
+                FakeBoostFixes.DefaultParking();
+                break;
             case TweakCatalog.PowerPlan:
                 ApplyPowerPlan();
                 break;
@@ -128,7 +153,7 @@ public static partial class Tuner
         if (created is not null && PowerCfg("/setactive", created).ExitCode == 0) return;
         if (PowerCfg("/setactive", HighPerformance).ExitCode == 0) return;
         throw new InvalidOperationException(
-            "Ce PC ne propose que le plan équilibré (veille moderne) : choisissez « Performances optimales » dans Paramètres → Alimentation → Mode d'alimentation.");
+            L.T("Ce PC ne propose que le plan équilibré (veille moderne) : choisissez « Performances optimales » dans Paramètres → Alimentation → Mode d'alimentation."));
     }
 
     static string? CreatedPlan()

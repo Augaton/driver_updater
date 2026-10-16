@@ -33,6 +33,32 @@ public static class SteamGames
         return libraries.Distinct(StringComparer.OrdinalIgnoreCase).Where(Directory.Exists).ToList();
     }
 
+    /// <summary>Every installed Steam game's folder.</summary>
+    public static List<string> AllGameFolders()
+    {
+        var folders = new List<string>();
+        foreach (var library in Libraries())
+        {
+            var apps = Path.Combine(library, "steamapps");
+            if (!Directory.Exists(apps)) continue;
+            foreach (var manifest in Directory.EnumerateFiles(apps, "appmanifest_*.acf"))
+                if (GameTips.InstallDir(File.ReadAllText(manifest)) is { } dir && Path.Combine(apps, "common", dir) is var folder && Directory.Exists(folder))
+                    folders.Add(folder);
+        }
+        return folders;
+    }
+
+    /// <summary>A game's programs, three folders deep at most, links not followed.</summary>
+    public static List<string> GamePrograms(string folder) =>
+        Directory.EnumerateFiles(folder, "*.exe", new EnumerationOptions
+            {
+                RecurseSubdirectories = true, MaxRecursionDepth = 3, IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System,
+            })
+            .Where(path => GpuPreference.IsGameProgram(Path.GetRelativePath(folder, path)))
+            .Take(40)
+            .ToList();
+
     /// <summary>How many games a library holds (one manifest each).</summary>
     public static int GameCount(string library)
     {
@@ -62,7 +88,7 @@ public static class SteamGames
     /// <summary>Adds the tip's lines to the game's autoexec.cfg, keeping the user's own, after a backup copy.</summary>
     public static void ApplyCfg(InstalledGame game)
     {
-        var file = game.CfgFile ?? throw new InvalidOperationException("Pas de cfg pour ce jeu.");
+        var file = game.CfgFile ?? throw new InvalidOperationException(L.T("Pas de cfg pour ce jeu."));
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
         string? current = File.Exists(file) ? File.ReadAllText(file) : null;
         if (current is not null && !File.Exists(file + ".avant-driver-updater")) File.Copy(file, file + ".avant-driver-updater");

@@ -1,12 +1,13 @@
 # Driver Updater
 
 Petite application Windows 10/11, dans l'esprit de Driver Booster, mais honnête :
-elle ne propose que ce qui marche vraiment.
+elle ne propose que ce qui marche vraiment. En français ou en anglais.
 
 ## Ce qu'elle fait
 
-Une page par fonction, rangées dans une barre latérale en quatre branches repliables
-(au clavier aussi : flèches haut et bas, gauche et droite pour replier et déplier).
+Une page par fonction, rangées dans une barre latérale en quatre branches repliables,
+plus la page Paramètres (au clavier aussi : flèches haut et bas, gauche et droite pour
+replier et déplier).
 
 **Accueil.** Le gros bouton compare chaque périphérique à trois sources : Windows Update,
 le catalogue Microsoft Update (les pilotes des fabricants) et, pour une carte NVIDIA, le
@@ -20,8 +21,7 @@ disques.
 
 - **Windows Update.** Les mises à jour de pilotes, en face du pilote installé. Les
   « recommandées » sont cochées, les « facultatives » non (Microsoft ne les conseille que
-  pour un problème précis). Un pilote refusé peut être masqué. Option : une vérification
-  silencieuse chaque semaine, avec une notification seulement s'il y a du nouveau.
+  pour un problème précis). Un pilote refusé peut être masqué.
 - **Fabricants.** Pour chaque périphérique, une version plus récente dans le catalogue
   Microsoft Update, signée par Microsoft, téléchargée depuis ses serveurs et vérifiée.
   Windows garde le pilote actuel s'il est plus adapté au PC. On peut choisir la version (la
@@ -32,8 +32,8 @@ disques.
   Ready est demandé à NVIDIA directement : le catalogue a souvent plusieurs semaines de
   retard et saute des versions. Une seule autorisation : point de restauration, puis
   installateur officiel téléchargé depuis les serveurs de NVIDIA et lancé seulement si
-  Windows valide sa signature et que le signataire est NVIDIA. Pour AMD et Intel, l'outil
-  du fabricant.
+  Windows valide sa signature et que le signataire est NVIDIA. Game Ready ou Studio, au
+  choix dans Paramètres. Pour AMD et Intel, l'outil du fabricant.
 - **Carte mère.** Le BIOS installé et l'outil du fabricant pour le mettre à jour.
 - **Inventaire.** Chaque périphérique, son pilote, sa date, sa signature et son état,
   filtrable ; mis à jour tout seul quand on branche ou débranche quelque chose. « Revenir
@@ -57,8 +57,13 @@ disques.
   valeur d'origine comprise. À part, sans gain d'images et dit tel quel : la précision du
   pointeur et « Fin de tâche ». Et ce qu'aucun réglage ne corrige d'ici, vérifié sur le
   matériel :
-  - écran réglé sous sa meilleure fréquence, ou branché sur la carte mère alors qu'il y a
-    une carte graphique ;
+  - écran réglé sous sa meilleure fréquence : passé à la bonne d'un clic, après un test de
+    Windows ; si l'image ne revient pas, l'ancienne fréquence revient seule au bout de
+    15 secondes ;
+  - écran branché sur la carte mère alors qu'il y a une carte graphique ;
+  - sur un portable à deux puces graphiques, jeux Steam laissés au choix de Windows, qui
+    peut les lancer sur la moins puissante : forcés d'un clic sur la carte dédiée, par le
+    réglage de Windows lui-même, et annulable ;
   - mémoire sans profil XMP/EXPO (lu aussi dans la référence des barrettes, quand le
     BIOS ne le dit pas), ou une seule barrette ;
   - mode d'alimentation qui bride le processeur ; Ryzen X3D sans son pilote de cache 3D,
@@ -69,6 +74,7 @@ disques.
   (Nagle, MMCSS), HPET et minuterie, parcage des cœurs, services coupés, MPO, et le plan
   « Performances optimales » (aucun gain mesuré, et il casse le cache 3D des Ryzen X3D).
   Ceux qui l'avaient appliqué avec une version précédente gardent le bouton « Annuler ».
+  Ceux qu'un autre outil a laissés se défont dans la page Faux boosts.
 - **Composants de jeu.** Visual C++ 2005 à 2022, DirectX 9, XNA, OpenAL, PhysX, détectés
   et installés via winget.
 - **Conseils par jeu.** Pour les jeux Steam installés, les réglages des communautés ; pour
@@ -81,11 +87,21 @@ disques.
   mémoire, disque et carte graphique, et un verdict en clair.
 - **Démarrage.** Les programmes lancés avec Windows, activés ou désactivés comme dans le
   Gestionnaire des tâches, avec le temps que chacun fait perdre d'après les mesures de
-  Windows, et le graphique des 30 derniers démarrages.
+  Windows, le graphique des 30 derniers démarrages et, après vos changements, le temps
+  gagné d'après les démarrages suivants.
 - **Confidentialité.** Les réglages les plus suivis (dont ceux de WinUtil de Chris Titus) :
   identifiant publicitaire, expériences personnalisées, applications suggérées, Bing dans
   la recherche, historique des activités, télémétrie. Ils ne rendent pas le PC plus
   rapide, et c'est dit ; chacun s'annule exactement.
+- **Faux boosts.** Ce que les « optimiseurs » et les guides laissent sur un PC et qui le
+  ralentit ou l'expose : minuterie forcée au démarrage, fichier d'échange supprimé,
+  parcage des cœurs coupé (indispensable aux Ryzen X3D), protections Spectre et Meltdown
+  désactivées, UAC coupé, Windows Update ou Defender bloqués par stratégie, services
+  utiles désactivés, IPv6 coupé… Chaque point s'appuie sur la documentation de Microsoft
+  ou sur des mesures publiées. « Rétablir » remet la valeur de Windows et garde l'ancienne
+  pour revenir en arrière. Ce qui n'est qu'un choix défendable (ou sans effet prouvé) est
+  seulement signalé, et sur un PC géré par une entreprise, c'est l'affaire de son service
+  informatique.
 - **Sécurité.** Antivirus actif et à jour, pare-feu actif, mises à jour de Windows en
   attente, avec un lien vers l'endroit où agir. Pas de « score ».
 - **Points de restauration.** La liste, en créer un, ouvrir la restauration du système.
@@ -101,6 +117,12 @@ disques.
   mis à la corbeille. Un dossier qu'un autre programme installé utilise encore n'est
   jamais proposé.
 
+**Paramètres.** La vérification hebdomadaire, silencieuse et sans droits administrateur :
+les pilotes de Windows Update et, au choix, un nouveau pilote NVIDIA et les mises à jour
+de logiciels ; une notification seulement s'il y a du nouveau, une seule fois pour chaque
+nouveauté. Les pilotes NVIDIA Game Ready ou Studio. La langue : français, anglais, ou
+celle de Windows (par défaut).
+
 **Et aussi.** « Copier le diagnostic » prépare un rapport texte pour signaler un bug. Un
 bandeau prévient quand une nouvelle version est publiée sur GitHub et l'installe d'un clic.
 
@@ -108,7 +130,8 @@ bandeau prévient quand une nouvelle version est publiée sur GitHub et l'instal
 
 Téléchargez `DriverUpdater-Setup-x.y.z.exe` depuis la page
 [Releases](https://github.com/Augaton/driver_updater/releases). Il installe l'application
-dans `C:\Program Files\Driver Updater` et l'ajoute au menu Démarrer. Le zip « portable »
+dans `C:\Program Files\Driver Updater` et l'ajoute au menu Démarrer ; il parle français sur
+un Windows français, anglais sinon. Le zip « portable »
 fonctionne aussi, mais ses actions administrateur ne s'ouvrent que s'il est placé dans un
 dossier que seuls les administrateurs peuvent modifier (voir Sécurité).
 
@@ -168,6 +191,11 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
   gardée sous `HKCU\Software\Driver Updater\Tweaks` ; « Annuler » la remet telle quelle,
   ou supprime la valeur si elle n'existait pas. Le module administrateur n'accepte que les
   identifiants de réglages de sa propre liste.
+- **Faux boosts.** Mêmes garanties : l'ancienne valeur est gardée avant d'être rétablie.
+  Remettre la minuterie de démarrage passe par `bcdedit` : BitLocker est d'abord suspendu
+  pour un seul redémarrage, sans quoi il demanderait la clé de récupération.
+- **Fréquence d'écran.** Windows teste le mode avant qu'il soit appliqué ; sans réponse,
+  l'ancien revient au bout de 15 secondes, et il n'est enregistré qu'une fois gardé.
 - **Pilotes NVIDIA.** Demandés au service qu'utilise l'application de NVIDIA ; une réponse
   qui ne ressemble pas à ce qui est attendu est ignorée. La fenêtre ne transmet que le
   numéro de la carte : le module administrateur redemande lui-même la version à NVIDIA, la
@@ -208,22 +236,30 @@ dotnet publish src/DriverUpdater -c Release -p:PublishProfile=win-x64
 ISCC installer\DriverUpdater.iss             # installateur (Inno Setup 6)
 ```
 
+**Textes.** Le français est la source, et chaque texte est sa propre clé : un nouveau texte
+s'écrit `L.T("…")`, ou `L.F("… {0} …", valeur)` s'il contient une valeur ; les textes du
+XAML sont traduits à l'affichage. Son anglais va dans
+`src/DriverUpdater/Localization/en.json`. Les tests portables (`LocalizationTests`)
+listent les textes sans traduction et les traductions qui ne servent plus.
+
 ## Pipeline (GitHub Actions)
 
 `.github/workflows/build.yml` tourne sur Windows à chaque push, pull request et chaque
 semaine (correctifs .NET, nouvelles vulnérabilités). Il restaure en mode verrouillé,
 compile, lance tous les tests (y compris ceux qui interrogent le vrai Windows et un
 aller-retour réel avec le module administrateur), publie, construit l'installateur, puis
-l'installe et le désinstalle pour de vrai. Le test de la fenêtre affiche chaque section et
-en garde une capture : elles sont jointes à chaque exécution (artefact `screenshots`). Dependabot tient à jour les actions et les
-paquets.
+l'installe et le désinstalle pour de vrai. Le test de la fenêtre la parcourt comme un
+utilisateur (menu, branches, tuiles), vérifie que chaque contrôle a un nom pour les lecteurs
+d'écran, et garde une capture de chaque page, en français puis en anglais : elles sont
+jointes à chaque exécution (artefact `screenshots`). Dependabot tient à jour les actions et
+les paquets.
 
 **Publier une version :** changez `<Version>` dans `src/DriverUpdater/DriverUpdater.csproj`,
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.8.0
-git push origin v0.8.0
+git tag v0.9.0
+git push origin v0.9.0
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`
@@ -267,16 +303,17 @@ le pipeline.
 | `Admin/` | Élévation : lancement du module administrateur, canal privé avec la fenêtre, commandes admises et leur vérification, exécution |
 | `Drivers/` | Windows Update, catalogue Microsoft Update, inventaire, détection des branchements, rapport de tous les pilotes, magasin de pilotes, sauvegarde, retour au pilote précédent, vérification hebdomadaire |
 | `Maintenance/` | Matériel et santé (WMI), sécurité, points de restauration, performances, démarrage de Windows, programmes au démarrage, réparation (SFC, DISM), fichiers temporaires, diagnostic |
-| `Tuning/` | « PC de guerre » : réglages réversibles et leur liste, vérifications du matériel et leurs règles, écrans et cartes graphiques, jeux Steam et leurs conseils |
+| `Tuning/` | « PC de guerre » : réglages réversibles et leur liste, faux boosts et leur correction, vérifications du matériel et leurs règles, écrans et leur fréquence, carte graphique des jeux sur portable, jeux Steam et leurs conseils |
 | `Software/` | winget, programmes installés et désinstallation, restes, composants de jeu |
-| `Common/` | Messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
-| `UI/` | La fenêtre, son menu en arbre (`MainWindow.Nav.cs`), un fichier par domaine (`MainWindow.Home.cs`, `.Games.cs`…), l'en-tête commun des pages, la jauge |
+| `Common/` | Textes et langue (`L.cs`), paramètres, messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
+| `Localization/` | `en.json` : l'anglais de chaque texte français |
+| `UI/` | La fenêtre, son menu en arbre (`MainWindow.Nav.cs`), un fichier par domaine (`MainWindow.Home.cs`, `.Games.cs`…), l'en-tête commun des pages, la jauge, la traduction des textes du XAML, la question « garder cet affichage ? » |
 | (racine) | `App.xaml` (thème néon), manifeste, icône, projet |
 
 | Ailleurs | Contenu |
 |---|---|
-| `installer/DriverUpdater.iss` | Installateur Inno Setup : thème sombre, mise à jour, réparation, désinstallation |
+| `installer/DriverUpdater.iss` | Installateur Inno Setup, en français et en anglais : thème sombre, mise à jour, réparation, désinstallation |
 | `installer/art/make-art.py` | Dessine l'icône et les images de l'installateur |
 | `build/sign.ps1` | Signature avec votre propre certificat |
-| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour, règles du matériel (XMP, écrans), réponses de NVIDIA |
-| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre et capture de chaque section, réglages dans le vrai registre, signatures Authenticode, service de NVIDIA, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |
+| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour, règles du matériel (XMP, écrans), réponses de NVIDIA (Game Ready et Studio), faux boosts, carte graphique des portables, vérification hebdomadaire, temps de démarrage gagné, traduction complète |
+| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre parcourue comme un utilisateur, accessibilité, capture de chaque section en français et en anglais, réglages dans le vrai registre, signatures Authenticode, service de NVIDIA, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |

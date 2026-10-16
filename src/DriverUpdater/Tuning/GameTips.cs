@@ -21,8 +21,8 @@ public static partial class GameTips
     [
         new(4000, "Garry's Mod",
             [
-                "Passez sur la version 64 bits : dans Steam, clic droit sur Garry's Mod → Propriétés → Bêtas → « x86-64 ». Le gain est souvent le plus gros possible, et les plantages par manque de mémoire disparaissent.",
-                "Le cfg multicœur fait travailler tous les cœurs du processeur au lieu d'un seul. S'il provoque des clignotements ou des plantages sur votre PC, retirez-le d'un clic.",
+                L.T("Passez sur la version 64 bits : dans Steam, clic droit sur Garry's Mod → Propriétés → Bêtas → « x86-64 ». Le gain est souvent le plus gros possible, et les plantages par manque de mémoire disparaissent."),
+                L.T("Le cfg multicœur fait travailler tous les cœurs du processeur au lieu d'un seul. S'il provoque des clignotements ou des plantages sur votre PC, retirez-le d'un clic."),
             ],
             CfgPath: @"garrysmod\cfg\autoexec.cfg",
             Cfg:
@@ -33,14 +33,14 @@ public static partial class GameTips
             ]),
         new(730, "Counter-Strike 2",
             [
-                "Dans les options vidéo, NVIDIA Reflex sur « Activé + Boost » réduit nettement la latence.",
-                "Synchronisation verticale désactivée dans le jeu. Avec un écran G-Sync ou FreeSync, limitez plutôt les images par seconde dans le pilote graphique, juste sous la fréquence de l'écran.",
-                "Les vieilles options de lancement (-high, -threads, +fps_max 0) n'apportent plus rien sous CS2 : laissez-les vides.",
+                L.T("Dans les options vidéo, NVIDIA Reflex sur « Activé + Boost » réduit nettement la latence."),
+                L.T("Synchronisation verticale désactivée dans le jeu. Avec un écran G-Sync ou FreeSync, limitez plutôt les images par seconde dans le pilote graphique, juste sous la fréquence de l'écran."),
+                L.T("Les vieilles options de lancement (-high, -threads, +fps_max 0) n'apportent plus rien sous CS2 : laissez-les vides."),
             ]),
         new(440, "Team Fortress 2",
             [
-                "mastercomfig, la référence de la communauté, règle des centaines de variables selon votre PC (de « faible » à « ultra »).",
-                "Le jeu est en 64 bits depuis 2024 : supprimez une éventuelle option de lancement « -dxlevel » héritée d'un vieux guide.",
+                L.T("mastercomfig, la référence de la communauté, règle des centaines de variables selon votre PC (de « faible » à « ultra »)."),
+                L.T("Le jeu est en 64 bits depuis 2024 : supprimez une éventuelle option de lancement « -dxlevel » héritée d'un vieux guide."),
             ],
             LinkText: "mastercomfig", Link: "https://mastercomfig.com/"),
     ];

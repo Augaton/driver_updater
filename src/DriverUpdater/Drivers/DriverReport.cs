@@ -21,17 +21,23 @@ public sealed class ReportRow
     public DriverOffer? Offer { get; init; }
     public bool Selected { get; set; }
 
-    public string Installed => Device.HasDriver ? new InstalledDriver(Device.Version, Device.Date).ToString() : "aucun";
+    public string Installed => Device.HasDriver ? new InstalledDriver(Device.Version, Device.Date).ToString() : L.T("aucun");
     public string Available => Offer?.Label ?? "—";
-    public string Source => Offer?.Source ?? "—";
+    public string Source => Offer?.Source switch
+    {
+        null => "—",
+        DriverOffer.Catalog => L.T("Fabricant"),
+        DriverOffer.Nvidia => L.T("Site NVIDIA"),
+        var source => source,
+    };
     public bool CanInstall => Offer is { InstallsHere: true };
     public string VerdictText => Verdict switch
     {
-        Verdict.Update => "Mise à jour",
-        Verdict.NoDriver => Offer is null ? "Aucun pilote" : "Aucun pilote, un trouvé",
+        Verdict.Update => L.T("Mise à jour"),
+        Verdict.NoDriver => Offer is null ? L.T("Aucun pilote") : L.T("Aucun pilote, un trouvé"),
         Verdict.Problem => Device.Status,
-        Verdict.Disabled => "Désactivé",
-        _ => "À jour",
+        Verdict.Disabled => L.T("Désactivé"),
+        _ => L.T("À jour"),
     };
 }
 

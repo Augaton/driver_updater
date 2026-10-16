@@ -6,7 +6,8 @@ namespace DriverUpdater.Tuning;
 /// <param name="MaxHz">The best rate the screen offers at its current resolution.</param>
 /// <param name="External">Plugged into a port (not a laptop's own panel, a wireless or virtual screen).</param>
 /// <param name="Adapter">The graphics adapter driving it (its LUID).</param>
-public sealed record Screen(string Name, double CurrentHz, int MaxHz, bool External, long Adapter);
+/// <param name="Device">Its GDI name ("\\.\DISPLAY1"), to change its mode.</param>
+public sealed record Screen(string Name, double CurrentHz, int MaxHz, bool External, long Adapter, string Device);
 
 /// <param name="Integrated">The processor's own graphics.</param>
 public sealed record GraphicsAdapter(long Luid, bool Integrated);
@@ -33,12 +34,12 @@ public static class Displays
             var source = new SourceName { Header = new() { Type = GetSourceName, Size = Marshal.SizeOf<SourceName>(), Adapter = path.SourceAdapter, Id = path.SourceId } };
             if (DisplayConfigGetDeviceInfo(ref source) != 0) continue;
             var target = new TargetName { Header = new() { Type = GetTargetName, Size = Marshal.SizeOf<TargetName>(), Adapter = path.TargetAdapter, Id = path.TargetId } };
-            string name = DisplayConfigGetDeviceInfo(ref target) == 0 && target.FriendlyName.Length > 0 ? target.FriendlyName : "sans nom";
+            string name = DisplayConfigGetDeviceInfo(ref target) == 0 && target.FriendlyName.Length > 0 ? target.FriendlyName : L.T("sans nom");
 
             double current = path.RefreshDenominator == 0 ? 0 : (double)path.RefreshNumerator / path.RefreshDenominator;
             var (width, height, max) = BestMode(source.GdiName);
             screens.Add(new Screen($"{name} ({width} × {height})", Math.Round(current, 2), Math.Max(max, (int)Math.Round(current)),
-                IsExternal(path.OutputTechnology), path.SourceAdapter.Value));
+                IsExternal(path.OutputTechnology), path.SourceAdapter.Value, source.GdiName));
         }
         return screens;
     }
@@ -65,6 +66,30 @@ public static class Displays
                 && (mode.DisplayFlags & Interlaced) == 0 && mode.DisplayFrequency > max)
                 max = mode.DisplayFrequency;
         return (current.PelsWidth, current.PelsHeight, max);
+    }
+
+    /// <summary>
+    /// Sets the screen's refresh rate at its current resolution. Not saved: Windows goes back
+    /// to the saved mode at the next sign-in, or at once with <see cref="RevertMode"/>, until
+    /// <see cref="SaveRefresh"/> keeps it. False if Windows refuses the mode.
+    /// </summary>
+    public static bool TryRefresh(string device, int hz) => ChangeRefresh(device, hz, save: false);
+
+    public static bool SaveRefresh(string device, int hz) => ChangeRefresh(device, hz, save: true);
+
+    /// <summary>Back to the mode Windows has saved for the screen.</summary>
+    public static void RevertMode(string device) => ChangeDisplaySettingsExW(device, IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero);
+
+    static bool ChangeRefresh(string device, int hz, bool save)
+    {
+        const int CurrentSettings = -1, Frequency = 0x400000; // DM_DISPLAYFREQUENCY
+        const uint Test = 0x2, UpdateRegistry = 0x1;
+        var mode = new DevMode { Size = (short)Marshal.SizeOf<DevMode>() };
+        if (!EnumDisplaySettingsW(device, CurrentSettings, ref mode)) return false;
+        mode.DisplayFrequency = hz;
+        mode.Fields = Frequency;
+        return ChangeDisplaySettingsExW(device, ref mode, IntPtr.Zero, Test, IntPtr.Zero) == 0
+               && ChangeDisplaySettingsExW(device, ref mode, IntPtr.Zero, save ? UpdateRegistry : 0, IntPtr.Zero) == 0;
     }
 
     /// <summary>The hardware graphics adapters (no software renderer), or empty when DXCore cannot tell.</summary>
@@ -201,6 +226,15 @@ public static class Displays
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [return: MarshalAs(UnmanagedType.Bool)]
     static extern bool EnumDisplaySettingsW(string device, int mode, ref DevMode devMode);
+
+    // DISP_CHANGE_SUCCESSFUL is 0.
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    static extern int ChangeDisplaySettingsExW(string device, ref DevMode devMode, IntPtr window, uint flags, IntPtr parameter);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    static extern int ChangeDisplaySettingsExW(string device, IntPtr devMode, IntPtr window, uint flags, IntPtr parameter);
 
     // ---- DXCore (dxcore_interface.h, Microsoft DirectX-Headers): vtable order matters ------------
 

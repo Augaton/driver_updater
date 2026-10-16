@@ -4,14 +4,6 @@ using Xunit;
 // Undo must give back exactly what was there: that is what makes the tweaks safe to try.
 public sealed class TweakTests
 {
-    sealed class FakeRegistry : IRegistry
-    {
-        public readonly Dictionary<(Hive, string, string), object> Values = [];
-        public object? Get(Hive hive, string key, string name) => Values.GetValueOrDefault((hive, key.ToLowerInvariant(), name.ToLowerInvariant()));
-        public void Set(Hive hive, string key, string name, object value) => Values[(hive, key.ToLowerInvariant(), name.ToLowerInvariant())] = value;
-        public void Delete(Hive hive, string key, string name) => Values.Remove((hive, key.ToLowerInvariant(), name.ToLowerInvariant()));
-    }
-
     static readonly Tweak GameMode = TweakCatalog.Find("game-mode")!;
     static readonly Tweak Windowed = TweakCatalog.Find("windowed-games")!;
 

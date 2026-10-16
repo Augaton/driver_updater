@@ -5,6 +5,20 @@ namespace DriverUpdater.Maintenance;
 
 public sealed record BootEntry(DateTime Date, double Seconds, double MainPathSeconds, double PostBootSeconds);
 
+/// <summary>Average boot time before and after a change, from the boots Windows measured.</summary>
+public sealed record BootGain(double BeforeSeconds, double AfterSeconds, int BootsAfter)
+{
+    public double Saved => BeforeSeconds - AfterSeconds;
+
+    /// <summary>Null until there is at least one measured boot on each side of the change.</summary>
+    public static BootGain? Since(IReadOnlyList<BootEntry> boots, DateTime change)
+    {
+        var before = boots.Where(b => b.Date < change).ToList();
+        var after = boots.Where(b => b.Date > change).ToList();
+        return before.Count == 0 || after.Count == 0 ? null : new BootGain(before.Average(b => b.Seconds), after.Average(b => b.Seconds), after.Count);
+    }
+}
+
 /// <param name="Name">File or service name as Windows logs it, e.g. "OneDrive.exe".</param>
 public sealed record Slowdown(string Name, string FriendlyName, string Kind, int Times, double AverageSeconds)
 {
@@ -57,7 +71,7 @@ public static class BootEvents
             }
             else if (id is AppSlow or DriverSlow or ServiceSlow && data.TryGetValue("Name", out var name) && name.Length > 0)
             {
-                var kind = id switch { AppSlow => "Application", DriverSlow => "Pilote", _ => "Service" };
+                var kind = id switch { AppSlow => "Application", DriverSlow => L.T("Pilote"), _ => "Service" };
                 slow.Add((name, data.GetValueOrDefault("FriendlyName") is { Length: > 0 } friendly ? friendly : name, kind, Seconds("DegradationTime")));
             }
         }

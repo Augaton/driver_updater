@@ -21,13 +21,13 @@ public static class DriverRollback
         {
             var device = new DeviceInfoData { Size = (uint)Marshal.SizeOf<DeviceInfoData>() };
             if (!SetupDiOpenDeviceInfoW(set, deviceInstanceId, IntPtr.Zero, 0, ref device))
-                throw new InvalidOperationException("Périphérique introuvable : il a peut-être été débranché.");
+                throw new InvalidOperationException(L.T("Périphérique introuvable : il a peut-être été débranché."));
             if (!DiRollbackDriver(set, ref device, IntPtr.Zero, NoUi, out bool reboot))
             {
                 int error = Marshal.GetLastWin32Error();
                 throw new InvalidOperationException(error == NoPreviousDriver
-                    ? "Windows n'a pas gardé de version précédente pour ce pilote."
-                    : $"Retour en arrière refusé par Windows ({new Win32Exception(error).Message}).");
+                    ? L.T("Windows n'a pas gardé de version précédente pour ce pilote.")
+                    : L.F("Retour en arrière refusé par Windows ({0}).", new Win32Exception(error).Message));
             }
             return reboot;
         }

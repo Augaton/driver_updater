@@ -27,10 +27,9 @@ public partial class MainWindow : Window
         BuildNav();
         Loaded += async (_, _) =>
         {
-            LoadWeeklyCheck();
-            StartDeviceWatch();
-            // The inventory too: new devices are spotted by comparing with it.
-            await Task.WhenAll(LoadHardware(), LoadInventory(), CheckForUpdate());
+            // The inventory too: new devices are spotted by comparing with it. All of it off the
+            // window's thread, so the window answers from the first moment.
+            await Task.WhenAll(LoadWeeklyCheck(), StartDeviceWatch(), LoadHardware(), LoadInventory(), CheckForUpdate());
         };
     }
 
@@ -44,6 +43,7 @@ public partial class MainWindow : Window
             LoadTuning(), LoadSecurity(askWindowsUpdate: false));
         report = DriverReport.Build(inventory, [], new Dictionary<string, DriverOffer>());
         ShowReport();
+        LoadSettings();
         await LoadGames();
     }
 
@@ -64,10 +64,11 @@ public partial class MainWindow : Window
         else if (tab == ComponentsTab) await CheckComponents();
         else if (tab == GameTipsTab) await LoadGameTips();
         else if (tab == TuningTab) await LoadTuning();
-        else if (tab == PrivacyTab || tab == CleanupTab) await LoadTweaks();
+        else if (tab == PrivacyTab || tab == CleanupTab || tab == FakeBoostsTab) await LoadTweaks();
         else if (tab == HistoryTab) await LoadHistory();
         else if (tab == StartupTab) await LoadStartup();
         else if (tab == ProgramsTab) await LoadPrograms();
+        else if (tab == SettingsTab) LoadSettings();
     }
 
     async Task CheckForUpdate()
@@ -76,7 +77,7 @@ public partial class MainWindow : Window
         {
             var current = typeof(MainWindow).Assembly.GetName().Version!;
             if (await UpdateCheck.NewerReleaseAsync(current) is not { } release) return;
-            UpdateBannerText.Text = $"La version {release.Version.ToString(3)} de Driver Updater est disponible.";
+            UpdateBannerText.Text = L.F("La version {0} de Driver Updater est disponible.", release.Version.ToString(3));
             UpdateBannerButton.Tag = release.Url;
             UpdateInstallButton.Visibility = release.CanInstall ? Visibility.Visible : Visibility.Collapsed;
             newerRelease = release;
@@ -95,10 +96,10 @@ public partial class MainWindow : Window
     async void OnInstallAppUpdate(object sender, RoutedEventArgs e)
     {
         if (newerRelease is not { CanInstall: true } release) return;
-        if (Ask($"Installer la version {release.Version.ToString(3)} ?\n\nL'installateur est téléchargé depuis la page GitHub du projet, " +
-                "vérifié, puis lancé ; l'application se ferme pour qu'il la remplace.") != MessageBoxResult.Yes)
+        if (Ask(L.F("Installer la version {0} ?\n\nL'installateur est téléchargé depuis la page GitHub du projet, ", release.Version.ToString(3)) +
+                L.T("vérifié, puis lancé ; l'application se ferme pour qu'il la remplace.")) != MessageBoxResult.Yes)
             return;
-        await RunBusy("Téléchargement de la mise à jour…", async () =>
+        await RunBusy(L.T("Téléchargement de la mise à jour…"), async () =>
         {
             var current = typeof(MainWindow).Assembly.GetName().Version!;
             using var installer = await UpdateCheck.DownloadInstallerAsync(release, current, new Progress<string>(SetStatus));
@@ -108,27 +109,27 @@ public partial class MainWindow : Window
             }
             catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
             {
-                return "Mise à jour annulée.";
+                return L.T("Mise à jour annulée.");
             }
             Application.Current.Shutdown();
-            return "Installation de la mise à jour…";
+            return L.T("Installation de la mise à jour…");
         });
     }
 
     async void OnCopyDiagnostics(object sender, RoutedEventArgs e)
     {
         var lines = log.ToList();
-        SetStatus("Préparation du diagnostic…");
+        SetStatus(L.T("Préparation du diagnostic…"));
         var report = await Task.Run(() => Diagnostics.Build(lines));
         try
         {
             Clipboard.SetText(report);
-            SetStatus("Diagnostic copié : collez-le avec Ctrl+V. Relisez-le avant de le partager.");
+            SetStatus(L.T("Diagnostic copié : collez-le avec Ctrl+V. Relisez-le avant de le partager."));
         }
         catch (Exception ex)
         {
             // Another program can hold the clipboard for a moment.
-            SetStatus("Presse-papiers occupé, réessayez : " + Errors.Describe(ex));
+            SetStatus(L.T("Presse-papiers occupé, réessayez : ") + Errors.Describe(ex));
         }
     }
 
@@ -149,8 +150,8 @@ public partial class MainWindow : Window
     {
         // The administrator helper reports here: closing now would cut it off mid-task. It may
         // also hang (a stuck DISM or Windows Update): the user decides.
-        if (adminRuns > 0 && Ask("Une opération administrateur est en cours. Fermer quand même ?\n\n" +
-                                 "Elle sera interrompue là où elle en est.", MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (adminRuns > 0 && Ask(L.T("Une opération administrateur est en cours. Fermer quand même ?\n\n") +
+                                 L.T("Elle sera interrompue là où elle en est."), MessageBoxImage.Warning) != MessageBoxResult.Yes)
             e.Cancel = true;
         base.OnClosing(e);
     }
@@ -176,7 +177,7 @@ public partial class MainWindow : Window
         // while the first is still running.
         if (busy)
         {
-            SetStatus("Une opération est déjà en cours : patientez qu'elle se termine.");
+            SetStatus(L.T("Une opération est déjà en cours : patientez qu'elle se termine."));
             return;
         }
         busy = true;
@@ -193,7 +194,7 @@ public partial class MainWindow : Window
         }
         catch (Exception e)
         {
-            SetStatus("Erreur : " + Errors.Describe(e));
+            SetStatus(L.T("Erreur : ") + Errors.Describe(e));
         }
         finally
         {
@@ -212,7 +213,7 @@ public partial class MainWindow : Window
                      CleanWindowsTempButton, SfcButton, DismRestoreButton, DismCleanupButton, BackupButton, RestoreBackupButton,
                      SearchCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
                      BootReportButton, MeasureButton, ScanButton, RefreshInventoryButton, StoreScanButton, DeviceBannerButton,
-                     GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton, PrivacyAllButton,
+                     GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton, PrivacyAllButton, FakeBoostsScanButton, FakeBoostsAllButton,
                      RestorePointsButton, CreateRestorePointButton, UpdateInstallButton,
                  })
             button.IsEnabled = !busy;

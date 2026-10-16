@@ -11,7 +11,7 @@
       <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding}" Click="OnTweakAction" IsEnabled="{Binding CanAct}"
-                  VerticalAlignment="Center" MinWidth="120" Margin="12,0,0,0" />
+                  VerticalAlignment="Center" MinWidth="120" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
           <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
                      Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
           <StackPanel>
@@ -19,7 +19,7 @@
               <Run Text="{Binding Tweak.Title, Mode=OneWay}" FontWeight="SemiBold" />
               <Run Text="{Binding Badges, Mode=OneWay}" Foreground="{StaticResource InkMuted}" FontSize="11" />
             </TextBlock>
-            <TextBlock Text="{Binding Tweak.Why}" Style="{StaticResource Muted}" />
+            <TextBlock Text="{Binding Why}" Style="{StaticResource Muted}" />
           </StackPanel>
         </DockPanel>
       </Border>
@@ -184,7 +184,7 @@
 
           <!-- The rest of the PC, checked by the same scan. -->
           <UniformGrid Grid.Row="2" Columns="4">
-            <Button Style="{StaticResource Tile}" Tag="SoftwareTab" Click="OnTile">
+            <Button Style="{StaticResource Tile}" Tag="SoftwareTab" Click="OnTile" AutomationProperties.Name="Logiciels à mettre à jour">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonGreen}" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -195,7 +195,7 @@
                 </StackPanel>
               </DockPanel>
             </Button>
-            <Button Style="{StaticResource Tile}" Tag="StartupTab" Click="OnTile">
+            <Button Style="{StaticResource Tile}" Tag="StartupTab" Click="OnTile" AutomationProperties.Name="Programmes au démarrage">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE7E8;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonPink}" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -206,7 +206,7 @@
                 </StackPanel>
               </DockPanel>
             </Button>
-            <Button Style="{StaticResource Tile}" Tag="SecurityTab" Click="OnTile">
+            <Button Style="{StaticResource Tile}" Tag="SecurityTab" Click="OnTile" AutomationProperties.Name="Sécurité">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -217,7 +217,7 @@
                 </StackPanel>
               </DockPanel>
             </Button>
-            <Button Style="{StaticResource Tile}" Tag="DisksTab" Click="OnTile">
+            <Button Style="{StaticResource Tile}" Tag="DisksTab" Click="OnTile" AutomationProperties.Name="Disques">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonCyan}" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -248,9 +248,8 @@
             </StackPanel>
           </local:PageHeader>
           <WrapPanel DockPanel.Dock="Bottom" Margin="0,0,0,12">
-            <CheckBox x:Name="WeeklyCheckBox" Content="Vérifier chaque semaine et me prévenir"
-                      Click="OnWeeklyCheckClick" VerticalAlignment="Center" Margin="0,0,12,0" />
-            <TextBlock x:Name="WeeklyCheckNote" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,16,0" />
+            <TextBlock Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,16,0"
+                       Text="La vérification hebdomadaire se règle dans Paramètres." />
             <Button x:Name="UnhideButton" Content="Réafficher les pilotes masqués" Click="OnUnhide" />
           </WrapPanel>
           <Border Style="{StaticResource Card}" Padding="0">
@@ -462,7 +461,7 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel>
             <local:PageHeader Title="Périphériques en erreur"
-                              Description="Ce que le Gestionnaire de périphériques signale, avec le sens de chaque code d'erreur. Le plus souvent, un pilote manquant (onglet Fabricants ou Windows Update) ou un périphérique désactivé.">
+                              Description="Ce que le Gestionnaire de périphériques signale, avec le sens de chaque code d'erreur. Le plus souvent, un pilote manquant (pages Fabricants ou Windows Update) ou un périphérique désactivé.">
               <StackPanel Orientation="Horizontal">
                 <Button Content="Gestionnaire de périphériques" Tag="devmgmt.msc" Click="OnOpenSetting" />
               </StackPanel>
@@ -966,6 +965,24 @@
         </ScrollViewer>
       </TabItem>
 
+      <!-- "Défaire les faux boosts": what optimizer tools left behind that hurts -->
+      <TabItem x:Name="FakeBoostsTab" Header="Faux boosts" Tag="&#xE7A7;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Défaire les faux boosts"
+                              Description="Ce que des « optimiseurs » et des guides ont pu laisser sur ce PC, et qui le ralentit ou l'expose. Chaque point s'appuie sur la documentation de Microsoft ou sur des mesures publiées ; « Rétablir » remet la valeur de Windows et garde l'ancienne, pour revenir en arrière."
+                              Note="Les points en bleu sont seulement signalés : aucun mal prouvé, ou un choix qui se défend.">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="FakeBoostsScanButton" Content="Analyser" Click="OnTuningRefresh" Margin="0,0,8,0" />
+                <Button x:Name="FakeBoostsAllButton" Content="Tout rétablir" Tag="Faux boosts" Style="{DynamicResource AccentButtonStyle}" Click="OnTuneAll" />
+              </StackPanel>
+            </local:PageHeader>
+            <TextBlock x:Name="FakeBoostsStatus" Foreground="{StaticResource InkMuted}" Margin="0,0,0,10" Text="Analyse en cours…" />
+            <ItemsControl x:Name="FakeBoostList" ItemTemplate="{StaticResource TweakRowTemplate}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- Antivirus, firewall, pending Windows updates -->
       <TabItem x:Name="SecurityTab" Header="Sécurité" Tag="&#xEA18;">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -1231,6 +1248,67 @@
             </DataGrid>
           </Border>
         </DockPanel>
+      </TabItem>
+
+      <!-- Back to the root of the menu. -->
+      <TabItem Header="" Style="{StaticResource Section}" />
+
+      <!-- The user's choices -->
+      <TabItem x:Name="SettingsTab" Header="Paramètres" Tag="&#xE713;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Paramètres" Description="Vos choix, gardés d'une fois sur l'autre." />
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Vérification hebdomadaire" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Chaque mercredi, l'application cherche en silence, sans droits administrateur, et ne vous prévient que s'il y a du nouveau." />
+                <CheckBox x:Name="WeeklyCheckBox" Content="Vérifier chaque semaine les pilotes de Windows Update et me prévenir"
+                          Click="OnWeeklyCheckClick" Margin="0,10,0,0" />
+                <TextBlock x:Name="WeeklyCheckNote" Style="{StaticResource Muted}" />
+                <CheckBox x:Name="WeeklyNvidiaBox" Content="…et un nouveau pilote NVIDIA" Click="OnSettingChanged" Margin="28,6,0,0" />
+                <CheckBox x:Name="WeeklySoftwareBox" Content="…et des mises à jour de logiciels" Click="OnSettingChanged" Margin="28,6,0,0" />
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Pilote NVIDIA" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Souvent la même version : le Studio est testé plus longtemps avec les logiciels de création. Pour jouer, Game Ready." />
+                <RadioButton x:Name="GameReadyRadio" GroupName="Nvidia" Content="Game Ready : pour jouer, prêt le jour des grandes sorties"
+                             Click="OnSettingChanged" Margin="0,10,0,0" />
+                <RadioButton x:Name="StudioRadio" GroupName="Nvidia" Content="Studio : pour la création (montage, 3D, diffusion)"
+                             Click="OnSettingChanged" Margin="0,6,0,0" />
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="Langue" Style="{StaticResource Heading}" FontSize="17" />
+                <ComboBox x:Name="LanguageBox" Width="280" HorizontalAlignment="Left" Margin="0,8,0,0"
+                          SelectionChanged="OnLanguageChanged" AutomationProperties.Name="Langue">
+                  <ComboBoxItem Tag="auto" Content="Automatique (langue de Windows)" />
+                  <ComboBoxItem Tag="fr" Content="Français" />
+                  <ComboBoxItem Tag="en" Content="English" />
+                </ComboBox>
+                <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" Text="Prend effet au prochain démarrage de l'application." />
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="À propos" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock x:Name="AboutText" Style="{StaticResource Muted}" />
+                <WrapPanel Margin="0,10,0,0">
+                  <Button Content="Page du projet" Tag="https://github.com/Augaton/driver_updater" Click="OnOpenLink" Margin="0,0,8,8" />
+                  <Button Content="Nouveautés des versions" Tag="https://github.com/Augaton/driver_updater/releases" Click="OnOpenLink" Margin="0,0,8,8" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
 
     </TabControl>

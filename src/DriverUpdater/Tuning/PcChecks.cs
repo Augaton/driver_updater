@@ -24,6 +24,7 @@ public static class PcChecks
         Add(checks, X3D);
         Add(checks, MemoryIntegrity);
         Add(checks, SteamLibraries);
+        Add(checks, () => LaptopGraphics(laptop));
         Add(checks, SystemDisk);
         return checks;
     }
@@ -50,7 +51,7 @@ public static class PcChecks
         var integrated = adapters.Where(a => a.Integrated).Select(a => a.Luid).ToHashSet();
         foreach (var screen in Displays.Screens())
         {
-            yield return HardwareRules.Refresh(screen.Name, screen.CurrentHz, screen.MaxHz);
+            yield return HardwareRules.Refresh(screen.Name, screen.CurrentHz, screen.MaxHz, screen.Device);
             if (screen.External)
                 yield return HardwareRules.OnIntegratedGraphics(screen.Name, discrete, integrated.Contains(screen.Adapter), laptop);
         }
@@ -73,19 +74,19 @@ public static class PcChecks
     static PcCheck? Power(bool laptop)
     {
         if (Machine.ActivePowerPlan() is not { } plan) return null;
-        const string Where = "Paramètres d'alimentation";
+        string Where = L.T("Paramètres d'alimentation");
         if (plan == Machine.PowerSaver)
-            return new("Alimentation", "Mode « Économie d'énergie »", !laptop,
-                "Le processeur et la carte graphique sont bridés pour consommer moins. Pour jouer, choisissez le mode « Équilibré ».",
+            return new(L.T("Alimentation"), L.T("Mode « Économie d'énergie »"), !laptop,
+                L.T("Le processeur et la carte graphique sont bridés pour consommer moins. Pour jouer, choisissez le mode « Équilibré »."),
                 Where, "ms-settings:powersleep");
         if (plan != Machine.Balanced && Machine.IsDualDieX3D())
-            return new("Alimentation", "Plan autre que « Équilibré » sur un Ryzen X3D à deux CCD", true,
-                "Ces processeurs ont besoin du plan « Équilibré » : c'est lui qui laisse le pilote d'AMD garder le jeu sur la partie munie du cache 3D. Sinon, le jeu s'étale sur les deux et perd des images.",
+            return new(L.T("Alimentation"), L.T("Plan autre que « Équilibré » sur un Ryzen X3D à deux CCD"), true,
+                L.T("Ces processeurs ont besoin du plan « Équilibré » : c'est lui qui laisse le pilote d'AMD garder le jeu sur la partie munie du cache 3D. Sinon, le jeu s'étale sur les deux et perd des images."),
                 Where, "ms-settings:powersleep");
         return plan == Machine.Balanced
-            ? new("Alimentation", "Mode « Équilibré »", false, "Le bon choix : le processeur monte en fréquence dès qu'un jeu le demande.")
-            : new("Alimentation", "Plan à hautes performances", false,
-                "Aucun gain mesuré sur les processeurs récents : il consomme seulement plus. Le mode « Équilibré » suffit.");
+            ? new(L.T("Alimentation"), L.T("Mode « Équilibré »"), false, L.T("Le bon choix : le processeur monte en fréquence dès qu'un jeu le demande."))
+            : new(L.T("Alimentation"), L.T("Plan à hautes performances"), false,
+                L.T("Aucun gain mesuré sur les processeurs récents : il consomme seulement plus. Le mode « Équilibré » suffit."));
     }
 
     static PcCheck? X3D()
@@ -94,17 +95,17 @@ public static class PcChecks
         var missing = new List<string>();
         switch (Machine.VCacheOptimizerWorks())
         {
-            case null: missing.Add("le pilote « 3D V-Cache Performance Optimizer » est absent"); break;
-            case false: missing.Add("le pilote « 3D V-Cache Performance Optimizer » est en erreur"); break;
+            case null: missing.Add(L.T("le pilote « 3D V-Cache Performance Optimizer » est absent")); break;
+            case false: missing.Add(L.T("le pilote « 3D V-Cache Performance Optimizer » est en erreur")); break;
         }
-        if (!Machine.GameBarInstalled()) missing.Add("la Xbox Game Bar est désinstallée");
-        if (!Machine.GameModeOn()) missing.Add("le Mode jeu est désactivé");
+        if (!Machine.GameBarInstalled()) missing.Add(L.T("la Xbox Game Bar est désinstallée"));
+        if (!Machine.GameModeOn()) missing.Add(L.T("le Mode jeu est désactivé"));
         var cpu = Machine.ProcessorName();
         return missing.Count == 0
-            ? new(cpu, "Pilote du cache 3D, Game Bar et Mode jeu en place", false, "Les jeux restent sur la partie munie du cache 3D.")
+            ? new(cpu, L.T("Pilote du cache 3D, Game Bar et Mode jeu en place"), false, L.T("Les jeux restent sur la partie munie du cache 3D."))
             : new(cpu, string.Join(", ", missing), true,
-                "Sans eux, les jeux s'étalent sur les deux parties du processeur et perdent des images. Installez le dernier pilote chipset AMD (il contient le pilote du cache 3D), gardez la Xbox Game Bar et le Mode jeu.",
-                "Pilotes AMD", "https://www.amd.com/fr/support/download/drivers.html");
+                L.T("Sans eux, les jeux s'étalent sur les deux parties du processeur et perdent des images. Installez le dernier pilote chipset AMD (il contient le pilote du cache 3D), gardez la Xbox Game Bar et le Mode jeu."),
+                L.T("Pilotes AMD"), L.T("https://www.amd.com/fr/support/download/drivers.html"));
     }
 
     // Memory integrity blocks malicious drivers; it costs a few frames in some games. Shown,
@@ -118,10 +119,10 @@ public static class PcChecks
         bool on;
         using (guard)
             on = (guard["SecurityServicesRunning"] as uint[] ?? []).Contains(2u); // 2 = hypervisor-enforced code integrity
-        return new("Isolation du noyau (intégrité de la mémoire)", on ? "Activée" : "Désactivée", false,
-            on ? "Elle bloque les pilotes malveillants. Elle coûte environ 5 % d'images en 1080p (jusqu'à 10 % dans quelques jeux, presque rien en 4K). Microsoft conseille de la laisser active ; la couper est un choix de sécurité, à faire en connaissance de cause, et certains anti-triche l'exigent."
-               : "Désactivée : quelques images de plus, mais moins de protection contre les pilotes malveillants.",
-            "Sécurité Windows", "windowsdefender://coreisolation");
+        return new(L.T("Isolation du noyau (intégrité de la mémoire)"), on ? L.T("Activée") : L.T("Désactivée"), false,
+            on ? L.T("Elle bloque les pilotes malveillants. Elle coûte environ 5 % d'images en 1080p (jusqu'à 10 % dans quelques jeux, presque rien en 4K). Microsoft conseille de la laisser active ; la couper est un choix de sécurité, à faire en connaissance de cause, et certains anti-triche l'exigent.")
+               : L.T("Désactivée : quelques images de plus, mais moins de protection contre les pilotes malveillants."),
+            L.T("Sécurité Windows"), "windowsdefender://coreisolation");
     }
 
     // Open worlds stream from the disk while playing: on a hard disk, that is stutter.
@@ -133,12 +134,30 @@ public static class PcChecks
             if (games == 0) continue;
             yield return Machine.OnHardDisk(library) switch
             {
-                true => new PcCheck("Jeux Steam", $"{games} jeu(x) sur un disque dur ({library})", true,
-                    "Chargements bien plus longs et saccades dans les mondes ouverts. Steam → Paramètres → Stockage permet de déplacer un jeu vers un SSD sans le retélécharger."),
-                false => new PcCheck("Jeux Steam", $"{games} jeu(x) sur un SSD ({library})", false, "Rien à faire."),
+                true => new PcCheck(L.T("Jeux Steam"), L.F("{0} jeu(x) sur un disque dur ({1})", games, library), true,
+                    L.T("Chargements bien plus longs et saccades dans les mondes ouverts. Steam → Paramètres → Stockage permet de déplacer un jeu vers un SSD sans le retélécharger.")),
+                false => new PcCheck(L.T("Jeux Steam"), L.F("{0} jeu(x) sur un SSD ({1})", games, library), false, L.T("Rien à faire.")),
                 null => null,
             };
         }
+    }
+
+    // A laptop with two graphics chips: are the Steam games set to use the dedicated one?
+    static PcCheck? LaptopGraphics(bool laptop)
+    {
+        if (!laptop) return null;
+        var adapters = Displays.Adapters();
+        if (!adapters.Any(a => a.Integrated) || !adapters.Any(a => !a.Integrated)) return null;
+        var registry = new WindowsRegistry();
+        var games = SteamGames.AllGameFolders().Select(SteamGames.GamePrograms).Where(programs => programs.Count > 0).ToList();
+        if (games.Count == 0) return null;
+        int left = games.Count(programs => !programs.All(p => GpuPreference.IsForced(p, registry)));
+        return left == 0
+            ? new(L.T("Jeux Steam"), L.T("Tous réglés sur la carte graphique dédiée"), false, L.T("Windows ne les fera pas tourner sur la puce graphique du processeur."),
+                GpuPreference.CanUndo(registry) ? L.T("Annuler") : null, GpuPreference.CanUndo(registry) ? "gpu-preference-undo" : null)
+            : new(L.T("Jeux Steam"), L.F("{0} jeu(x) sur {1} laissé(s) au choix de Windows", left, games.Count), true,
+                L.T("Sur un portable à deux puces graphiques, Windows peut faire tourner un jeu sur celle du processeur, bien moins puissante. Ce réglage de Windows (Paramètres → Affichage → Graphiques) les force sur la carte dédiée ; il s'annule d'un clic."),
+                L.T("Forcer la carte dédiée"), "gpu-preference");
     }
 
     static PcCheck? SystemDisk()
@@ -146,9 +165,9 @@ public static class PcChecks
         var system = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory)!);
         double free = system.AvailableFreeSpace, total = system.TotalSize;
         bool low = free < 20L * 1024 * 1024 * 1024 || free / total < 0.10;
-        return new("Disque système", $"{Bytes.Format((long)free)} libres sur {Bytes.Format((long)total)}", low,
-            low ? "Moins de 10 % libres : Windows et les jeux ralentissent et les mises à jour échouent. Faites de la place."
-                : "Assez de place.",
-            low ? "Libérer de l'espace" : null, low ? "tab:CleanupTab" : null);
+        return new(L.T("Disque système"), L.F("{0} libres sur {1}", Bytes.Format((long)free), Bytes.Format((long)total)), low,
+            low ? L.T("Moins de 10 % libres : Windows et les jeux ralentissent et les mises à jour échouent. Faites de la place.")
+                : L.T("Assez de place."),
+            low ? L.T("Libérer de l'espace") : null, low ? "tab:CleanupTab" : null);
     }
 }

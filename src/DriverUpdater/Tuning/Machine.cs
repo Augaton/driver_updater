@@ -73,10 +73,13 @@ public static class Machine
     }
 
     /// <summary>The Xbox Game Bar, installed for this user (AMD's X3D driver relies on it to spot games).</summary>
-    public static bool GameBarInstalled()
+    public static bool GameBarInstalled() => PackageInstalled("Microsoft.XboxGamingOverlay_8wekyb3d8bbwe");
+
+    /// <summary>A Store app (by package family) installed for this user.</summary>
+    public static bool PackageInstalled(string family)
     {
         uint count = 0, bufferLength = 0;
-        int result = GetPackagesByPackageFamily("Microsoft.XboxGamingOverlay_8wekyb3d8bbwe", ref count, IntPtr.Zero, ref bufferLength, IntPtr.Zero);
+        int result = GetPackagesByPackageFamily(family, ref count, IntPtr.Zero, ref bufferLength, IntPtr.Zero);
         return result is 0 or 122 && count > 0; // 122: buffer too small, meaning there is at least one
     }
 

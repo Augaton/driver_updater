@@ -21,7 +21,7 @@ public partial class MainWindow
         }
         catch (Exception e)
         {
-            SetStatus("Lecture des programmes au démarrage impossible : " + Errors.Describe(e));
+            SetStatus(L.T("Lecture des programmes au démarrage impossible : ") + Errors.Describe(e));
         }
     }
 
@@ -32,7 +32,7 @@ public partial class MainWindow
         if (sender is not CheckBox { DataContext: StartupEntry entry } box) return;
         bool enable = box.IsChecked == true;
         box.IsChecked = entry.Enabled; // until it is really done
-        await RunBusy(entry.Machine ? "En attente de l'autorisation administrateur…" : "Modification…", async () =>
+        await RunBusy(entry.Machine ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
         {
             if (entry.Machine)
                 await RunAdminAsync<bool>(AdminCommand.StartupSet, entry.Kind, entry.Name, enable ? "on" : "off");
@@ -40,12 +40,13 @@ public partial class MainWindow
                 StartupApps.SetEnabled(entry.Kind, entry.Name, machine: false, enable);
             entry.Enabled = enable;
             box.IsChecked = enable;
-            return $"{entry.Title} {(enable ? "démarrera" : "ne démarrera plus")} avec Windows.";
+            Settings.StartupChanged = DateTime.Now; // the boots after this one show what it saved
+            return enable ? L.F("{0} démarrera avec Windows.", entry.Title) : L.F("{0} ne démarrera plus avec Windows.", entry.Title);
         });
     }
 
     async void OnBootReport(object sender, RoutedEventArgs e) =>
-        await RunBusy("Lecture des mesures de démarrage…", async () =>
+        await RunBusy(L.T("Lecture des mesures de démarrage…"), async () =>
         {
             try
             {
@@ -54,13 +55,13 @@ public partial class MainWindow
             catch (Exception ex) when (ex is UnauthorizedAccessException or EventLogException)
             {
                 // On many PCs only administrators may read this log.
-                SetStatus("En attente de l'autorisation administrateur…");
+                SetStatus(L.T("En attente de l'autorisation administrateur…"));
                 bootReport = await RunAdminAsync<BootReport>(AdminCommand.BootReport);
             }
             ShowBootReport(bootReport);
             return bootReport.Boots.Count == 0
-                ? "Windows n'a enregistré aucune mesure de démarrage ces 30 derniers jours."
-                : "Mesures de démarrage lues.";
+                ? L.T("Windows n'a enregistré aucune mesure de démarrage ces 30 derniers jours.")
+                : L.T("Mesures de démarrage lues.");
         });
 
     void ShowBootReport(BootReport report)
@@ -68,15 +69,19 @@ public partial class MainWindow
         BootCard.Visibility = Visibility.Visible;
         if (report.Boots.Count == 0)
         {
-            BootSummary.Text = "Aucune mesure ces 30 derniers jours (Windows ne mesure pas les démarrages rapides ni les sorties de veille).";
+            BootSummary.Text = L.T("Aucune mesure ces 30 derniers jours (Windows ne mesure pas les démarrages rapides ni les sorties de veille).");
         }
         else
         {
             var last = report.Boots[0];
-            BootSummary.Text = $"Dernier démarrage mesuré ({last.Date:dd/MM HH:mm}) : {last.Seconds:0} s, dont {last.PostBootSeconds:0} s " +
-                               $"après l'apparition du bureau. Moyenne sur {report.Boots.Count} démarrage(s) : {report.Boots.Average(b => b.Seconds):0} s." +
-                               (report.Slowdowns.Count > 0 ? " Ce qui l'a ralenti :" : " Rien ne l'a nettement ralenti.");
+            BootSummary.Text = L.F("Dernier démarrage mesuré ({0:dd/MM HH:mm}) : {1:0} s, dont {2:0} s ", last.Date, last.Seconds, last.PostBootSeconds) +
+                               L.F("après l'apparition du bureau. Moyenne sur {0} démarrage(s) : {1:0} s.", report.Boots.Count, report.Boots.Average(b => b.Seconds)) +
+                               (report.Slowdowns.Count > 0 ? L.T(" Ce qui l'a ralenti :") : L.T(" Rien ne l'a nettement ralenti."));
         }
+        if (Settings.StartupChanged is { } changed && BootGain.Since(report.Boots, changed) is { } gain)
+            BootSummary.Text += L.F("\nDepuis vos changements du {0:dd/MM} : {1:0} s → {2:0} s en moyenne ", changed, gain.BeforeSeconds, gain.AfterSeconds) +
+                                (gain.Saved >= 1 ? L.F("({0:0} s de gagnées", gain.Saved) : gain.Saved <= -1 ? L.F("({0:0} s de plus", -gain.Saved) : L.T("(pas de différence nette")) +
+                                L.F(", {0} démarrage(s) mesuré(s) depuis).", gain.BootsAfter);
         ShowBootChart(report.Boots);
         SlowdownList.ItemsSource = report.Slowdowns.Take(10).ToList();
         ApplyImpact();
@@ -100,7 +105,7 @@ public partial class MainWindow
         BootBars.ItemsSource = shown.Select((b, i) => new BootBar(
             Math.Max(2, b.Seconds / top * BootBarMax),
             i == shown.Count - 1 ? $"{b.Seconds:0} s" : "",
-            $"{b.Date:dd/MM HH:mm} : {b.Seconds:0} s, dont {b.PostBootSeconds:0} s après l'apparition du bureau")).ToList();
+            L.F("{0:dd/MM HH:mm} : {1:0} s, dont {2:0} s après l'apparition du bureau", b.Date, b.Seconds, b.PostBootSeconds))).ToList();
         BootFirstDate.Text = $"{shown[0].Date:dd/MM}";
         BootLastDate.Text = $"{shown[^1].Date:dd/MM}";
     }
@@ -114,7 +119,7 @@ public partial class MainWindow
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         foreach (var entry in startupEntries)
             entry.Impact = byFile.TryGetValue(Path.GetFileName(entry.Program), out var slow)
-                ? $"{slow.AverageText} ({slow.Times} fois)"
-                : "non mesuré";
+                ? L.F("{0} ({1} fois)", slow.AverageText, slow.Times)
+                : L.T("non mesuré");
     }
 }

@@ -26,13 +26,15 @@ public static class NvidiaDrivers
     /// <summary>The card's PCI device ID ("2684"), or null for another maker's device.</summary>
     public static string? CardId(DeviceDriver device) => device.HardwareIds.Select(NvidiaModel.DeviceId).FirstOrDefault(id => id is not null);
 
+    /// <summary>The newest driver of the kind the user chose (Game Ready, or Studio in Paramètres).</summary>
     public static async Task<NvidiaRelease?> LatestForAsync(string deviceId, bool laptop)
     {
         using var http = Client(TimeSpan.FromSeconds(20));
+        bool studio = Settings.NvidiaStudio;
         try
         {
-            var answer = await http.GetStringAsync(NvidiaModel.LookupUrl(deviceId, Environment.OSVersion.Version.Build, laptop)).ConfigureAwait(false);
-            return NvidiaModel.Parse(answer);
+            var answer = await http.GetStringAsync(NvidiaModel.LookupUrl(deviceId, Environment.OSVersion.Version.Build, laptop, studio)).ConfigureAwait(false);
+            return NvidiaModel.Parse(answer, studio);
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
         {
@@ -43,10 +45,10 @@ public static class NvidiaDrivers
     /// <summary>Administrator helper side: download, signature, NVIDIA's installer; returns its version and exit code.</summary>
     public static async Task<(string Version, int ExitCode)> InstallAsync(string deviceId, Action<string> progress)
     {
-        progress("Recherche du pilote chez NVIDIA…");
+        progress(L.T("Recherche du pilote chez NVIDIA…"));
         var release = await LatestForAsync(deviceId, Machine.HasBattery)
-            ?? throw new InvalidOperationException("NVIDIA ne propose pas de pilote pour cette carte en ce moment.");
-        if (!NvidiaModel.IsTrustedDownload(release.DownloadUrl)) throw new InvalidOperationException("Adresse de téléchargement refusée.");
+            ?? throw new InvalidOperationException(L.T("NVIDIA ne propose pas de pilote pour cette carte en ce moment."));
+        if (!NvidiaModel.IsTrustedDownload(release.DownloadUrl)) throw new InvalidOperationException(L.T("Adresse de téléchargement refusée."));
 
         var folder = DriverCatalog.ProtectedFolder();
         try
@@ -56,29 +58,29 @@ public static class NvidiaDrivers
             using (var response = await http.GetAsync(release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                    throw new InvalidOperationException($"NVIDIA a répondu {(int)response.StatusCode} au téléchargement.");
+                    throw new InvalidOperationException(L.F("NVIDIA a répondu {0} au téléchargement.", (int)response.StatusCode));
                 long total = response.Content.Headers.ContentLength ?? 0;
-                if (total is <= 0 or > 3L << 30) throw new InvalidOperationException("Taille du pilote NVIDIA inattendue.");
+                if (total is <= 0 or > 3L << 30) throw new InvalidOperationException(L.T("Taille du pilote NVIDIA inattendue."));
                 int shown = -1;
                 long done = await Download.ToFileAsync(response, path, (bytes, all) =>
                 {
                     int percent = (int)(bytes * 100 / all);
                     if (percent == shown || percent % 5 != 0) return;
                     shown = percent;
-                    progress($"Téléchargement du pilote NVIDIA {release.Version} : {percent} % ({Bytes.Format(bytes)} sur {Bytes.Format(all)})…");
+                    progress(L.F("Téléchargement du pilote NVIDIA {0} : {1} % ({2} sur {3})…", release.Version, percent, Bytes.Format(bytes), Bytes.Format(all)));
                 }, TimeSpan.FromSeconds(60));
-                if (done != total) throw new IOException("Téléchargement interrompu.");
+                if (done != total) throw new IOException(L.T("Téléchargement interrompu."));
             }
 
-            progress("Vérification de la signature de NVIDIA…");
+            progress(L.T("Vérification de la signature de NVIDIA…"));
             Process installer;
             // Checked through the handle that keeps it read-only until it has started.
             using (var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 using var signer = Authenticode.Signer(file.SafeFileHandle, path);
                 if (signer is null || !Authenticode.IsSignedBy(signer, "NVIDIA Corporation"))
-                    throw new InvalidOperationException("L'installateur téléchargé n'est pas signé par NVIDIA : il n'est pas lancé.");
-                progress($"Installateur NVIDIA {release.Version} ouvert : suivez ses étapes.");
+                    throw new InvalidOperationException(L.T("L'installateur téléchargé n'est pas signé par NVIDIA : il n'est pas lancé."));
+                progress(L.F("Installateur NVIDIA {0} ouvert : suivez ses étapes.", release.Version));
                 installer = Process.Start(new ProcessStartInfo(path) { UseShellExecute = false, WorkingDirectory = folder.FullName })!;
             }
             using (installer)

@@ -32,7 +32,7 @@ public static class Download
             }
             catch (OperationCanceledException) when (stalled.IsCancellationRequested)
             {
-                throw new IOException("Le téléchargement s'est arrêté : le serveur ne répond plus.");
+                throw new IOException(L.T("Le téléchargement s'est arrêté : le serveur ne répond plus."));
             }
             if (read == 0) return done;
             await target.WriteAsync(buffer.AsMemory(0, read)).ConfigureAwait(false);

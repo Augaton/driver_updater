@@ -108,6 +108,7 @@
           <ControlTemplate TargetType="TreeViewItem">
             <StackPanel>
               <ToggleButton x:Name="Toggle" ClickMode="Press" Focusable="False" Cursor="Hand" HorizontalAlignment="Stretch"
+                            AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}"
                             HorizontalContentAlignment="Stretch"
                             Foreground="{StaticResource InkMuted}" BorderBrush="Transparent"
                             IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">

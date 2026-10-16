@@ -11,10 +11,10 @@ public sealed record SecurityState(IReadOnlyList<Antivirus> Antiviruses, bool? F
         get
         {
             var problems = new List<string>();
-            if (Antiviruses.Count > 0 && !Antiviruses.Any(a => a.Enabled)) problems.Add("Aucun antivirus actif");
-            problems.AddRange(Antiviruses.Where(a => a.Enabled && !a.UpToDate).Select(a => $"{a.Name} n'est pas à jour"));
-            if (FirewallOn == false) problems.Add("Pare-feu Windows désactivé");
-            if (PendingUpdates > 0) problems.Add($"{PendingUpdates} mise(s) à jour de Windows en attente");
+            if (Antiviruses.Count > 0 && !Antiviruses.Any(a => a.Enabled)) problems.Add(L.T("Aucun antivirus actif"));
+            problems.AddRange(Antiviruses.Where(a => a.Enabled && !a.UpToDate).Select(a => L.F("{0} n'est pas à jour", a.Name)));
+            if (FirewallOn == false) problems.Add(L.T("Pare-feu Windows désactivé"));
+            if (PendingUpdates > 0) problems.Add(L.F("{0} mise(s) à jour de Windows en attente", PendingUpdates));
             return problems;
         }
     }

@@ -29,9 +29,9 @@ public static class DriverStore
     /// <summary>Packages that can go, biggest first (see <see cref="DriverStoreRules"/>).</summary>
     public static async Task<List<StorePackage>> RemovableAsync(Action<string> progress)
     {
-        progress("Lecture du magasin de pilotes…");
+        progress(L.T("Lecture du magasin de pilotes…"));
         var packages = await ListAsync();
-        progress("Recherche des pilotes utilisés…");
+        progress(L.T("Recherche des pilotes utilisés…"));
         var inUse = (await Task.Run(DriverInventory.Scan)).Select(d => d.InfName).Where(n => n.Length > 0)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return DriverStoreRules.Removable(packages, inUse);
@@ -49,12 +49,12 @@ public static class DriverStore
         {
             if (!allowed.Contains(name))
             {
-                results.Add(new(name, false, "n'est plus supprimable (utilisé, ou plus récent que les autres)"));
+                results.Add(new(name, false, L.T("n'est plus supprimable (utilisé, ou plus récent que les autres)")));
                 continue;
             }
-            progress($"Suppression de {name} ({results.Count + 1} sur {publishedNames.Count})…");
+            progress(L.F("Suppression de {0} ({1} sur {2})…", name, results.Count + 1, publishedNames.Count));
             int code = await DriverBackup.PnpUtilAsync("/delete-driver", name);
-            results.Add(new(name, code == 0, code == 0 ? "supprimé" : $"refusé par Windows (code {code}), sans doute encore utilisé"));
+            results.Add(new(name, code == 0, code == 0 ? L.T("supprimé") : L.F("refusé par Windows (code {0}), sans doute encore utilisé", code)));
         }
         return results;
     }
@@ -70,7 +70,7 @@ public static class DriverStore
         using var process = Process.Start(start)!;
         var json = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
-        if (process.ExitCode != 0) throw new InvalidOperationException($"Lecture du magasin de pilotes impossible (code {process.ExitCode}).");
+        if (process.ExitCode != 0) throw new InvalidOperationException(L.F("Lecture du magasin de pilotes impossible (code {0}).", process.ExitCode));
 
         var listed = JsonSerializer.Deserialize<List<Listed>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
         return listed.Select(p => new StorePackage(

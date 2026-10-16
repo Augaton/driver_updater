@@ -44,71 +44,71 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
 
     public static AdminCommand Parse(IReadOnlyList<string> args)
     {
-        if (args.Count == 0) throw new ArgumentException("Commande manquante.");
+        if (args.Count == 0) throw new ArgumentException(L.T("Commande manquante."));
         var name = args[0];
         var rest = args.Skip(1).ToList();
         switch (name)
         {
             case Install or Hide or InstallCatalog:
-                if (rest.Count == 0) throw new ArgumentException("Aucune mise à jour indiquée.");
+                if (rest.Count == 0) throw new ArgumentException(L.T("Aucune mise à jour indiquée."));
                 // Update IDs end up inside a Windows Update search string: only plain GUIDs pass.
                 // Two devices can share one package: each is installed once.
                 return new(name, rest.Select(id => Guid.TryParseExact(id, "D", out var guid)
                     ? guid.ToString("D")
-                    : throw new ArgumentException($"Identifiant de mise à jour invalide : {id}")).Distinct().ToList());
+                    : throw new ArgumentException(L.F("Identifiant de mise à jour invalide : {0}", id))).Distinct().ToList());
             case ExportDrivers or ImportDrivers:
                 if (rest.Count != 1 || !Path.IsPathFullyQualified(rest[0]) || rest[0].StartsWith(@"\\", StringComparison.Ordinal))
-                    throw new ArgumentException("Un dossier local, avec son chemin complet, est attendu.");
+                    throw new ArgumentException(L.T("Un dossier local, avec son chemin complet, est attendu."));
                 return new(name, rest);
             case Recycle:
                 // Each folder is checked again against the leftover rules before anything moves.
                 if (rest.Count == 0 || rest.Any(f => !Path.IsPathFullyQualified(f) || f.StartsWith(@"\\", StringComparison.Ordinal)))
-                    throw new ArgumentException("Des dossiers locaux, avec leur chemin complet, sont attendus.");
+                    throw new ArgumentException(L.T("Des dossiers locaux, avec leur chemin complet, sont attendus."));
                 return new(name, rest);
             case InstallAll:
-                if (rest.Count == 0) throw new ArgumentException("Aucune mise à jour indiquée.");
+                if (rest.Count == 0) throw new ArgumentException(L.T("Aucune mise à jour indiquée."));
                 return new(name, rest.Select(item =>
                 {
                     var prefix = item.StartsWith(FromWindowsUpdate, StringComparison.Ordinal) ? FromWindowsUpdate
                         : item.StartsWith(FromCatalog, StringComparison.Ordinal) ? FromCatalog
-                        : throw new ArgumentException($"Source de mise à jour inconnue : {item}");
+                        : throw new ArgumentException(L.F("Source de mise à jour inconnue : {0}", item));
                     return Guid.TryParseExact(item[prefix.Length..], "D", out var guid)
                         ? prefix + guid.ToString("D")
-                        : throw new ArgumentException($"Identifiant de mise à jour invalide : {item}");
+                        : throw new ArgumentException(L.F("Identifiant de mise à jour invalide : {0}", item));
                 }).Distinct().ToList());
             case Rollback:
                 // A device instance ID ("PCI\VEN_10DE&DEV_2504&…\4&2B6DDD8&0&0008"): only looked up, never a path.
                 if (rest.Count != 1 || rest[0].Length is 0 or > 260 || rest[0].Any(char.IsControl))
-                    throw new ArgumentException("Identifiant de périphérique invalide.");
+                    throw new ArgumentException(L.T("Identifiant de périphérique invalide."));
                 return new(name, rest);
             case InstallNvidia:
                 // A PCI device ID, four hex digits: the helper asks NVIDIA itself what to install.
                 if (rest.Count != 1 || rest[0].Length != 4 || !rest[0].All(Uri.IsHexDigit))
-                    throw new ArgumentException("Identifiant de carte graphique invalide.");
+                    throw new ArgumentException(L.T("Identifiant de carte graphique invalide."));
                 return new(name, [rest[0].ToUpperInvariant()]);
             case TweakApply or TweakUndo:
                 // Only tweaks of the catalog that need these rights: never a registry key from outside.
                 // A retired one may still be undone, never applied.
                 if (rest.Count == 0 || rest.Any(id => DriverUpdater.Tuning.TweakCatalog.Find(id) is not { NeedsAdmin: true } tweak
                                                       || (name == TweakApply && tweak.Retired)))
-                    throw new ArgumentException("Réglage inconnu, retiré, ou ne demandant pas l'administrateur.");
+                    throw new ArgumentException(L.T("Réglage inconnu, retiré, ou ne demandant pas l'administrateur."));
                 return new(name, rest);
             case DeleteDrivers:
                 // Published driver package names only ("oem12.inf"), checked again against the store.
                 if (rest.Count == 0 || !rest.All(n => DriverPackageName().IsMatch(n)))
-                    throw new ArgumentException("Noms de paquets de pilotes invalides.");
+                    throw new ArgumentException(L.T("Noms de paquets de pilotes invalides."));
                 return new(name, rest.Select(n => n.ToLowerInvariant()).ToList());
             case StartupSet:
                 // <run|run32|folder> <name> <on|off>, for an entry of all users.
                 if (rest.Count != 3 || rest[0] is not ("run" or "run32" or "folder") || rest[2] is not ("on" or "off")
                     || rest[1].Length is 0 or > 260 || rest[1].Any(char.IsControl))
-                    throw new ArgumentException("Entrée de démarrage invalide.");
+                    throw new ArgumentException(L.T("Entrée de démarrage invalide."));
                 return new(name, rest);
             case Version or Unhide or CleanWindowsTemp or Health or Sfc or DismRestore or DismCleanup or BootReport or DriverStore or RestorePoints or CreateRestorePoint:
-                if (rest.Count != 0) throw new ArgumentException($"« {name} » ne prend pas d'argument.");
+                if (rest.Count != 0) throw new ArgumentException(L.F("« {0} » ne prend pas d'argument.", name));
                 return new(name, rest);
             default:
-                throw new ArgumentException($"Commande inconnue : {name}");
+                throw new ArgumentException(L.F("Commande inconnue : {0}", name));
         }
     }
 

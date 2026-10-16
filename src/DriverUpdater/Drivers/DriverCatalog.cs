@@ -35,7 +35,7 @@ public sealed class CatalogDriver : INotifyPropertyChanged
         }
     }
 
-    public string Scope => GenericIds.Contains(Entry.UpdateId) ? "Générique" : "Pour votre PC";
+    public string Scope => GenericIds.Contains(Entry.UpdateId) ? L.T("Générique") : L.T("Pour votre PC");
     public string SizeText => Entry.Size > 0 ? Bytes.Format(Entry.Size) : "—";
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -79,7 +79,7 @@ public static class DriverCatalog
         var found = await Task.WhenAll(selected.Select(async device =>
         {
             var driver = await NewerFor(device, Search);
-            progress.Report($"Catalogue Microsoft : {Interlocked.Increment(ref done)} périphérique(s) sur {selected.Count}…");
+            progress.Report(L.F("Catalogue Microsoft : {0} périphérique(s) sur {1}…", Interlocked.Increment(ref done), selected.Count));
             return driver;
         }));
         return found.OfType<CatalogDriver>()
@@ -127,7 +127,7 @@ public static class DriverCatalog
             DeviceId = device.DeviceId,
             HardwareId = device.HardwareIds[0],
             Device = device.Name,
-            Installed = device.HasDriver ? new InstalledDriver(device.Version, device.Date).ToString() : "aucun",
+            Installed = device.HasDriver ? new InstalledDriver(device.Version, device.Date).ToString() : L.T("aucun"),
             NoDriver = !device.HasDriver,
             Versions = versions,
             GenericIds = genericOnly,
@@ -148,38 +148,38 @@ public static class DriverCatalog
             new FormUrlEncodedContent([new("updateIDs", Catalog.DownloadRequest(updateId))]));
         var download = Catalog.ParseDownload(await dialog.Content.ReadAsStringAsync());
         if (download is not { } file || !Catalog.IsTrustedDownload(file.Url))
-            return new(updateId, false, false, "lien de téléchargement introuvable dans le catalogue");
+            return new(updateId, false, false, L.T("lien de téléchargement introuvable dans le catalogue"));
 
         var folder = ProtectedFolder();
         try
         {
             var cab = Path.Combine(folder.FullName, "driver.cab");
             if (!await DownloadAsync(http, file.Url, cab, file.Digest, progress))
-                return new(updateId, false, false, "fichier téléchargé altéré (empreinte différente)");
+                return new(updateId, false, false, L.T("fichier téléchargé altéré (empreinte différente)"));
 
-            progress("Extraction du pilote…");
+            progress(L.T("Extraction du pilote…"));
             var files = Directory.CreateDirectory(Path.Combine(folder.FullName, "files"));
             int expand = await RunAsync(Path.Combine(Environment.SystemDirectory, "expand.exe"), cab, "-F:*", files.FullName);
-            if (expand != 0) return new(updateId, false, false, $"extraction impossible (code {expand})");
+            if (expand != 0) return new(updateId, false, false, L.F("extraction impossible (code {0})", expand));
 
             // pnputil installs every INF of the package on every device it fits, and a platform
             // bundle can hold a storage-controller driver next to the one chosen: those never
             // go in this way (see CatalogScope.BootCritical).
             var infs = Directory.GetFiles(files.FullName, "*.inf", SearchOption.AllDirectories);
-            if (infs.Length == 0) return new(updateId, false, false, "le paquet ne contient aucun pilote (.inf)");
+            if (infs.Length == 0) return new(updateId, false, false, L.T("le paquet ne contient aucun pilote (.inf)"));
             var bootCritical = infs.Where(inf => Catalog.IsBootCritical(File.ReadAllText(inf))).ToList();
             foreach (var inf in bootCritical) File.Delete(inf);
             if (bootCritical.Count == infs.Length)
-                return new(updateId, false, false, "ce paquet ne contient que des pilotes nécessaires au démarrage (stockage) : laissé à Windows Update");
+                return new(updateId, false, false, L.T("ce paquet ne contient que des pilotes nécessaires au démarrage (stockage) : laissé à Windows Update"));
 
-            progress("Installation du pilote…");
+            progress(L.T("Installation du pilote…"));
             int code = await DriverBackup.PnpUtilAsync("/add-driver", Path.Combine(files.FullName, "*.inf"), "/subdirs", "/install");
             return code switch
             {
-                0 => new(updateId, true, false, "installé"),
-                3010 => new(updateId, true, true, "installé, redémarrage nécessaire"),
-                259 => new(updateId, true, false, "ajouté, mais Windows garde le pilote actuel, plus adapté à votre PC"),
-                _ => new(updateId, false, false, $"refusé par Windows (pnputil, code {code})"),
+                0 => new(updateId, true, false, L.T("installé")),
+                3010 => new(updateId, true, true, L.T("installé, redémarrage nécessaire")),
+                259 => new(updateId, true, false, L.T("ajouté, mais Windows garde le pilote actuel, plus adapté à votre PC")),
+                _ => new(updateId, false, false, L.F("refusé par Windows (pnputil, code {0})", code)),
             };
         }
         finally
@@ -204,7 +204,7 @@ public static class DriverCatalog
             int percent = all > 0 ? (int)(100 * read / all) : -1;
             if (percent == lastPercent || percent % 5 != 0) return;
             lastPercent = percent;
-            progress($"Téléchargement du pilote : {percent} % de {Bytes.Format(all)}…");
+            progress(L.F("Téléchargement du pilote : {0} % de {1}…", percent, Bytes.Format(all)));
         }, TimeSpan.FromSeconds(60), data: (buffer, count) => hash.AppendData(buffer, 0, count));
         return Convert.ToBase64String(hash.GetHashAndReset()) == digest;
     }
@@ -221,7 +221,7 @@ public static class DriverCatalog
             security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid, null), FileSystemRights.FullControl,
                 InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp", "DriverUpdater-" + Guid.NewGuid().ToString("N"));
-        if (Directory.Exists(path)) throw new IOException("Dossier de travail déjà présent.");
+        if (Directory.Exists(path)) throw new IOException(L.T("Dossier de travail déjà présent."));
         return security.CreateDirectory(path);
     }
 

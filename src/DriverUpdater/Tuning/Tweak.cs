@@ -12,6 +12,8 @@ public interface IRegistry
     object? Get(Hive hive, string key, string name);
     void Set(Hive hive, string key, string name, object value);
     void Delete(Hive hive, string key, string name);
+    /// <summary>The names of the key's values; empty if the key does not exist.</summary>
+    IReadOnlyList<string> ValueNames(Hive hive, string key);
 }
 
 /// <summary>
@@ -20,7 +22,11 @@ public interface IRegistry
 /// others the user may have are kept. <see cref="WhenAbsent"/> is what Windows does when the
 /// value does not exist (Game Mode is on by default, for one).
 /// </summary>
-public sealed record RegistryValue(Hive Hive, string Key, string Name, object Value, bool Flag = false, object? WhenAbsent = null);
+public sealed record RegistryValue(Hive Hive, string Key, string Name, object Value, bool Flag = false, object? WhenAbsent = null)
+{
+    /// <summary>As a <see cref="Value"/>: the value must not exist (Windows' default, often).</summary>
+    public static readonly object Removed = new();
+}
 
 /// <param name="Id">Stable identifier: it names the backup and the administrator command.</param>
 /// <param name="InOneClick">Part of "Tout optimiser": safe for everyone. Others need a choice (mouse feel, laptop battery).</param>
@@ -43,8 +49,8 @@ public static class TweakEngine
     const string Absent = "absent";
 
     public static bool IsApplied(Tweak tweak, IRegistry registry) =>
-        tweak.Values.All(v => v.Flag
-            ? FlagIn(registry.Get(v.Hive, v.Key, v.Name) as string, (string)v.Value)
+        tweak.Values.All(v => v.Flag ? FlagIn(registry.Get(v.Hive, v.Key, v.Name) as string, (string)v.Value)
+            : ReferenceEquals(v.Value, RegistryValue.Removed) ? registry.Get(v.Hive, v.Key, v.Name) is null
             : Same(registry.Get(v.Hive, v.Key, v.Name) ?? v.WhenAbsent, v.Value));
 
     public static void Apply(Tweak tweak, IRegistry registry)
@@ -56,8 +62,8 @@ public static class TweakEngine
             // Never overwrite a backup: applying twice must still undo to the original.
             if (registry.Get(value.Hive, BackupKey + @"\" + tweak.Id, backup) is null)
                 registry.Set(value.Hive, BackupKey + @"\" + tweak.Id, backup, Encode(current));
-            registry.Set(value.Hive, value.Key, value.Name,
-                value.Flag ? WithFlag(current as string, (string)value.Value) : value.Value);
+            if (ReferenceEquals(value.Value, RegistryValue.Removed)) registry.Delete(value.Hive, value.Key, value.Name);
+            else registry.Set(value.Hive, value.Key, value.Name, value.Flag ? WithFlag(current as string, (string)value.Value) : value.Value);
         }
     }
 
@@ -87,7 +93,7 @@ public static class TweakEngine
         null => Absent,
         int number => "dword:" + number,
         string text => "string:" + text,
-        _ => throw new NotSupportedException($"Type de valeur non géré : {value.GetType().Name}"),
+        _ => throw new NotSupportedException(L.F("Type de valeur non géré : {0}", value.GetType().Name)),
     };
 
     static object? Decode(string saved) =>

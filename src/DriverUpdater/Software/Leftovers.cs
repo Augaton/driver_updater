@@ -63,14 +63,14 @@ public static partial class Leftovers
             found.Add(new Leftover { Path = full, Reason = reason, NeedsAdmin = admin, Selected = selected });
         }
 
-        if (!string.IsNullOrWhiteSpace(installLocation)) Offer(installLocation.Trim().Trim('"'), "Dossier d'installation", selected: true);
+        if (!string.IsNullOrWhiteSpace(installLocation)) Offer(installLocation.Trim().Trim('"'), L.T("Dossier d'installation"), selected: true);
         var publishers = PublisherNames(publisher).ToList();
         foreach (var name in Names(displayName))
             foreach (var root in roots.All)
             {
-                Offer(Path.Combine(root, name), "Même nom que le programme", selected: false);
+                Offer(Path.Combine(root, name), L.T("Même nom que le programme"), selected: false);
                 foreach (var company in publishers)
-                    Offer(Path.Combine(root, company, name), "Même nom que le programme", selected: false);
+                    Offer(Path.Combine(root, company, name), L.T("Même nom que le programme"), selected: false);
             }
         return found;
     }

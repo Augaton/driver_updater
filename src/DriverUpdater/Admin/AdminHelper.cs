@@ -21,12 +21,12 @@ public static class AdminHelper
         try
         {
             // --admin <pipe> <command> [arguments…]
-            if (args.Length < 3) throw new ArgumentException("Arguments manquants.");
+            if (args.Length < 3) throw new ArgumentException(L.T("Arguments manquants."));
             channel = await HelperChannel.ConnectAsync(args[1]);
             var command = AdminCommand.Parse(args[2..]);
             // "version" changes nothing, which lets the tests check the whole path.
             if (command.Name != AdminCommand.Version && !channel.FromThisApp)
-                throw new UnauthorizedAccessException("Refusé : seule la fenêtre de Driver Updater peut commander ce module.");
+                throw new UnauthorizedAccessException(L.T("Refusé : seule la fenêtre de Driver Updater peut commander ce module."));
             channel.Result(await ExecuteAsync(command, channel));
         }
         catch (Exception e)
@@ -59,7 +59,7 @@ public static class AdminHelper
                 return await InstallAsync(command.Args, channel);
 
             case AdminCommand.Hide:
-                channel.Progress("Recherche des pilotes à masquer…");
+                channel.Progress(L.T("Recherche des pilotes à masquer…"));
                 var toHide = await Task.Run(() => WindowsUpdateDrivers.FindByIds(command.Args));
                 await Task.Run(() => toHide.ForEach(WindowsUpdateDrivers.Hide));
                 return toHide.Count;
@@ -74,7 +74,7 @@ public static class AdminHelper
             case AdminCommand.ImportDrivers:
                 var point = await RestorePointAsync(channel);
                 if (point is null) return new ImportReport("", true, false);
-                channel.Progress("Installation des pilotes sauvegardés…");
+                channel.Progress(L.T("Installation des pilotes sauvegardés…"));
                 return new ImportReport(point, false, await DriverBackup.ImportAsync(command.Args[0]));
 
             case AdminCommand.CleanWindowsTemp:
@@ -107,7 +107,7 @@ public static class AdminHelper
                 return await InstallAllAsync(command.Args, channel);
 
             case AdminCommand.Rollback:
-                channel.Progress("Retour au pilote précédent…");
+                channel.Progress(L.T("Retour au pilote précédent…"));
                 return await Task.Run(() => DriverRollback.RollBack(command.Args[0]));
 
             case AdminCommand.TweakApply or AdminCommand.TweakUndo:
@@ -130,7 +130,7 @@ public static class AdminHelper
                 return await Task.Run(SystemInfo.RestorePoints);
 
             case AdminCommand.CreateRestorePoint:
-                channel.Progress("Création du point de restauration, cela peut prendre une minute…");
+                channel.Progress(L.T("Création du point de restauration, cela peut prendre une minute…"));
                 return await Task.Run(() => SystemInfo.CreateRestorePoint(onDemand: true));
 
             case AdminCommand.DriverStore:
@@ -140,7 +140,7 @@ public static class AdminHelper
                 return await DriverStore.DeleteAsync(command.Args, channel.Progress);
 
             default:
-                throw new ArgumentException($"Commande non prise en charge : {command.Name}");
+                throw new ArgumentException(L.F("Commande non prise en charge : {0}", command.Name));
         }
     }
 
@@ -149,18 +149,18 @@ public static class AdminHelper
         var point = await RestorePointAsync(channel);
         if (point is null) return new InstallReport("", true, []);
 
-        channel.Progress("Recherche des pilotes sur Windows Update…");
+        channel.Progress(L.T("Recherche des pilotes sur Windows Update…"));
         var drivers = await Task.Run(() => WindowsUpdateDrivers.FindByIds(ids));
         var results = new List<InstallResult>();
         foreach (var driver in drivers)
         {
-            channel.Progress($"Pilote {results.Count + 1} sur {drivers.Count} : {driver.Title}…");
+            channel.Progress(L.F("Pilote {0} sur {1} : {2}…", results.Count + 1, drivers.Count, driver.Title));
             var outcome = await Task.Run(() => WindowsUpdateDrivers.Install(driver));
             results.Add(new(driver.UpdateId, driver.Title, outcome.Succeeded, outcome.Detail, outcome.RebootRequired));
         }
         // Installed in the meantime, or withdrawn by Microsoft.
         foreach (var missing in ids.Except(drivers.Select(d => d.UpdateId), StringComparer.OrdinalIgnoreCase))
-            results.Add(new(missing, missing, false, "n'est plus proposé par Windows Update", false));
+            results.Add(new(missing, missing, false, L.T("n'est plus proposé par Windows Update"), false));
         return new InstallReport(point, false, results);
     }
 
@@ -175,15 +175,15 @@ public static class AdminHelper
         var roots = LeftoverRoots.Current;
         foreach (var folder in folders)
             if (!Leftovers.IsSafeToRecycle(folder, roots, out bool machine) || !machine)
-                throw new ArgumentException($"Dossier refusé : {folder}");
+                throw new ArgumentException(L.F("Dossier refusé : {0}", folder));
         int recycled = 0;
         foreach (var folder in folders)
         {
-            var root = Leftovers.MachineRootOf(folder, roots) ?? throw new ArgumentException($"Dossier refusé : {folder}");
+            var root = Leftovers.MachineRootOf(folder, roots) ?? throw new ArgumentException(L.F("Dossier refusé : {0}", folder));
             using (NativeFiles.PinParents(root, folder))
             {
                 if (NativeFiles.GenuineFolder(folder) is null || !Leftovers.IsSafeToRecycle(folder, roots, out _))
-                    throw new ArgumentException($"Dossier refusé : {folder}");
+                    throw new ArgumentException(L.F("Dossier refusé : {0}", folder));
                 if (NativeFiles.Recycle(folder, IntPtr.Zero)) recycled++;
             }
         }
@@ -210,16 +210,16 @@ public static class AdminHelper
             .Select(i => i[AdminCommand.FromWindowsUpdate.Length..]).ToList();
         if (fromWindowsUpdate.Count > 0)
         {
-            channel.Progress("Recherche des pilotes sur Windows Update…");
+            channel.Progress(L.T("Recherche des pilotes sur Windows Update…"));
             var drivers = await Task.Run(() => WindowsUpdateDrivers.FindByIds(fromWindowsUpdate));
             foreach (var driver in drivers)
             {
-                channel.Progress($"Windows Update, pilote {results.Count + 1} sur {items.Count} : {driver.Title}…");
+                channel.Progress(L.F("Windows Update, pilote {0} sur {1} : {2}…", results.Count + 1, items.Count, driver.Title));
                 var outcome = await Task.Run(() => WindowsUpdateDrivers.Install(driver));
-                results.Add(new(driver.UpdateId, outcome.Succeeded, outcome.RebootRequired, outcome.Succeeded ? "installé" : outcome.Detail));
+                results.Add(new(driver.UpdateId, outcome.Succeeded, outcome.RebootRequired, outcome.Succeeded ? L.T("installé") : outcome.Detail));
             }
             foreach (var missing in fromWindowsUpdate.Except(drivers.Select(d => d.UpdateId), StringComparer.OrdinalIgnoreCase))
-                results.Add(new(missing, false, false, "n'est plus proposé par Windows Update"));
+                results.Add(new(missing, false, false, L.T("n'est plus proposé par Windows Update")));
         }
 
         var fromCatalog = items.Where(i => i.StartsWith(AdminCommand.FromCatalog, StringComparison.Ordinal))
@@ -233,7 +233,7 @@ public static class AdminHelper
         int done = 0;
         foreach (var id in ids)
         {
-            channel.Progress($"Pilote du fabricant {++done} sur {ids.Count}…");
+            channel.Progress(L.F("Pilote du fabricant {0} sur {1}…", ++done, ids.Count));
             try
             {
                 results.Add(await DriverCatalog.InstallAsync(id, channel.Progress));
@@ -248,9 +248,9 @@ public static class AdminHelper
     /// <summary>The restore point's message, or null if it failed and the user would rather stop.</summary>
     static async Task<string?> RestorePointAsync(HelperChannel channel)
     {
-        channel.Progress("Création d'un point de restauration, cela peut prendre une minute…");
+        channel.Progress(L.T("Création d'un point de restauration, cela peut prendre une minute…"));
         var point = await Task.Run(SystemInfo.CreateRestorePoint);
         if (point.Ok) return point.Message;
-        return await channel.AskAsync(point.Message + "\n\nContinuer sans point de restauration ?") ? point.Message : null;
+        return await channel.AskAsync(point.Message + L.T("\n\nContinuer sans point de restauration ?")) ? point.Message : null;
     }
 }

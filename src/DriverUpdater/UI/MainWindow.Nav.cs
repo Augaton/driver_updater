@@ -7,7 +7,7 @@ namespace DriverUpdater.UI;
 
 // The menu: a tree built from the pages themselves, so a page added to MainWindow.xaml appears
 // in it with no other change. A TabItem with the Section style starts a branch; the pages that
-// follow belong to it.
+// follow belong to it. A Section without a title goes back to the root.
 public partial class MainWindow
 {
     readonly Dictionary<TabItem, TreeViewItem> navItems = [];
@@ -26,6 +26,11 @@ public partial class MainWindow
         ItemsControl branch = Nav;
         foreach (var tab in Tabs.Items.OfType<TabItem>())
         {
+            if (tab.Style == section && string.IsNullOrEmpty(tab.Header as string))
+            {
+                branch = Nav;
+                continue;
+            }
             if (tab.Style == section)
             {
                 var group = new TreeViewItem { Header = tab.Header, Style = (Style)FindResource("NavGroup") };

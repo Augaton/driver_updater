@@ -31,7 +31,7 @@ public partial class MainWindow
         }
         catch (Exception e)
         {
-            InventorySummary.Text = "Lecture impossible : " + Errors.Describe(e);
+            InventorySummary.Text = L.T("Lecture impossible : ") + Errors.Describe(e);
         }
         return inventory;
     }
@@ -50,9 +50,9 @@ public partial class MainWindow
         };
         InventoryGrid.ItemsSource = shown.ToList();
         InventorySummary.Text =
-            $"{inventory.Count} périphériques  ·  {inventory.Count(d => d.NeedsAttention)} à problème  ·  " +
-            $"{inventory.Count(d => !d.HasDriver)} sans pilote  ·  {inventory.Count(d => d.IsOlderThan(3, today))} pilotes de plus de 3 ans  ·  " +
-            $"{inventory.Count(d => d.Signed == false)} non signés";
+            L.F("{0} périphériques  ·  {1} à problème  ·  ", inventory.Count, inventory.Count(d => d.NeedsAttention)) +
+            L.F("{0} sans pilote  ·  {1} pilotes de plus de 3 ans  ·  ", inventory.Count(d => !d.HasDriver), inventory.Count(d => d.IsOlderThan(3, today))) +
+            L.F("{0} non signés", inventory.Count(d => d.Signed == false));
     }
 
     void OnInventoryFilterChanged(object sender, SelectionChangedEventArgs e)
@@ -67,38 +67,38 @@ public partial class MainWindow
     {
         if (InventoryGrid.SelectedItem is not DeviceDriver device)
         {
-            SetStatus("Sélectionnez un périphérique dans la liste.");
+            SetStatus(L.T("Sélectionnez un périphérique dans la liste."));
             return;
         }
         if (!device.HasDriver)
         {
-            SetStatus($"{device.Name} n'a pas de pilote : rien à remettre.");
+            SetStatus(L.F("{0} n'a pas de pilote : rien à remettre.", device.Name));
             return;
         }
-        if (Ask($"Remettre le pilote précédent de « {device.Name} » ?\n\nWindows reprend la version qu'il utilisait avant la dernière " +
-                "mise à jour, s'il l'a gardée. Utile quand un nouveau pilote cause des problèmes.") != MessageBoxResult.Yes)
+        if (Ask(L.F("Remettre le pilote précédent de « {0} » ?\n\nWindows reprend la version qu'il utilisait avant la dernière ", device.Name) +
+                L.T("mise à jour, s'il l'a gardée. Utile quand un nouveau pilote cause des problèmes.")) != MessageBoxResult.Yes)
             return;
 
-        await RunBusy("En attente de l'autorisation administrateur…", async () =>
+        await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
             bool reboot = await RunAdminAsync<bool>(AdminCommand.Rollback, device.DeviceId);
             await LoadInventory();
             await LoadHistory();
-            return $"{device.Name} : pilote précédent remis." + (reboot ? " Redémarrez l'ordinateur pour terminer." : "");
+            return L.F("{0} : pilote précédent remis.", device.Name) + (reboot ? L.T(" Redémarrez l'ordinateur pour terminer.") : "");
         });
     }
 
     // ---- Driver store ------------------------------------------------------------------
 
     async void OnStoreScan(object sender, RoutedEventArgs e) =>
-        await RunBusy("En attente de l'autorisation administrateur…", async () =>
+        await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
             var removable = await RunAdminAsync<List<StorePackage>>(AdminCommand.DriverStore);
             storeChoices = removable.Select(p => new StoreChoice(p)).ToList();
             StoreGrid.ItemsSource = storeChoices;
             StoreGrid.Visibility = storeChoices.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             UpdateStoreSummary();
-            return storeChoices.Count == 0 ? "Aucune ancienne version à supprimer." : $"{storeChoices.Count} ancienne(s) version(s) trouvée(s).";
+            return storeChoices.Count == 0 ? L.T("Aucune ancienne version à supprimer.") : L.F("{0} ancienne(s) version(s) trouvée(s).", storeChoices.Count);
         });
 
     void OnStoreChoiceChanged(object sender, RoutedEventArgs e) => UpdateStoreSummary();
@@ -107,8 +107,8 @@ public partial class MainWindow
     {
         var chosen = storeChoices.Where(c => c.Selected).ToList();
         StoreSummary.Text = storeChoices.Count == 0
-            ? "Aucune ancienne version à supprimer : le magasin de pilotes est propre."
-            : $"{chosen.Count} sur {storeChoices.Count} cochée(s) : {Bytes.Format(chosen.Sum(c => c.Package.Size))} à libérer.";
+            ? L.T("Aucune ancienne version à supprimer : le magasin de pilotes est propre.")
+            : L.F("{0} sur {1} cochée(s) : {2} à libérer.", chosen.Count, storeChoices.Count, Bytes.Format(chosen.Sum(c => c.Package.Size)));
         UpdateButtons();
     }
 
@@ -116,12 +116,12 @@ public partial class MainWindow
     {
         var chosen = storeChoices.Where(c => c.Selected).ToList();
         if (chosen.Count == 0) return;
-        if (Ask($"Supprimer {chosen.Count} ancienne(s) version(s) de pilotes ({Bytes.Format(chosen.Sum(c => c.Package.Size))}) ?\n\n" +
-                "Windows refuse de supprimer un pilote utilisé. La version actuelle de chaque pilote reste en place.")
+        if (Ask(L.F("Supprimer {0} ancienne(s) version(s) de pilotes ({1}) ?\n\n", chosen.Count, Bytes.Format(chosen.Sum(c => c.Package.Size))) +
+                L.T("Windows refuse de supprimer un pilote utilisé. La version actuelle de chaque pilote reste en place."))
             != MessageBoxResult.Yes)
             return;
 
-        await RunBusy("En attente de l'autorisation administrateur…", async () =>
+        await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
             var results = await RunAdminAsync<List<StoreDeleteResult>>(AdminCommand.DeleteDrivers,
                 chosen.Select(c => c.Package.PublishedName).ToArray());
@@ -131,22 +131,23 @@ public partial class MainWindow
             StoreGrid.ItemsSource = storeChoices;
             UpdateStoreSummary();
             var refused = results.Where(r => !r.Deleted).ToList();
-            return $"{deleted.Count} version(s) supprimée(s), {Bytes.Format(freed)} libérés." +
-                   (refused.Count > 0 ? $" {refused.Count} refusée(s) : {refused[0].Detail}." : "");
+            return L.F("{0} version(s) supprimée(s), {1} libérés.", deleted.Count, Bytes.Format(freed)) +
+                   (refused.Count > 0 ? L.F(" {0} refusée(s) : {1}.", refused.Count, refused[0].Detail) : "");
         });
     }
 
     // ---- Live device watch -------------------------------------------------------------
 
-    void StartDeviceWatch()
+    async Task StartDeviceWatch()
     {
         try
         {
-            watcher = new DeviceWatcher();
+            // Subscribing to WMI events can take a second: not on the window's thread.
+            watcher = await Task.Run(() => new DeviceWatcher());
         }
         catch (Exception e)
         {
-            SetStatus("Surveillance des périphériques indisponible : " + Errors.Describe(e));
+            SetStatus(L.T("Surveillance des périphériques indisponible : ") + Errors.Describe(e));
             return;
         }
         // One plug-in raises a burst of events: wait until things settle, then look once.
@@ -198,12 +199,12 @@ public partial class MainWindow
         newDevicesWithoutDriver = arrived.Where(d => !d.HasDriver).ToList();
         if (newDevicesWithoutDriver.Count > 0)
         {
-            DeviceBannerText.Text = $"Nouveau périphérique sans pilote : {string.Join(", ", newDevicesWithoutDriver.Select(d => d.Name))}.";
+            DeviceBannerText.Text = L.F("Nouveau périphérique sans pilote : {0}.", string.Join(", ", newDevicesWithoutDriver.Select(d => d.Name)));
             DeviceBanner.Visibility = Visibility.Visible;
         }
         else if (arrived.Count > 0)
         {
-            SetStatus($"Nouveau périphérique : {string.Join(", ", arrived.Select(d => d.Name).Distinct().Take(3))}. Son pilote est en place.");
+            SetStatus(L.F("Nouveau périphérique : {0}. Son pilote est en place.", string.Join(", ", arrived.Select(d => d.Name).Distinct().Take(3))));
         }
     }
 
@@ -212,12 +213,12 @@ public partial class MainWindow
         DeviceBanner.Visibility = Visibility.Collapsed;
         Tabs.SelectedItem = CatalogTab;
         var devices = newDevicesWithoutDriver;
-        await RunBusy("Recherche d'un pilote pour le nouveau périphérique…", async () =>
+        await RunBusy(L.T("Recherche d'un pilote pour le nouveau périphérique…"), async () =>
         {
             ShowCatalog(await DriverCatalog.FindAsync(devices, new Progress<string>(SetStatus)));
             return catalogDrivers.Count == 0
-                ? "Le catalogue Microsoft n'a pas de pilote pour ce périphérique : essayez Windows Update (onglet Pilotes) ou le site du fabricant."
-                : "Pilote trouvé : cochez-le puis installez-le.";
+                ? L.T("Le catalogue Microsoft n'a pas de pilote pour ce périphérique : essayez la page Windows Update ou le site du fabricant.")
+                : L.T("Pilote trouvé : cochez-le puis installez-le.");
         });
     }
 }

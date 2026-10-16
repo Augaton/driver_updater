@@ -24,7 +24,7 @@ public static class Repair
             AdminCommand.Sfc => ("sfc.exe", new[] { "/scannow" }, Encoding.Unicode),
             AdminCommand.DismRestore => ("Dism.exe", new[] { "/Online", "/Cleanup-Image", "/RestoreHealth" }, oem),
             AdminCommand.DismCleanup => ("Dism.exe", new[] { "/Online", "/Cleanup-Image", "/StartComponentCleanup" }, oem),
-            _ => throw new ArgumentException($"Outil de réparation inconnu : {command}"),
+            _ => throw new ArgumentException(L.F("Outil de réparation inconnu : {0}", command)),
         };
 
         var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, exe))

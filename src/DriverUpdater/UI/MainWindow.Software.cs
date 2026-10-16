@@ -13,12 +13,12 @@ public partial class MainWindow
     InstalledProgram? uninstalled; // the last program uninstalled here, whose leftovers we look for
 
     async void OnSearchSoftware(object sender, RoutedEventArgs e) =>
-        await RunBusy("Recherche des mises à jour de logiciels…", async () =>
+        await RunBusy(L.T("Recherche des mises à jour de logiciels…"), async () =>
         {
             if (!WinGet.IsAvailable)
-                return "winget est introuvable : installez « Programme d'installation d'application » depuis le Microsoft Store.";
+                return L.T("winget est introuvable : installez « Programme d'installation d'application » depuis le Microsoft Store.");
             ShowSoftware(await SoftwareUpgrades(fresh: true));
-            return software.Count == 0 ? "Vos logiciels sont à jour." : $"{software.Count} logiciel(s) à mettre à jour.";
+            return software.Count == 0 ? L.T("Vos logiciels sont à jour.") : L.F("{0} logiciel(s) à mettre à jour.", software.Count);
         });
 
     Task<List<SoftwareUpdate>>? upgrades;
@@ -43,7 +43,7 @@ public partial class MainWindow
     {
         software = list;
         SoftwareGrid.ItemsSource = software;
-        SoftwarePlaceholder.Text = "Aucun logiciel à mettre à jour.";
+        SoftwarePlaceholder.Text = L.T("Aucun logiciel à mettre à jour.");
         SoftwarePlaceholder.Visibility = software.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateButtons();
     }
@@ -53,11 +53,11 @@ public partial class MainWindow
         var selected = software.Where(s => s.Selected).ToList();
         if (selected.Count == 0)
         {
-            SetStatus("Cochez au moins un logiciel.");
+            SetStatus(L.T("Cochez au moins un logiciel."));
             return;
         }
 
-        await RunBusy("Mise à jour des logiciels…", async () =>
+        await RunBusy(L.T("Mise à jour des logiciels…"), async () =>
         {
             BusyBar.IsIndeterminate = false;
             BusyBar.Maximum = selected.Count;
@@ -66,7 +66,7 @@ public partial class MainWindow
             for (int i = 0; i < selected.Count; i++)
             {
                 var app = selected[i];
-                SetStatus($"Logiciel {i + 1} sur {selected.Count} : {app.Name}…");
+                SetStatus(L.F("Logiciel {0} sur {1} : {2}…", i + 1, selected.Count, app.Name));
                 int code = await WinGet.UpgradeAsync(app.Id);
                 if (code == 0) done.Add(app);
                 else failed.Add($"{app.Name} (0x{code:X8})");
@@ -75,8 +75,8 @@ public partial class MainWindow
             ShowSoftware(software.Except(done).ToList());
             upgrades = null; // the next look asks winget again
             return failed.Count == 0
-                ? $"{done.Count} logiciel(s) mis à jour."
-                : $"{done.Count} sur {selected.Count} mis à jour. Échec : {string.Join(", ", failed)}.";
+                ? L.F("{0} logiciel(s) mis à jour.", done.Count)
+                : L.F("{0} sur {1} mis à jour. Échec : {2}.", done.Count, selected.Count, string.Join(", ", failed));
         });
     }
 
@@ -89,7 +89,7 @@ public partial class MainWindow
         }
         catch (Exception e)
         {
-            SetStatus("Lecture des programmes installés impossible : " + Errors.Describe(e));
+            SetStatus(L.T("Lecture des programmes installés impossible : ") + Errors.Describe(e));
         }
     }
 
@@ -108,12 +108,12 @@ public partial class MainWindow
     {
         if (ProgramGrid.SelectedItem is not InstalledProgram program)
         {
-            SetStatus("Sélectionnez un programme dans la liste.");
+            SetStatus(L.T("Sélectionnez un programme dans la liste."));
             return;
         }
-        if (Ask($"Désinstaller « {program.Name} » ?\n\nSon propre désinstalleur va s'ouvrir.") != MessageBoxResult.Yes) return;
+        if (Ask(L.F("Désinstaller « {0} » ?\n\nSon propre désinstalleur va s'ouvrir.", program.Name)) != MessageBoxResult.Yes) return;
 
-        await RunBusy($"Désinstallation de {program.Name} : suivez son désinstalleur…", async () =>
+        await RunBusy(L.F("Désinstallation de {0} : suivez son désinstalleur…", program.Name), async () =>
         {
             try
             {
@@ -122,15 +122,15 @@ public partial class MainWindow
             }
             catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
             {
-                return "Désinstallation annulée.";
+                return L.T("Désinstallation annulée.");
             }
             uninstalled = program;
             await LoadPrograms();
             if (InstalledPrograms.StillInstalled(program))
-                return $"{program.Name} est toujours installé (désinstallation annulée ou pas terminée). " +
-                       "Une fois terminée, cliquez sur « Chercher les restes ».";
+                return L.F("{0} est toujours installé (désinstallation annulée ou pas terminée). ", program.Name) +
+                       L.T("Une fois terminée, cliquez sur « Chercher les restes ».");
             await ShowLeftovers(program);
-            return $"{program.Name} est désinstallé.";
+            return L.F("{0} est désinstallé.", program.Name);
         });
     }
 
@@ -138,12 +138,12 @@ public partial class MainWindow
     {
         if (uninstalled is null)
         {
-            SetStatus("Désinstallez d'abord un programme ici : ses restes seront alors cherchés.");
+            SetStatus(L.T("Désinstallez d'abord un programme ici : ses restes seront alors cherchés."));
             return;
         }
         if (InstalledPrograms.StillInstalled(uninstalled))
         {
-            SetStatus($"{uninstalled.Name} est encore installé : ses dossiers servent toujours.");
+            SetStatus(L.F("{0} est encore installé : ses dossiers servent toujours.", uninstalled.Name));
             return;
         }
         await ShowLeftovers(uninstalled);
@@ -155,8 +155,8 @@ public partial class MainWindow
             InstalledPrograms.List().Select(p => p.InstallLocation)));
         LeftoverList.ItemsSource = leftovers;
         LeftoverHeading.Text = leftovers.Count == 0
-            ? $"« {program.Name} » n'a laissé aucun dossier reconnaissable."
-            : $"Dossiers laissés par « {program.Name} » :";
+            ? L.F("« {0} » n'a laissé aucun dossier reconnaissable.", program.Name)
+            : L.F("Dossiers laissés par « {0} » :", program.Name);
         RecycleButton.Visibility = leftovers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         LeftoverCard.Visibility = Visibility.Visible;
     }
@@ -166,14 +166,14 @@ public partial class MainWindow
         var selected = leftovers.Where(l => l.Selected).ToList();
         if (selected.Count == 0)
         {
-            SetStatus("Cochez au moins un dossier.");
+            SetStatus(L.T("Cochez au moins un dossier."));
             return;
         }
-        if (Ask($"Mettre {selected.Count} dossier(s) à la corbeille ?\n\n" + string.Join("\n", selected.Select(l => l.Path)))
+        if (Ask(L.F("Mettre {0} dossier(s) à la corbeille ?\n\n", selected.Count) + string.Join("\n", selected.Select(l => l.Path)))
             != MessageBoxResult.Yes)
             return;
 
-        await RunBusy("Mise à la corbeille…", async () =>
+        await RunBusy(L.T("Mise à la corbeille…"), async () =>
         {
             // The user's own folders need no rights; done here, on the window's thread,
             // because the Recycle Bin's dialogs need it.
@@ -185,15 +185,15 @@ public partial class MainWindow
             var machine = selected.Where(l => l.NeedsAdmin).Select(l => l.Path).ToArray();
             if (machine.Length > 0)
             {
-                SetStatus("En attente de l'autorisation administrateur…");
+                SetStatus(L.T("En attente de l'autorisation administrateur…"));
                 recycled += await RunAdminAsync<int>(AdminCommand.Recycle, machine);
             }
             leftovers = leftovers.Where(l => System.IO.Directory.Exists(l.Path)).ToList();
             LeftoverList.ItemsSource = leftovers;
             RecycleButton.Visibility = leftovers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             return recycled == selected.Count
-                ? $"{recycled} dossier(s) mis à la corbeille : vous pouvez les y récupérer."
-                : $"{recycled} dossier(s) sur {selected.Count} mis à la corbeille ; les autres sont restés en place.";
+                ? L.F("{0} dossier(s) mis à la corbeille : vous pouvez les y récupérer.", recycled)
+                : L.F("{0} dossier(s) sur {1} mis à la corbeille ; les autres sont restés en place.", recycled, selected.Count);
         });
     }
 }

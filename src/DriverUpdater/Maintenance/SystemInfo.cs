@@ -40,15 +40,15 @@ public static class SystemInfo
             {
                 var (wear, temperature) = ReliabilityCounters(disk);
                 list.Add(new Disk(
-                    disk["FriendlyName"] as string ?? "Disque",
-                    Convert.ToInt32(disk["MediaType"]) switch { 3 => "HDD", 4 => "SSD", 5 => "SCM", _ => "Inconnu" },
+                    disk["FriendlyName"] as string ?? L.T("Disque"),
+                    Convert.ToInt32(disk["MediaType"]) switch { 3 => "HDD", 4 => "SSD", 5 => "SCM", _ => L.T("Inconnu") },
                     Bytes.Format(Convert.ToInt64(disk["Size"])),
                     Convert.ToInt32(disk["HealthStatus"]) switch
                     {
-                        0 => "Bon",
-                        1 => "Avertissement",
-                        2 => "Défaillant",
-                        _ => "Inconnu",
+                        0 => L.T("Bon"),
+                        1 => L.T("Avertissement"),
+                        2 => L.T("Défaillant"),
+                        _ => L.T("Inconnu"),
                     },
                     wear is { } w ? $"{w} %" : "—",
                     temperature is > 0 and var t ? $"{t} °C" : "—"));
@@ -93,7 +93,7 @@ public static class SystemInfo
                     int designed = ToInt(battery["DesignedCapacity"]) ?? 0;
                     int? charge = full.GetValueOrDefault(instance);
                     list.Add(new Battery(
-                        (battery["DeviceName"] as string)?.Trim() is { Length: > 0 } name ? name : "Batterie",
+                        (battery["DeviceName"] as string)?.Trim() is { Length: > 0 } name ? name : L.T("Batterie"),
                         designed > 0 ? $"{designed / 1000.0:0.#} Wh" : "—",
                         charge > 0 ? $"{charge / 1000.0:0.#} Wh" : "—",
                         designed > 0 && charge > 0 ? $"{100 * charge / designed} %" : "—",
@@ -149,7 +149,7 @@ public static class SystemInfo
         var biosText = bios.GetValueOrDefault("SMBIOSBIOSVersion") is string biosVersion
             ? "BIOS " + new InstalledDriver(biosVersion, ParseWmiDate(bios.GetValueOrDefault("ReleaseDate") as string))
             : "BIOS inconnu";
-        return new Hardware($"{maker.Trim()} {model.Trim()}".Trim() is { Length: > 0 } name ? name : "Ordinateur", biosText, tool, url);
+        return new Hardware($"{maker.Trim()} {model.Trim()}".Trim() is { Length: > 0 } name ? name : L.T("Ordinateur"), biosText, tool, url);
     }
 
     /// <summary>The first result's properties, copied out before the WMI objects are released.</summary>
@@ -167,13 +167,13 @@ public static class SystemInfo
     static (string? Tool, string? Url) MakerTool(string maker) => maker.Trim().ToUpperInvariant() switch
     {
         var m when m.StartsWith("LENOVO") => ("Lenovo Support", "https://pcsupport.lenovo.com/"),
-        var m when m.StartsWith("DELL") => ("Dell SupportAssist", "https://www.dell.com/support/home/fr-fr"),
-        var m when m is "HP" || m.StartsWith("HP ") || m.StartsWith("HEWLETT") => ("HP Support", "https://support.hp.com/fr-fr/drivers"),
-        var m when m.StartsWith("ASUS") => ("ASUS Support", "https://www.asus.com/fr/support/download-center/"),
-        var m when m.StartsWith("ACER") => ("Acer Support", "https://www.acer.com/fr-fr/support/drivers-and-manuals"),
+        var m when m.StartsWith("DELL") => ("Dell SupportAssist", L.T("https://www.dell.com/support/home/fr-fr")),
+        var m when m is "HP" || m.StartsWith("HP ") || m.StartsWith("HEWLETT") => ("HP Support", L.T("https://support.hp.com/fr-fr/drivers")),
+        var m when m.StartsWith("ASUS") => ("ASUS Support", L.T("https://www.asus.com/fr/support/download-center/")),
+        var m when m.StartsWith("ACER") => ("Acer Support", L.T("https://www.acer.com/fr-fr/support/drivers-and-manuals")),
         var m when m.StartsWith("MICRO-STAR") || m.StartsWith("MSI") => ("MSI Support", "https://www.msi.com/support/download"),
-        var m when m.StartsWith("GIGABYTE") => ("Gigabyte Support", "https://www.gigabyte.com/fr/Support"),
-        var m when m.StartsWith("ASROCK") => ("ASRock Support", "https://www.asrock.com/support/index.fr.asp"),
+        var m when m.StartsWith("GIGABYTE") => ("Gigabyte Support", L.T("https://www.gigabyte.com/fr/Support")),
+        var m when m.StartsWith("ASROCK") => ("ASRock Support", L.T("https://www.asrock.com/support/index.fr.asp")),
         _ => (null, null), // Microsoft (Surface) and others: Windows Update is the channel
     };
 
@@ -188,10 +188,10 @@ public static class SystemInfo
                 var device = gpu["PNPDeviceID"] as string ?? "";
                 if (device.StartsWith(@"ROOT\", StringComparison.OrdinalIgnoreCase)) continue; // virtual display adapters
                 var driver = gpu["DriverVersion"] is string version
-                    ? "Pilote " + new InstalledDriver(version, ParseWmiDate(gpu["DriverDate"] as string))
-                    : "Pilote inconnu";
+                    ? L.T("Pilote ") + new InstalledDriver(version, ParseWmiDate(gpu["DriverDate"] as string))
+                    : L.T("Pilote inconnu");
                 var (tool, url) = VendorTool(device);
-                list.Add(new Hardware(gpu["Name"] as string ?? "Carte graphique", driver, tool, url));
+                list.Add(new Hardware(gpu["Name"] as string ?? L.T("Carte graphique"), driver, tool, url));
             }
         return list;
     }
@@ -200,9 +200,9 @@ public static class SystemInfo
     static (string? Tool, string? Url) VendorTool(string pnpDeviceId) =>
         pnpDeviceId.ToUpperInvariant() switch
         {
-            var id when id.Contains("VEN_10DE") => ("NVIDIA App", "https://www.nvidia.com/fr-fr/software/nvidia-app/"),
-            var id when id.Contains("VEN_1002") => ("AMD Software", "https://www.amd.com/fr/support/download/drivers.html"),
-            var id when id.Contains("VEN_8086") => ("l'Assistant Intel", "https://www.intel.com/content/www/fr/fr/support/intel-driver-support-assistant.html"),
+            var id when id.Contains("VEN_10DE") => ("NVIDIA App", L.T("https://www.nvidia.com/fr-fr/software/nvidia-app/")),
+            var id when id.Contains("VEN_1002") => ("AMD Software", L.T("https://www.amd.com/fr/support/download/drivers.html")),
+            var id when id.Contains("VEN_8086") => (L.T("l'Assistant Intel"), L.T("https://www.intel.com/content/www/fr/fr/support/intel-driver-support-assistant.html")),
             _ => (null, null),
         };
 
@@ -225,8 +225,8 @@ public static class SystemInfo
         try
         {
             return onDemand
-                ? CreatePoint("Driver Updater : point créé à la demande", ModifySettings)
-                : CreatePoint("Driver Updater : avant installation de pilotes", DeviceDriverInstall);
+                ? CreatePoint(L.T("Driver Updater : point créé à la demande"), ModifySettings)
+                : CreatePoint(L.T("Driver Updater : avant installation de pilotes"), DeviceDriverInstall);
         }
         finally
         {
@@ -257,16 +257,16 @@ public static class SystemInfo
             // less than 24 hours old, so look at what actually exists.
             DateTime? latest = LatestRestorePoint(scope);
             if (latest > DateTime.Now.AddMinutes(-10))
-                return new(true, "Point de restauration créé.");
+                return new(true, L.T("Point de restauration créé."));
             if (latest > DateTime.Now.AddHours(-24))
-                return new(true, $"Windows n'autorise qu'un point de restauration par 24 h ; le plus récent date du {latest:g}.");
+                return new(true, L.F("Windows n'autorise qu'un point de restauration par 24 h ; le plus récent date du {0:g}.", latest));
             return new(false, code == 0
-                ? "Aucun point de restauration n'a été créé."
-                : $"Impossible de créer un point de restauration (code {code}). La protection du système est peut-être désactivée.");
+                ? L.T("Aucun point de restauration n'a été créé.")
+                : L.F("Impossible de créer un point de restauration (code {0}). La protection du système est peut-être désactivée.", code));
         }
         catch (Exception e) when (e is ManagementException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
         {
-            return new(false, "Points de restauration indisponibles : " + e.Message);
+            return new(false, L.T("Points de restauration indisponibles : ") + e.Message);
         }
     }
 
@@ -303,18 +303,18 @@ public static class SystemInfo
     // Device Manager error codes: https://learn.microsoft.com/windows-hardware/drivers/install/device-manager-error-messages
     public static string ErrorMeaning(int code) => code switch
     {
-        1 => "mal configuré",
-        3 => "pilote corrompu ou mémoire insuffisante",
-        10 => "ne peut pas démarrer",
-        12 => "ressources insuffisantes",
-        14 => "redémarrage nécessaire",
-        18 => "pilotes à réinstaller",
-        22 => "désactivé",
-        24 => "absent ou pilotes incomplets",
-        28 => "aucun pilote installé",
-        31 => "le pilote ne se charge pas",
-        39 => "pilote manquant ou corrompu",
-        43 => "arrêté après avoir signalé un problème",
-        _ => $"erreur {code}",
+        1 => L.T("mal configuré"),
+        3 => L.T("pilote corrompu ou mémoire insuffisante"),
+        10 => L.T("ne peut pas démarrer"),
+        12 => L.T("ressources insuffisantes"),
+        14 => L.T("redémarrage nécessaire"),
+        18 => L.T("pilotes à réinstaller"),
+        22 => L.T("désactivé"),
+        24 => L.T("absent ou pilotes incomplets"),
+        28 => L.T("aucun pilote installé"),
+        31 => L.T("le pilote ne se charge pas"),
+        39 => L.T("pilote manquant ou corrompu"),
+        43 => L.T("arrêté après avoir signalé un problème"),
+        _ => L.F("erreur {0}", code),
     };
 }

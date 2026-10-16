@@ -185,11 +185,11 @@ public static partial class PerfAnalyzer
             var match = PlanLine().Match(output);
             return match.Success
                 ? (match.Groups[2].Value.Trim(), match.Groups[1].Value.Equals(PowerSaverPlan, StringComparison.OrdinalIgnoreCase))
-                : ("inconnu", false);
+                : (L.T("inconnu"), false);
         }
         catch (Exception)
         {
-            return ("inconnu", false);
+            return (L.T("inconnu"), false);
         }
     }
 

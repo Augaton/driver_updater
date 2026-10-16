@@ -16,7 +16,7 @@ public static class DriverBackup
     /// <summary>Exports every third-party driver into a new dated folder inside <paramref name="parent"/>.</summary>
     public static async Task<(string Folder, int Count)> ExportAsync(string parent)
     {
-        var folder = Path.Combine(Path.GetFullPath(parent), $"Pilotes {DateTime.Now:yyyy-MM-dd HH'h'mm'm'ss}");
+        var folder = Path.Combine(Path.GetFullPath(parent), L.F("Pilotes {0:yyyy-MM-dd HH'h'mm'm'ss}", DateTime.Now));
         // The user chose the parent, so any program of theirs can write there: the folder must
         // be truly new (not a link planted under the expected name), and the folders above it
         // stay pinned while pnputil, running as administrator, writes into it.
@@ -27,9 +27,9 @@ public static class DriverBackup
             NativeFiles.CreateNewFolder(folder, AdministratorsOnly());
             using (NativeFiles.Pin(folder))
             {
-                if (NativeFiles.GenuineFolder(folder) is null) throw new InvalidOperationException($"Dossier de sauvegarde refusé : {folder}");
+                if (NativeFiles.GenuineFolder(folder) is null) throw new InvalidOperationException(L.F("Dossier de sauvegarde refusé : {0}", folder));
                 int code = await PnpUtilAsync("/export-driver", "*", folder);
-                if (code != Success) throw new InvalidOperationException($"La sauvegarde a échoué (pnputil, code {code}).");
+                if (code != Success) throw new InvalidOperationException(L.F("La sauvegarde a échoué (pnputil, code {0}).", code));
             }
             // Done: the backup takes the rights of the folder it is in, the user's own.
             var inherit = new DirectorySecurity();
@@ -58,7 +58,7 @@ public static class DriverBackup
         {
             Success or NothingToInstall => false,
             RebootRequired => true,
-            _ => throw new InvalidOperationException($"La restauration a échoué (pnputil, code {code})."),
+            _ => throw new InvalidOperationException(L.F("La restauration a échoué (pnputil, code {0}).", code)),
         };
     }
 

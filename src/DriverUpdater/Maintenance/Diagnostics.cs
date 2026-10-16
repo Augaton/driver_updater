@@ -15,14 +15,14 @@ public static class Diagnostics
     {
         var text = new StringBuilder();
         text.AppendLine($"Driver Updater {typeof(Diagnostics).Assembly.GetName().Version?.ToString(3)}");
-        text.AppendLine($"Windows : {WindowsVersion()}");
-        text.AppendLine($"Droits : {(IsAdministrator() ? "administrateur" : "utilisateur standard")}");
-        Section(text, "Ordinateur", () => [Describe(SystemInfo.Computer())]);
-        Section(text, "Cartes graphiques", () => SystemInfo.Gpus().Select(Describe));
-        Section(text, "Disques", () => SystemInfo.Disks().Select(d => $"{d.Name} ({d.Type}, {d.Size}) : {d.Health}"));
-        Section(text, "Périphériques en erreur", () => DriverInventory.Scan().Where(d => d.NeedsAttention)
-            .Select(d => $"{d.Name} : {SystemInfo.ErrorMeaning(d.Problem)}"));
-        Section(text, "Journal", () => log);
+        text.AppendLine(L.F("Windows : {0}", WindowsVersion()));
+        text.AppendLine(L.F("Droits : {0}", IsAdministrator() ? L.T("administrateur") : L.T("utilisateur standard")));
+        Section(text, L.T("Ordinateur"), () => [Describe(SystemInfo.Computer())]);
+        Section(text, L.T("Cartes graphiques"), () => SystemInfo.Gpus().Select(Describe));
+        Section(text, L.T("Disques"), () => SystemInfo.Disks().Select(d => L.F("{0} ({1}, {2}) : {3}", d.Name, d.Type, d.Size, d.Health)));
+        Section(text, L.T("Périphériques en erreur"), () => DriverInventory.Scan().Where(d => d.NeedsAttention)
+            .Select(d => L.F("{0} : {1}", d.Name, SystemInfo.ErrorMeaning(d.Problem))));
+        Section(text, L.T("Journal"), () => log);
         return text.ToString();
     }
 
@@ -40,7 +40,7 @@ public static class Diagnostics
         }
         catch (Exception e)
         {
-            text.AppendLine("  lecture impossible : " + Errors.Describe(e));
+            text.AppendLine(L.T("  lecture impossible : ") + Errors.Describe(e));
         }
     }
 

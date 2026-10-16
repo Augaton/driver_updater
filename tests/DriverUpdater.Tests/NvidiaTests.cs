@@ -75,4 +75,17 @@ public sealed class NvidiaTests
 
         Assert.Equal((Verdict.Update, DriverOffer.Nvidia, false, false), (row.Verdict, row.Offer!.Source, row.CanInstall, row.Selected));
     }
+
+    // NVIDIA marks its Studio drivers "IsWHQL 0": each kind is held to its own rule.
+    [Fact]
+    public void Takes_a_studio_driver_only_when_asked_for_one()
+    {
+        var studio = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "nvidia-studio.json"));
+
+        var release = NvidiaModel.Parse(studio, studio: true)!;
+        Assert.True(release.Studio);
+        Assert.Contains("-nsd-", release.DownloadUrl);
+        Assert.Null(NvidiaModel.Parse(studio));                    // asked for Game Ready
+        Assert.Null(NvidiaModel.Parse(Fixture(), studio: true));   // asked for Studio, got Game Ready
+    }
 }

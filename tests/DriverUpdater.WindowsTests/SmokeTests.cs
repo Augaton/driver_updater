@@ -1,6 +1,9 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -26,6 +29,9 @@ public sealed class SmokeTests
             try
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                // The captures in French, or in English when the pipeline asks (DRIVERUPDATER_LANG=en).
+                var language = Environment.GetEnvironmentVariable("DRIVERUPDATER_LANG") ?? "fr";
+                App.UseLanguage(language);
                 var app = new App();
                 app.InitializeComponent();
                 app.ApplyTheme();
@@ -56,15 +62,18 @@ public sealed class SmokeTests
                     window.Tabs.SelectedItem = tab;
                     Settle(root);
                     Assert.Same(tab, (window.Nav.SelectedItem as TreeViewItem)?.Tag); // the menu follows the page
-                    Save(Render(root, background), Path.Combine(folder, $"{++index:00}-{tab.Name}.png"));
+                    var prefix = language == "en" ? "en-" : "";
+                    Save(Render(root, background), Path.Combine(folder, $"{prefix}{++index:00}-{tab.Name}.png"));
+                    AssertAccessible(tab);
                     if (tab.Content is ScrollViewer { ScrollableHeight: > 0 } scroller)
                     {
                         scroller.ScrollToEnd();
                         Settle(root);
-                        Save(Render(root, background), Path.Combine(folder, $"{index:00}-{tab.Name}-fin.png"));
+                        Save(Render(root, background), Path.Combine(folder, $"{prefix}{index:00}-{tab.Name}-fin.png"));
                         scroller.ScrollToHome();
                     }
                 }
+                DriveLikeAUser(window, root);
                 window.Close();
             }
             catch (Exception e)
@@ -87,6 +96,66 @@ public sealed class SmokeTests
         task.ContinueWith(_ => frame.Continue = false, TaskScheduler.Default);
         Dispatcher.PushFrame(frame);
         task.GetAwaiter().GetResult();
+    }
+
+    // Every button, field and choice on the page has a name a screen reader can say.
+    static void AssertAccessible(TabItem page)
+    {
+        // Parts of standard controls (scroll bar arrows, column headers, the list of a combo box)
+        // are named by Windows itself; what this app's own XAML and templates put on the page is
+        // checked.
+        foreach (var element in Descendants((DependencyObject)page.Content).OfType<Control>()
+                     .Where(c => c.IsVisible && c is ButtonBase or TextBox or ComboBox
+                                 && c is not DataGridColumnHeader && c.TemplatedParent is null or ContentPresenter))
+        {
+            var peer = UIElementAutomationPeer.CreatePeerForElement(element);
+            Assert.False(string.IsNullOrWhiteSpace(peer?.GetName()),
+                $"Page « {page.Header} » : un {element.GetType().Name} sans nom accessible ({(element as ContentControl)?.Content}).");
+        }
+    }
+
+    static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            yield return child;
+            foreach (var deeper in Descendants(child)) yield return deeper;
+        }
+    }
+
+    // Through UI Automation, as Narrator or a test tool would: the menu opens every page, a
+    // branch closes and opens, and the dashboard's tiles lead where they say.
+    static void DriveLikeAUser(MainWindow window, FrameworkElement root)
+    {
+        foreach (var item in window.Nav.Items.OfType<TreeViewItem>()
+                     .SelectMany(i => i.Tag is TabItem ? [i] : i.Items.OfType<TreeViewItem>()))
+        {
+            item.IsSelected = true;
+            Settle(root);
+            Assert.Same(item.Tag, window.Tabs.SelectedItem);
+        }
+
+        var branch = window.Nav.Items.OfType<TreeViewItem>().First(i => i.Tag is null);
+        var page = (TreeViewItem)branch.Items[0]!;
+        var expander = (IExpandCollapseProvider)UIElementAutomationPeer.CreatePeerForElement(branch).GetPattern(PatternInterface.ExpandCollapse)!;
+        expander.Collapse();
+        Settle(root);
+        Assert.False(page.IsVisible);
+        expander.Expand();
+        Settle(root);
+        Assert.True(page.IsVisible);
+
+        window.Tabs.SelectedItem = window.HomeTab;
+        Settle(root);
+        foreach (var tile in Descendants((DependencyObject)window.HomeTab.Content).OfType<Button>().Where(b => b.Tag is string { Length: > 0 }))
+        {
+            window.Tabs.SelectedItem = window.HomeTab;
+            Settle(root);
+            ((IInvokeProvider)UIElementAutomationPeer.CreatePeerForElement(tile).GetPattern(PatternInterface.Invoke)!).Invoke();
+            Settle(root);
+            Assert.Same(window.FindName((string)tile.Tag), window.Tabs.SelectedItem);
+        }
     }
 
     // Layout, then everything the dispatcher queued behind it (bindings, Loaded, column

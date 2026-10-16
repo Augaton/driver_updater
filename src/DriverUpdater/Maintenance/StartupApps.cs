@@ -17,7 +17,7 @@ public sealed class StartupEntry
     public string Impact { get; set; } = "—";
 
     public string Title => Kind == StartupApps.Folder ? Path.GetFileNameWithoutExtension(Name) : Name;
-    public string Scope => Machine ? "Tous les utilisateurs" : "Vous";
+    public string Scope => Machine ? L.T("Tous les utilisateurs") : L.T("Vous");
 }
 
 /// <summary>
@@ -45,7 +45,7 @@ public static class StartupApps
     /// <summary>Switches an entry on or off. It must exist: nothing is created for a name that isn't there.</summary>
     public static void SetEnabled(string kind, string name, bool machine, bool enabled)
     {
-        if (!Exists(kind, name, machine)) throw new InvalidOperationException($"Programme de démarrage introuvable : {name}");
+        if (!Exists(kind, name, machine)) throw new InvalidOperationException(L.F("Programme de démarrage introuvable : {0}", name));
         using var key = Hive(machine).CreateSubKey(ApprovedKey + ApprovedSubkey(kind));
         key.SetValue(name, StartupApproval.Value(enabled, DateTime.UtcNow), RegistryValueKind.Binary);
     }
@@ -113,7 +113,7 @@ public static class StartupApps
         Run => "Run",
         Run32 => "Run32",
         Folder => "StartupFolder",
-        _ => throw new ArgumentException($"Type d'entrée inconnu : {kind}"),
+        _ => throw new ArgumentException(L.F("Type d'entrée inconnu : {0}", kind)),
     };
 
     static RegistryKey Hive(bool machine) => machine ? Registry.LocalMachine : Registry.CurrentUser;

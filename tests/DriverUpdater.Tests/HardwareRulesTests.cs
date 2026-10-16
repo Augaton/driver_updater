@@ -79,4 +79,13 @@ public sealed class HardwareRulesTests
 
         Assert.DoesNotContain(checks, c => c.NeedsAttention && c.Title == "Mémoire");
     }
+
+    [Fact]
+    public void Offers_the_one_click_fix_when_it_knows_the_screen()
+    {
+        var check = HardwareRules.Refresh("Test", 60, 144, @"\\.\DISPLAY1");
+
+        Assert.Equal(("Passer à 144 Hz", @"refresh:144:\\.\DISPLAY1"), (check.ActionText, check.Action));
+        Assert.False(HardwareRules.Refresh("Test", 0, 144).NeedsAttention); // rate not known: no claim
+    }
 }

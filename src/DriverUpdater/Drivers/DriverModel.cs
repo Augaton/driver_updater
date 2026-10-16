@@ -27,13 +27,13 @@ public sealed class DeviceDriver
     public string Status => Problem switch
     {
         0 => "OK",
-        22 => "Désactivé",
-        28 => "Aucun pilote",
-        _ => $"Erreur {Problem}",
+        22 => L.T("Désactivé"),
+        28 => L.T("Aucun pilote"),
+        _ => L.F("Erreur {0}", Problem),
     };
 
     public string DateText => Date is { } d ? d.ToString("dd/MM/yyyy") : "—";
-    public string SignedText => Signed switch { true => "Oui", false => "Non", null => "—" };
+    public string SignedText => Signed switch { true => L.T("Oui"), false => L.T("Non"), null => "—" };
 
     public bool IsOlderThan(int years, DateTime today) => Date is { } d && d < today.AddYears(-years);
 }

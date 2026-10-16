@@ -92,8 +92,8 @@ public static class Elevation
         // to (a portable copy in Downloads), one could swap a file in before the user consents.
         if (exePath is null && !AppFolderIsProtected())
             throw new InvalidOperationException(
-                "Les actions administrateur sont désactivées pour cette copie : n'importe quel programme peut modifier les fichiers " +
-                "de son dossier. Installez Driver Updater avec son installateur, ou placez-le dans un dossier que seuls les administrateurs modifient.");
+                L.T("Les actions administrateur sont désactivées pour cette copie : n'importe quel programme peut modifier les fichiers ") +
+                L.T("de son dossier. Installez Driver Updater avec son installateur, ou placez-le dans un dossier que seuls les administrateurs modifient."));
 
         var pipeName = AdminCommand.NewPipeName();
         using var pipe = NamedPipeServerStreamAcl.Create(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
@@ -108,26 +108,26 @@ public static class Elevation
         }
         catch (Win32Exception e) when (e.NativeErrorCode == ErrorCancelled)
         {
-            throw new OperationCanceledException("Autorisation administrateur refusée.");
+            throw new OperationCanceledException(L.T("Autorisation administrateur refusée."));
         }
 
         using (helper)
         {
             var connected = pipe.WaitForConnectionAsync();
             if (await Task.WhenAny(connected, helper.WaitForExitAsync()) != connected)
-                throw new InvalidOperationException($"Le module administrateur s'est arrêté (code {helper.ExitCode}).");
+                throw new InvalidOperationException(L.F("Le module administrateur s'est arrêté (code {0}).", helper.ExitCode));
             await connected;
 
             // Another program of this account could have raced to the pipe: talk only to ours.
             if (!GetNamedPipeClientProcessId(pipe.SafePipeHandle, out uint clientId) || clientId != helper.Id)
-                throw new InvalidOperationException("Connexion inattendue au module administrateur.");
+                throw new InvalidOperationException(L.T("Connexion inattendue au module administrateur."));
 
             using var reader = new StreamReader(pipe, leaveOpen: true);
             using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
             while (await reader.ReadLineAsync() is { } line)
             {
                 var message = JsonSerializer.Deserialize<ElevationMessage>(line)
-                    ?? throw new InvalidDataException("Message vide du module administrateur.");
+                    ?? throw new InvalidDataException(L.T("Message vide du module administrateur."));
                 switch (message.Kind)
                 {
                     case ElevationMessage.Progress:
@@ -142,7 +142,7 @@ public static class Elevation
                         throw new InvalidOperationException(message.Text);
                 }
             }
-            throw new InvalidOperationException("Le module administrateur s'est arrêté sans répondre.");
+            throw new InvalidOperationException(L.T("Le module administrateur s'est arrêté sans répondre."));
         }
     }
 
@@ -177,7 +177,7 @@ public sealed class HelperChannel : IDisposable
 
     public static async Task<HelperChannel> ConnectAsync(string pipeName)
     {
-        if (!AdminCommand.IsPipeName(pipeName)) throw new ArgumentException("Nom de canal invalide.");
+        if (!AdminCommand.IsPipeName(pipeName)) throw new ArgumentException(L.T("Nom de canal invalide."));
         // Identification only: the window, which runs without rights, may check who we are
         // but can never act as us (impersonate this administrator process).
         var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous,

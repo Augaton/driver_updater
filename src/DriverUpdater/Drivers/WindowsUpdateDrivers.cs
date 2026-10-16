@@ -21,7 +21,7 @@ public sealed class DriverUpdate
     /// <summary>The driver this update would replace, filled in after the search.</summary>
     public string Installed { get; set; } = "—";
 
-    public string Kind => Optional ? "Facultatif" : "Recommandé";
+    public string Kind => Optional ? L.T("Facultatif") : L.T("Recommandé");
     public string SizeText => Size > 0 ? Bytes.Format(Size) : "—";
 }
 
@@ -99,7 +99,7 @@ public static class WindowsUpdateDrivers
             downloader.Updates = collection;
             dynamic download = downloader.Download();
             if (!update.IsDownloaded)
-                return new(driver, false, $"téléchargement échoué, 0x{(int)download.HResult:X8}", false);
+                return new(driver, false, L.F("téléchargement échoué, 0x{0:X8}", (int)download.HResult), false);
 
             dynamic installer = Session.Value.CreateUpdateInstaller();
             installer.Updates = collection;
@@ -168,10 +168,10 @@ public static class WindowsUpdateDrivers
                 (string)entry.Title,
                 code switch
                 {
-                    ResultSucceeded => "Réussi",
-                    ResultSucceededWithErrors => "Réussi avec erreurs",
-                    5 => "Annulé",
-                    _ => $"Échec (0x{(int)entry.HResult:X8})",
+                    ResultSucceeded => L.T("Réussi"),
+                    ResultSucceededWithErrors => L.T("Réussi avec erreurs"),
+                    5 => L.T("Annulé"),
+                    _ => L.F("Échec (0x{0:X8})", (int)entry.HResult),
                 },
                 ours ? ClientName : "Windows Update"));
         }
@@ -205,5 +205,5 @@ public static class WindowsUpdateDrivers
     static dynamic Create(string progId) =>
         Activator.CreateInstance(
             Type.GetTypeFromProgID(progId)
-            ?? throw new InvalidOperationException($"Composant Windows Update introuvable ({progId})."))!;
+            ?? throw new InvalidOperationException(L.F("Composant Windows Update introuvable ({0}).", progId)))!;
 }

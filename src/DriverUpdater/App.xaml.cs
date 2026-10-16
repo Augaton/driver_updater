@@ -30,11 +30,7 @@ public partial class App : Application
     /// The texts' language, chosen before anything is read or shown: the administrator helper
     /// and the weekly check speak it too.
     /// </summary>
-    public static void UseLanguage(string language)
-    {
-        L.Use(language);
-        if (L.Language == "en") UI.Translator.Install();
-    }
+    public static void UseLanguage(string language) => L.Use(language);
 
     /// <summary>
     /// Windows 11 controls in their dark variant, under the app's neon palette. Set here rather than in App.xaml so it

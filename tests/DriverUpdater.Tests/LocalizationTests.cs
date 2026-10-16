@@ -11,6 +11,7 @@ public sealed class LocalizationTests
 {
     static readonly Regex Call = new(@"L\.[TF]\(\s*""((?:[^""\\\r\n]|\\.)*)""");
     static readonly Regex Slot = new(@"(?<!\{)\{(\d+)");
+    static readonly Regex InTemplate = new(@"^\{local:Translate '((?:[^'\\]|\\.)*)'\}$");
 
     // What the Translator swaps in the XAML (UI/Translator.cs).
     static readonly HashSet<string> TextAttributes =
@@ -51,7 +52,9 @@ public sealed class LocalizationTests
                 if (element.Name.LocalName == "Setter" && (string?)element.Attribute("Property") is "Text" or "Content" or "ToolTip")
                     values.Add((string?)element.Attribute("Value") ?? "");
                 foreach (var value in values)
-                    if (value.Length > 0 && !value.StartsWith('{') && !Untranslated.Contains(value)
+                    if (InTemplate.Match(value) is { Success: true } inTemplate)
+                        texts.Add(Regex.Unescape(inTemplate.Groups[1].Value));
+                    else if (value.Length > 0 && !value.StartsWith('{') && !Untranslated.Contains(value)
                         && Regex.IsMatch(value, "[A-Za-zÀ-ÿ]{2}"))
                         texts.Add(value);
             }

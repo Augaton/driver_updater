@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Translator.Translate(this); // before the menu copies the pages' titles
         VersionText.Text = $"version {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}";
         BuildNav();
         Loaded += async (_, _) =>

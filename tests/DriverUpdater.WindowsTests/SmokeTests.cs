@@ -1,9 +1,11 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -29,11 +31,14 @@ public sealed class SmokeTests
             try
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                var app = new App();
+                app.InitializeComponent();
+                // new App() has queued its own start-up (Windows' language, theme, a window): let
+                // it run first, or it would undo the language this test asks for.
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
                 // The captures in French, or in English when the pipeline asks (DRIVERUPDATER_LANG=en).
                 var language = Environment.GetEnvironmentVariable("DRIVERUPDATER_LANG") ?? "fr";
                 App.UseLanguage(language);
-                var app = new App();
-                app.InitializeComponent();
                 app.ApplyTheme();
                 var window = new MainWindow
                 {
@@ -65,6 +70,7 @@ public sealed class SmokeTests
                     var prefix = language == "en" ? "en-" : "";
                     Save(Render(root, background), Path.Combine(folder, $"{prefix}{++index:00}-{tab.Name}.png"));
                     AssertAccessible(tab);
+                    if (language == "en") AssertNoFrenchLeft(root);
                     if (tab.Content is ScrollViewer { ScrollableHeight: > 0 } scroller)
                     {
                         scroller.ScrollToEnd();
@@ -96,6 +102,27 @@ public sealed class SmokeTests
         task.ContinueWith(_ => frame.Continue = false, TaskScheduler.Default);
         Dispatcher.PushFrame(frame);
         task.GetAwaiter().GetResult();
+    }
+
+    // In English, nothing shown (templates included) is still a French text that has its translation.
+    static void AssertNoFrenchLeft(DependencyObject root)
+    {
+        var french = new List<string>();
+        void Visit(DependencyObject node)
+        {
+            if (node is TextBlock text)
+            {
+                if (Untranslated(text.Text)) french.Add(text.Text);
+                french.AddRange(text.Inlines.OfType<Run>().Select(r => r.Text).Where(Untranslated));
+            }
+            if (node is FrameworkElement element && Untranslated(AutomationProperties.GetName(element)))
+                french.Add(AutomationProperties.GetName(element));
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) Visit(VisualTreeHelper.GetChild(node, i));
+        }
+        Visit(root);
+        Assert.True(french.Count == 0, "Still in French: " + string.Join(" | ", french.Distinct()));
+
+        static bool Untranslated(string? text) => !string.IsNullOrEmpty(text) && L.TryTranslate(text, out var english) && english != text;
     }
 
     // Every button, field and choice on the page has a name a screen reader can say.

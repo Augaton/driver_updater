@@ -316,7 +316,7 @@
                       <DataTemplate>
                         <ComboBox ItemsSource="{Binding Versions}" DisplayMemberPath="Label"
                                   SelectedItem="{Binding Entry, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  AutomationProperties.Name="Version à installer" />
+                                  AutomationProperties.Name="{local:Translate 'Version à installer'}" />
                       </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                   </DataGridTemplateColumn>
@@ -350,11 +350,11 @@
                   <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
                     <DockPanel>
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <Button Content="Notes de version" Tag="{Binding NotesUrl}" Click="OnOpenLink" Margin="0,0,8,0"
+                        <Button Content="{local:Translate 'Notes de version'}" Tag="{Binding NotesUrl}" Click="OnOpenLink" Margin="0,0,8,0"
                                 Visibility="{Binding HasOfficial, Converter={StaticResource VisibleIf}}" />
                         <Button Content="{Binding OfficialText}" Tag="{Binding}" Click="OnNvidiaInstall" Style="{DynamicResource AccentButtonStyle}"
                                 Margin="0,0,8,0" Visibility="{Binding HasOfficial, Converter={StaticResource VisibleIf}}" />
-                        <Button Content="{Binding Tool}" ContentStringFormat="Ouvrir {0}" Tag="{Binding Url}" Click="OnOpenLink"
+                        <Button Content="{Binding Tool}" ContentStringFormat="{local:Translate 'Ouvrir {0}'}" Tag="{Binding Url}" Click="OnOpenLink"
                                 Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
                       </StackPanel>
                       <TextBlock DockPanel.Dock="Left" Text="&#xE7F4;" FontFamily="{StaticResource Icons}" FontSize="26"
@@ -362,8 +362,8 @@
                       <StackPanel>
                         <TextBlock Text="{Binding Name}" FontFamily="{StaticResource Display}" FontSize="16" TextWrapping="Wrap" />
                         <TextBlock Style="{StaticResource Muted}">
-                          <Run Text="Installé :" /> <Run Text="{Binding Installed, Mode=OneWay}" Foreground="{StaticResource Ink}" />
-                          <Run Text="   Dernier publié :" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{StaticResource NeonCyan}" />
+                          <Run Text="{local:Translate 'Installé :'}" /> <Run Text="{Binding Installed, Mode=OneWay}" Foreground="{StaticResource Ink}" />
+                          <Run Text="{local:Translate '   Dernier publié :'}" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{StaticResource NeonCyan}" />
                         </TextBlock>
                       </StackPanel>
                     </DockPanel>
@@ -389,7 +389,7 @@
                     <DataTemplate>
                       <DockPanel Margin="0,4">
                         <Button DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
-                                Content="{Binding Tool}" ContentStringFormat="Ouvrir {0}"
+                                Content="{Binding Tool}" ContentStringFormat="{local:Translate 'Ouvrir {0}'}"
                                 Tag="{Binding Url}" Click="OnOpenLink"
                                 Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
                         <StackPanel>
@@ -718,7 +718,7 @@
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                           <Button Content="{Binding CfgAction}" Tag="{Binding}" Click="OnGameCfg" Margin="0,0,8,0"
                                   Visibility="{Binding Game.HasCfg, Converter={StaticResource VisibleIf}}" />
-                          <Button Content="{Binding Game.Tip.LinkText}" ContentStringFormat="Ouvrir {0}" Tag="{Binding Game.Tip.Link}" Click="OnOpenLink"
+                          <Button Content="{Binding Game.Tip.LinkText}" ContentStringFormat="{local:Translate 'Ouvrir {0}'}" Tag="{Binding Game.Tip.Link}" Click="OnOpenLink"
                                   Visibility="{Binding Game.HasLink, Converter={StaticResource VisibleIf}}" />
                         </StackPanel>
                         <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{StaticResource NeonViolet}"
@@ -934,9 +934,9 @@
                         <Run Text="{Binding Kind, Mode=OneWay}" />
                         <Run Text=" — " />
                         <Run Text="{Binding AverageText, Mode=OneWay}" />
-                        <Run Text="en moyenne," Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Run Text="{local:Translate 'en moyenne,'}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         <Run Text="{Binding Times, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        <Run Text="fois" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Run Text="{local:Translate 'fois'}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                       </TextBlock>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

@@ -237,8 +237,9 @@ ISCC installer\DriverUpdater.iss             # installateur (Inno Setup 6)
 ```
 
 **Textes.** Le français est la source, et chaque texte est sa propre clé : un nouveau texte
-s'écrit `L.T("…")`, ou `L.F("… {0} …", valeur)` s'il contient une valeur ; les textes du
-XAML sont traduits à l'affichage. Son anglais va dans
+s'écrit `L.T("…")`, ou `L.F("… {0} …", valeur)` s'il contient une valeur. Les textes du
+XAML sont traduits à la création de la fenêtre ; dans un modèle (`DataTemplate`), ils
+s'écrivent `{local:Translate '…'}`. Son anglais va dans
 `src/DriverUpdater/Localization/en.json`. Les tests portables (`LocalizationTests`)
 listent les textes sans traduction et les traductions qui ne servent plus.
 

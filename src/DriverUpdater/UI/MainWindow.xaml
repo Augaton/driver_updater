@@ -129,7 +129,7 @@
                         </DataTemplate>
                       </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="État" Width="170" SortMemberPath="Verdict">
+                    <DataGridTemplateColumn Header="État" Width="150" SortMemberPath="Verdict">
                       <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                           <TextBlock x:Name="State" Text="{Binding VerdictText}" FontWeight="SemiBold" VerticalAlignment="Center"
@@ -151,11 +151,11 @@
                         </DataTemplate>
                       </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Périphérique" Binding="{Binding Device.Name}" Width="*" />
-                    <DataGridTextColumn Header="Classe" Binding="{Binding Device.Class}" Width="100" />
-                    <DataGridTextColumn Header="Installé" Binding="{Binding Installed}" Width="190" />
-                    <DataGridTextColumn Header="Disponible" Binding="{Binding Available}" Width="190" />
-                    <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="120" />
+                    <DataGridTextColumn Header="Périphérique" Binding="{Binding Device.Name}" Width="1.4*" MinWidth="150" />
+                    <DataGridTextColumn Header="Classe" Binding="{Binding Device.Class}" Width="90" />
+                    <DataGridTextColumn Header="Installé" Binding="{Binding Installed}" Width="*" MinWidth="120" />
+                    <DataGridTextColumn Header="Disponible" Binding="{Binding Available}" Width="*" MinWidth="120" />
+                    <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="100" />
                   </DataGrid.Columns>
                 </DataGrid>
                 <TextBlock x:Name="ReportPlaceholder" Style="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -170,9 +170,9 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonGreen}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <TextBlock DockPanel.Dock="Right" x:Name="TileSoftwareValue" Text="—" FontFamily="{StaticResource Display}" FontSize="28" VerticalAlignment="Center" />
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="LOGICIELS" Style="{StaticResource Kicker}" />
+                  <TextBlock x:Name="TileSoftwareValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
                   <TextBlock x:Name="TileSoftwareText" Text="à mettre à jour" Style="{StaticResource Muted}" />
                 </StackPanel>
               </DockPanel>
@@ -181,9 +181,9 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE7E8;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonPink}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <TextBlock DockPanel.Dock="Right" x:Name="TileStartupValue" Text="—" FontFamily="{StaticResource Display}" FontSize="28" VerticalAlignment="Center" />
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="DÉMARRAGE" Style="{StaticResource Kicker}" />
+                  <TextBlock x:Name="TileStartupValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
                   <TextBlock x:Name="TileStartupText" Text="programmes lancés avec Windows" Style="{StaticResource Muted}" />
                 </StackPanel>
               </DockPanel>
@@ -192,9 +192,9 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <TextBlock DockPanel.Dock="Right" x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="28" VerticalAlignment="Center" />
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="SÉCURITÉ" Style="{StaticResource Kicker}" />
+                  <TextBlock x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
                   <TextBlock x:Name="TileSecurityText" Text="antivirus, pare-feu, Windows" Style="{StaticResource Muted}" />
                 </StackPanel>
               </DockPanel>
@@ -203,9 +203,9 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonCyan}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <TextBlock DockPanel.Dock="Right" x:Name="TileDisksValue" Text="—" FontFamily="{StaticResource Display}" FontSize="28" VerticalAlignment="Center" />
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="DISQUES" Style="{StaticResource Kicker}" />
+                  <TextBlock x:Name="TileDisksValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
                   <TextBlock x:Name="TileDisksText" Text="état de santé" Style="{StaticResource Muted}" />
                 </StackPanel>
               </DockPanel>

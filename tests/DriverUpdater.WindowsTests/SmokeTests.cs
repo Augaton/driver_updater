@@ -239,7 +239,9 @@ public sealed class SmokeTests
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Task.Run(() =>
             Elevation.RunAsync<HealthReport>(AdminCommand.Health, [], new Progress<string>(), _ => false, exe)));
 
-        Assert.Contains("Refusé", error.Message);
+        // The helper speaks the language set in Settings, or Windows' own: English on the runners.
+        var helperLanguage = L.Resolve(Settings.Language, System.Globalization.CultureInfo.CurrentUICulture);
+        Assert.StartsWith(helperLanguage == "en" ? "Refused:" : "Refusé :", error.Message);
     }
 
     [Fact]

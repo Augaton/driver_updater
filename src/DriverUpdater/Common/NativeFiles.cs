@@ -15,6 +15,9 @@ namespace DriverUpdater.Common;
 public static class NativeFiles
 {
     const uint AccessReadAttributes = 0x80;
+    // Windows only applies sharing rules to handles with data access: a folder pinned with
+    // "read attributes" alone could still be renamed. Listing its contents is data access.
+    const uint AccessListDirectory = 0x1;
     internal const uint FlagOpenReparsePoint = 0x00200000, FlagBackupSemantics = 0x02000000;
 
     internal static SafeFileHandle Open(string path, uint access, uint flags, FileShare share = FileShare.ReadWrite | FileShare.Delete) =>
@@ -87,7 +90,7 @@ public static class NativeFiles
             foreach (var part in relative == "." ? [] : relative.Split(Path.DirectorySeparatorChar))
             {
                 current = Path.Combine(current, part);
-                var handle = Open(current, AccessReadAttributes, FlagBackupSemantics | FlagOpenReparsePoint, FileShare.ReadWrite);
+                var handle = Open(current, AccessListDirectory | AccessReadAttributes, FlagBackupSemantics | FlagOpenReparsePoint, FileShare.ReadWrite);
                 handles.Add(handle);
                 if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastPInvokeError(), $"Dossier inaccessible : {current}");
                 if (!File.GetAttributes(handle).HasFlag(FileAttributes.Directory) || Redirects(handle)
@@ -138,7 +141,7 @@ public static class NativeFiles
     /// <summary>Holds a folder open without delete sharing: until disposed, it cannot be renamed or deleted.</summary>
     public static IDisposable Pin(string folder)
     {
-        var handle = Open(folder, AccessReadAttributes, FlagBackupSemantics | FlagOpenReparsePoint, FileShare.ReadWrite);
+        var handle = Open(folder, AccessListDirectory | AccessReadAttributes, FlagBackupSemantics | FlagOpenReparsePoint, FileShare.ReadWrite);
         if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastPInvokeError(), $"Dossier inaccessible : {folder}");
         return handle;
     }

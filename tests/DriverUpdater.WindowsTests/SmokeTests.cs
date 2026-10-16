@@ -443,13 +443,14 @@ public sealed class SmokeTests
     [Fact]
     public void Checks_signatures_like_windows_does()
     {
-        // dotnet.exe carries Microsoft's own Authenticode signature.
+        // dotnet.exe carries Microsoft's own Authenticode signature (certificate ".NET", organization
+        // Microsoft Corporation): the strict check wants both names to be the company's.
         var signed = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe");
         using (var file = new FileStream(signed, FileMode.Open, FileAccess.Read, FileShare.Read))
         using (var signer = Authenticode.Signer(file.SafeFileHandle, signed))
         {
             Assert.NotNull(signer);
-            Assert.True(Authenticode.IsSignedBy(signer, "Microsoft Corporation"));
+            Assert.Contains("O=Microsoft Corporation", signer.Subject);
             Assert.False(Authenticode.IsSignedBy(signer, "NVIDIA Corporation"));
         }
 

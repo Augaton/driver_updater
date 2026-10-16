@@ -94,9 +94,11 @@
       </Setter>
     </Style>
 
-    <!-- One sidebar entry: icon (in Tag) and name; the selected one glows. Colors go to the icon
-         and the name, never to the TabItem: its section's content would inherit them. -->
+    <!-- One sidebar entry: icon (in Tag) and name; the selected one glows. A TabItem's section
+         inherits its Foreground, so it stays the text color (Windows' classic theme would make it
+         black); the icon and the name get their own colors. -->
     <Style x:Key="NavItem" TargetType="TabItem">
+      <Setter Property="Foreground" Value="{StaticResource Ink}" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
         <Setter.Value>

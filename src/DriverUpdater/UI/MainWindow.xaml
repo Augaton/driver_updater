@@ -435,23 +435,25 @@
             <DataGrid x:Name="InventoryGrid" AutomationProperties.Name="Inventaire des pilotes"
                       AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
-              <DataGrid.RowStyle>
-                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+              <!-- Devices with a problem in amber, cell by cell: a RowStyle would replace the theme's own
+                   (the Fluent theme sets it through DataGrid, so BasedOn would only find the classic white one). -->
+              <DataGrid.Resources>
+                <Style x:Key="AttentionText" TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding NeedsAttention}" Value="True">
                       <Setter Property="Foreground" Value="{StaticResource NeonAmber}" />
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
-              </DataGrid.RowStyle>
+              </DataGrid.Resources>
               <DataGrid.Columns>
-                <DataGridTextColumn Header="Périphérique" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Périphérique" Binding="{Binding Name}" Width="*" ElementStyle="{StaticResource AttentionText}" />
                 <DataGridTextColumn Header="Classe" Binding="{Binding Class}" Width="110" />
                 <DataGridTextColumn Header="Fournisseur" Binding="{Binding Provider}" Width="170" />
                 <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="140" />
                 <DataGridTextColumn Header="Date" Binding="{Binding DateText}" SortMemberPath="Date" Width="90" />
                 <DataGridTextColumn Header="Signé" Binding="{Binding SignedText}" Width="60" />
-                <DataGridTextColumn Header="État" Binding="{Binding Status}" Width="110" />
+                <DataGridTextColumn Header="État" Binding="{Binding Status}" Width="110" ElementStyle="{StaticResource AttentionText}" />
               </DataGrid.Columns>
             </DataGrid>
           </Border>

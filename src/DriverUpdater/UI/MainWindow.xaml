@@ -1130,7 +1130,7 @@
               </StackPanel>
             </local:PageHeader>
             <Border Style="{StaticResource Card}">
-              <TextBlock x:Name="RepairStatus" TextWrapping="Wrap" />
+              <TextBlock x:Name="RepairStatus" TextWrapping="Wrap" Text="Le résumé de la vérification apparaîtra ici." />
             </Border>
           </StackPanel>
         </ScrollViewer>
@@ -1184,6 +1184,7 @@
           <local:PageHeader DockPanel.Dock="Top" Title="Programmes installés"
                             Description="Désinstaller lance le désinstalleur du programme. Ensuite, « Chercher les restes » propose les dossiers qu'il a laissés ; ils partent à la corbeille, donc rien n'est perdu. Le registre n'est pas « nettoyé » : ça ne fait rien gagner et c'est la cause de casse n° 1.">
             <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Rechercher" Foreground="{StaticResource InkMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
               <TextBox x:Name="ProgramFilter" Width="200" Margin="0,0,8,0" VerticalContentAlignment="Center"
                        TextChanged="OnProgramFilterChanged" AutomationProperties.Name="Filtrer les programmes" />
               <Button x:Name="UninstallButton" Content="Désinstaller…" Click="OnUninstall" Margin="0,0,8,0" />

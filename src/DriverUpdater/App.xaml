@@ -107,7 +107,8 @@
         <Setter.Value>
           <ControlTemplate TargetType="TreeViewItem">
             <StackPanel>
-              <ToggleButton x:Name="Toggle" ClickMode="Press" Focusable="False" Cursor="Hand"
+              <ToggleButton x:Name="Toggle" ClickMode="Press" Focusable="False" Cursor="Hand" HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
                             Foreground="{StaticResource InkMuted}" BorderBrush="Transparent"
                             IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
                 <ToggleButton.Template>
@@ -190,15 +191,16 @@
       <Setter Property="Focusable" Value="False" />
       <Setter Property="Template">
         <Setter.Value>
+          <!-- Title and actions on the first line; what the page does, across the whole width, below. -->
           <ControlTemplate TargetType="ui:PageHeader">
-            <DockPanel>
-              <ContentPresenter DockPanel.Dock="Right" VerticalAlignment="Top" Margin="16,2,0,0" />
-              <StackPanel>
-                <TextBlock Text="{TemplateBinding Title}" Style="{StaticResource Heading}" FontSize="24" TextWrapping="Wrap" />
-                <TextBlock Text="{TemplateBinding Description}" Style="{StaticResource Muted}" MaxWidth="780" HorizontalAlignment="Left" />
-                <TextBlock x:Name="Note" Text="{TemplateBinding Note}" Style="{StaticResource Muted}" FontSize="12" Margin="0,4,0,0" />
-              </StackPanel>
-            </DockPanel>
+            <StackPanel>
+              <DockPanel>
+                <ContentPresenter DockPanel.Dock="Right" VerticalAlignment="Center" Margin="16,0,0,0" />
+                <TextBlock Text="{TemplateBinding Title}" Style="{StaticResource Heading}" FontSize="24" TextWrapping="Wrap" VerticalAlignment="Center" />
+              </DockPanel>
+              <TextBlock Text="{TemplateBinding Description}" Style="{StaticResource Muted}" MaxWidth="860" HorizontalAlignment="Left" Margin="0,4,0,0" />
+              <TextBlock x:Name="Note" Text="{TemplateBinding Note}" Style="{StaticResource Muted}" FontSize="12" Margin="0,4,0,0" />
+            </StackPanel>
             <ControlTemplate.Triggers>
               <Trigger Property="Note" Value="{x:Null}">
                 <Setter TargetName="Note" Property="Visibility" Value="Collapsed" />

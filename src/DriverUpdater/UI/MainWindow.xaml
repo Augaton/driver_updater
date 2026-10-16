@@ -447,12 +447,12 @@
                 </Style>
               </DataGrid.Resources>
               <DataGrid.Columns>
-                <DataGridTextColumn Header="Périphérique" Binding="{Binding Name}" Width="*" ElementStyle="{StaticResource AttentionText}" />
-                <DataGridTextColumn Header="Classe" Binding="{Binding Class}" Width="110" />
-                <DataGridTextColumn Header="Fournisseur" Binding="{Binding Provider}" Width="170" />
-                <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="140" />
+                <DataGridTextColumn Header="Périphérique" Binding="{Binding Name}" Width="1.6*" MinWidth="160" ElementStyle="{StaticResource AttentionText}" />
+                <DataGridTextColumn Header="Classe" Binding="{Binding Class}" Width="100" />
+                <DataGridTextColumn Header="Fournisseur" Binding="{Binding Provider}" Width="*" MinWidth="110" />
+                <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="125" />
                 <DataGridTextColumn Header="Date" Binding="{Binding DateText}" SortMemberPath="Date" Width="90" />
-                <DataGridTextColumn Header="Signé" Binding="{Binding SignedText}" Width="60" />
+                <DataGridTextColumn Header="Signé" Binding="{Binding SignedText}" Width="55" />
                 <DataGridTextColumn Header="État" Binding="{Binding Status}" Width="110" ElementStyle="{StaticResource AttentionText}" />
               </DataGrid.Columns>
             </DataGrid>

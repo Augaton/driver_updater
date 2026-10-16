@@ -76,6 +76,18 @@ public static class CatalogScope
     public static readonly HashSet<string> BootCritical = new(StringComparer.OrdinalIgnoreCase)
         { "SCSIAdapter", "HDC", "DiskDrive", "Volume", "VolumeSnapshot", "Processor", "Computer" };
 
+    /// <summary>The same classes by GUID (devguid.h), for INF files that only give that.</summary>
+    public static readonly HashSet<Guid> BootCriticalGuids =
+    [
+        new("4d36e97b-e325-11ce-bfc1-08002be10318"), // SCSIAdapter
+        new("4d36e96a-e325-11ce-bfc1-08002be10318"), // HDC
+        new("4d36e967-e325-11ce-bfc1-08002be10318"), // DiskDrive
+        new("71a27cdd-812a-11d0-bec7-08002be2092f"), // Volume
+        new("533c5b84-ec70-11d2-9505-00c04f79deaf"), // VolumeSnapshot
+        new("50127dc3-0f36-415e-a6cc-4cb3be910b65"), // Processor
+        new("4d36e966-e325-11ce-bfc1-08002be10318"), // Computer
+    ];
+
     public static bool ShouldSearch(DeviceDriver device) =>
         device.HardwareIds.Count > 0
         && Buses.Contains(device.Bus)
@@ -101,19 +113,18 @@ public sealed record StorePackage(string PublishedName, string OriginalName, str
 
 /// <summary>
 /// Old driver versions Windows keeps "just in case": every graphics driver update leaves
-/// the previous one behind, close to 1 GB each. One may go when a newer version of the same
-/// driver is in the store, no device uses it, and Windows does not need it to start.
+/// the previous one behind, close to 1 GB each. One may go when two newer versions of the
+/// same driver are in the store (the newest, and the one before it that "Revenir au pilote
+/// précédent" goes back to), no device uses it, and Windows does not need it to start.
 /// </summary>
 public static class DriverStoreRules
 {
     public static List<StorePackage> Removable(IEnumerable<StorePackage> packages, ISet<string> inUse) =>
         packages
             .GroupBy(p => (p.Class.ToLowerInvariant(), p.Provider.ToLowerInvariant(), p.OriginalName.ToLowerInvariant()))
-            .SelectMany(family =>
-            {
-                var newest = family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date).First();
-                return family.Where(p => p != newest && !p.BootCritical && !inUse.Contains(p.PublishedName));
-            })
+            .SelectMany(family => family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date)
+                .Skip(2)
+                .Where(p => !p.BootCritical && !inUse.Contains(p.PublishedName)))
             .OrderByDescending(p => p.Size)
             .ToList();
 }

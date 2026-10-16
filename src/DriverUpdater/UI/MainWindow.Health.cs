@@ -96,6 +96,8 @@ public partial class MainWindow
         {
             var points = await RunAdminAsync<List<RestorePointInfo>>(AdminCommand.RestorePoints);
             RestorePointList.ItemsSource = points;
+            RestorePointsHint.Visibility = points.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            RestorePointsHint.Text = "Aucun point de restauration : la protection du système est peut-être désactivée.";
             return points.Count == 0
                 ? "Aucun point de restauration : la protection du système est peut-être désactivée (Paramètres → Système → Informations système → Protection du système)."
                 : $"{points.Count} point(s) de restauration.";
@@ -156,12 +158,13 @@ public partial class MainWindow
         await RunBusy("En attente de l'autorisation administrateur…", async () =>
         {
             var report = await RunAdminAsync<RepairReport>(command);
-            RepairStatus.Text = report.Summary;
+            // The component cleanup lives on the "Nettoyage" page, the repairs on theirs.
+            (command == AdminCommand.DismCleanup ? ComponentCleanupStatus : RepairStatus).Text = report.Summary;
             return report.ExitCode switch
             {
-                0 => "Réparation terminée.",
-                3010 => "Réparation terminée : redémarrez l'ordinateur.",
-                _ => $"Terminé avec le code {report.ExitCode} : voir le résumé dans la carte « Réparer Windows ».",
+                0 => "Terminé.",
+                3010 => "Terminé : redémarrez l'ordinateur.",
+                _ => $"Terminé avec le code {report.ExitCode} : voir le résumé sur la page.",
             };
         });
     }

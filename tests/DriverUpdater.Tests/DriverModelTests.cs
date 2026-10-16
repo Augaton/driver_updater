@@ -92,3 +92,19 @@ public sealed class InstalledDriversTests
         Assert.False(map.ContainsKey(@"PCI\VEN_8086&DEV_1"));
     }
 }
+
+public sealed class DriverStoreKeepsRollbackTests
+{
+    static StorePackage Package(string published, string version) =>
+        new(published, "nv_dispi.inf", "NVIDIA", "Display", new Version(version), null, false, 900L << 20);
+
+    [Fact]
+    public void Keeps_the_version_before_the_newest_for_rolling_back()
+    {
+        var packages = new[] { Package("oem1.inf", "31.0.0.1"), Package("oem2.inf", "32.0.0.1"), Package("oem3.inf", "33.0.0.1"), Package("oem4.inf", "34.0.0.1") };
+
+        var removable = DriverStoreRules.Removable(packages, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "oem4.inf" });
+
+        Assert.Equal(["oem2.inf", "oem1.inf"], removable.Select(p => p.PublishedName).OrderByDescending(n => n));
+    }
+}

@@ -20,6 +20,35 @@ public static partial class Catalog
     public const string SearchUrl = "https://www.catalog.update.microsoft.com/Search.aspx?q=";
     public const string DownloadDialogUrl = "https://www.catalog.update.microsoft.com/DownloadDialog.aspx";
 
+    /// <summary>
+    /// Whether an INF installs a driver Windows needs to start (storage controller, disk,
+    /// volume, processor), by its class name or, when it only gives that, its class GUID.
+    /// </summary>
+    public static bool IsBootCritical(string inf) =>
+        InfClass(inf) is { } name && CatalogScope.BootCritical.Contains(name)
+        || InfVersionValue(inf, "ClassGuid") is { } guid && Guid.TryParse(guid, out var id) && CatalogScope.BootCriticalGuids.Contains(id);
+
+    /// <summary>The device class an INF file installs ("Display", "SCSIAdapter"…), from its [Version] section.</summary>
+    public static string? InfClass(string inf) => InfVersionValue(inf, "Class");
+
+    static string? InfVersionValue(string inf, string key)
+    {
+        bool inVersion = false;
+        foreach (var raw in inf.Split('\n'))
+        {
+            var line = raw.Split(';')[0].Trim(); // ";" starts a comment
+            if (line.StartsWith('['))
+            {
+                inVersion = line.Equals("[Version]", StringComparison.OrdinalIgnoreCase);
+                continue;
+            }
+            int equals = line.IndexOf('=');
+            if (inVersion && equals > 0 && line[..equals].Trim().Equals(key, StringComparison.OrdinalIgnoreCase))
+                return line[(equals + 1)..].Trim().Trim('"');
+        }
+        return null;
+    }
+
     /// <summary>Only files from Microsoft's own download servers are ever fetched.</summary>
     public static bool IsTrustedDownload(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps

@@ -18,7 +18,7 @@ public static partial class PerfAnalyzer
     sealed record ProcessSample(string Name, CounterSample Cpu, long Memory, CounterSample Io);
 
     /// <summary>Everything read at one instant; two of them, some seconds apart, give the rates.</summary>
-    sealed record Snapshot(CounterSample Cpu, CounterSample DiskIdle, CounterSample? CpuSpeed,
+    sealed record Snapshot(CounterSample Cpu, CounterSample? CpuUtility, CounterSample DiskIdle, CounterSample? CpuSpeed,
         Dictionary<int, ProcessSample> Processes, Dictionary<string, CounterSample>? Gpu);
 
     public static async Task<PerfReport> MeasureAsync(TimeSpan duration, IProgress<double> progress)
@@ -38,18 +38,25 @@ public static partial class PerfAnalyzer
     static Snapshot Take()
     {
         using var cpu = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+        // What Task Manager shows: time weighted by the actual frequency, so turbo counts.
+        using var utility = Counter("Processor Information", "% Processor Utility", "_Total");
         using var disk = new PerformanceCounter("PhysicalDisk", "% Idle Time", "_Total");
         using var speed = Counter("Processor Information", "% Processor Performance", "_Total");
-        return new Snapshot(cpu.NextSample(), disk.NextSample(), speed?.NextSample(), Processes(), GpuEngines());
+        return new Snapshot(cpu.NextSample(), utility?.NextSample(), disk.NextSample(), speed?.NextSample(), Processes(), GpuEngines());
     }
 
     static PerfReport Report(Snapshot before, Snapshot after)
     {
         int cores = Environment.ProcessorCount;
+        // Apps only have "time" counters: they get the same turbo factor as the total, as in
+        // Task Manager, so the list adds up to the gauge.
+        double time = CounterSample.Calculate(before.Cpu, after.Cpu);
+        double? utility = before.CpuUtility is { } u0 && after.CpuUtility is { } u1 ? CounterSample.Calculate(u0, u1) : null;
+        double turbo = utility is { } u && time > 0.5 ? u / time : 1;
         var perProcess = after.Processes
             .Where(p => before.Processes.ContainsKey(p.Key))
             .Select(p => (Pid: p.Key, p.Value.Name,
-                Cpu: CounterSample.Calculate(before.Processes[p.Key].Cpu, p.Value.Cpu) / cores,
+                Cpu: Math.Min(100, CounterSample.Calculate(before.Processes[p.Key].Cpu, p.Value.Cpu) / cores * turbo),
                 p.Value.Memory,
                 Io: CounterSample.Calculate(before.Processes[p.Key].Io, p.Value.Io)))
             .ToList();
@@ -74,7 +81,7 @@ public static partial class PerfAnalyzer
         long total = (long)memory.TotalPhysicalMemory;
         var (plan, powerSaver) = PowerPlan();
         var system = new SystemUsage(
-            Math.Clamp(CounterSample.Calculate(before.Cpu, after.Cpu), 0, 100),
+            Math.Clamp(utility ?? time, 0, 100),
             total - (long)memory.AvailablePhysicalMemory,
             total,
             Math.Clamp(100 - CounterSample.Calculate(before.DiskIdle, after.DiskIdle), 0, 100),

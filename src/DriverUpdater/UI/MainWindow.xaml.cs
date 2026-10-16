@@ -8,21 +8,23 @@ using System.Windows.Controls;
 namespace DriverUpdater.UI;
 
 /// <summary>
-/// The main window. It runs without administrator rights; each tab's actions live in their
-/// own partial file (MainWindow.Home.cs, .Drivers.cs, .Catalog.cs, .Inventory.cs, .Games.cs,
-/// .Tuning.cs, .Software.cs, .Startup.cs, .Performance.cs, .Health.cs).
+/// The main window. It runs without administrator rights. One page per feature, reached from
+/// the menu tree (MainWindow.Nav.cs); each area's actions live in their own partial file
+/// (MainWindow.Home.cs, .Drivers.cs, .Catalog.cs, .Inventory.cs, .Games.cs, .Tuning.cs,
+/// .Software.cs, .Startup.cs, .Performance.cs, .Health.cs).
 /// </summary>
 public partial class MainWindow : Window
 {
     readonly List<string> log = [];
     bool busy;
-    bool adminRunning;
+    int adminRuns; // administrator helpers still running
     AppRelease? newerRelease;
 
     public MainWindow()
     {
         InitializeComponent();
-        Tabs.Tag = $"version {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}";
+        VersionText.Text = $"version {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}";
+        BuildNav();
         Loaded += async (_, _) =>
         {
             LoadWeeklyCheck();
@@ -47,19 +49,25 @@ public partial class MainWindow : Window
 
     readonly HashSet<TabItem> openedTabs = [];
 
-    // Each tab reads the system only when first opened: WMI, Windows Update and the registry
-    // are slow to query, and most visits use one or two tabs.
+    // Each page reads the system only when first opened: WMI, Windows Update and the registry
+    // are slow to query, and most visits use one or two pages.
     async void OnTabChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Lists inside the tabs raise SelectionChanged too, and it bubbles up here.
-        if (e.OriginalSource != Tabs || Tabs.SelectedItem is not TabItem tab || !openedTabs.Add(tab)) return;
-        if (tab == HealthTab) await Task.WhenAll(LoadDisks(), LoadBatteries(), fullSecurity ??= LoadSecurity(askWindowsUpdate: true));
-        else if (tab == InventoryTab && inventory.Count == 0) await LoadInventory();
-        else if (tab == GamesTab) await LoadGames();
+        // Lists inside the pages raise SelectionChanged too, and it bubbles up here.
+        if (e.OriginalSource != Tabs || Tabs.SelectedItem is not TabItem tab) return;
+        ShowInNav(tab);
+        if (!openedTabs.Add(tab)) return;
+        if (tab == DisksTab) await Task.WhenAll(LoadDisks(), LoadBatteries());
+        else if (tab == SecurityTab) await (fullSecurity ??= LoadSecurity(askWindowsUpdate: true));
+        else if ((tab == InventoryTab || tab == ProblemsTab) && inventory.Count == 0) await LoadInventory();
+        else if (tab == GpuTab) await LoadGpus();
+        else if (tab == ComponentsTab) await CheckComponents();
+        else if (tab == GameTipsTab) await LoadGameTips();
         else if (tab == TuningTab) await LoadTuning();
+        else if (tab == PrivacyTab || tab == CleanupTab) await LoadTweaks();
         else if (tab == HistoryTab) await LoadHistory();
         else if (tab == StartupTab) await LoadStartup();
-        else if (tab == SoftwareTab) await LoadPrograms();
+        else if (tab == ProgramsTab) await LoadPrograms();
     }
 
     async Task CheckForUpdate()
@@ -139,19 +147,18 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        // The administrator helper reports here: closing now would cut it off mid-task.
-        if (adminRunning)
-        {
+        // The administrator helper reports here: closing now would cut it off mid-task. It may
+        // also hang (a stuck DISM or Windows Update): the user decides.
+        if (adminRuns > 0 && Ask("Une opération administrateur est en cours. Fermer quand même ?\n\n" +
+                                 "Elle sera interrompue là où elle en est.", MessageBoxImage.Warning) != MessageBoxResult.Yes)
             e.Cancel = true;
-            SetStatus("Une opération administrateur est en cours : patientez avant de fermer.");
-        }
         base.OnClosing(e);
     }
 
     /// <summary>Runs one administrator action; Windows asks the user first.</summary>
     async Task<T> RunAdminAsync<T>(string command, params string[] args)
     {
-        adminRunning = true;
+        adminRuns++;
         try
         {
             return await Elevation.RunAsync<T>(command, args, new Progress<string>(SetStatus),
@@ -159,12 +166,19 @@ public partial class MainWindow : Window
         }
         finally
         {
-            adminRunning = false;
+            adminRuns--;
         }
     }
 
     async Task RunBusy(string message, Func<Task<string>> work)
     {
+        // One action at a time: a second one would turn every button back on when it ends,
+        // while the first is still running.
+        if (busy)
+        {
+            SetStatus("Une opération est déjà en cours : patientez qu'elle se termine.");
+            return;
+        }
         busy = true;
         UpdateButtons();
         BusyBar.Visibility = Visibility.Visible;
@@ -198,7 +212,7 @@ public partial class MainWindow : Window
                      CleanWindowsTempButton, SfcButton, DismRestoreButton, DismCleanupButton, BackupButton, RestoreBackupButton,
                      SearchCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
                      BootReportButton, MeasureButton, ScanButton, RefreshInventoryButton, StoreScanButton, DeviceBannerButton,
-                     GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton,
+                     GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton, PrivacyAllButton,
                      RestorePointsButton, CreateRestorePointButton, UpdateInstallButton,
                  })
             button.IsEnabled = !busy;

@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.IO;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace DriverUpdater.Drivers;
 
@@ -14,12 +16,38 @@ public static class DriverBackup
     /// <summary>Exports every third-party driver into a new dated folder inside <paramref name="parent"/>.</summary>
     public static async Task<(string Folder, int Count)> ExportAsync(string parent)
     {
-        var folder = Path.Combine(parent, $"Pilotes {DateTime.Now:yyyy-MM-dd HH'h'mm}");
-        Directory.CreateDirectory(folder);
-        int code = await PnpUtilAsync("/export-driver", "*", folder);
-        if (code != Success) throw new InvalidOperationException($"La sauvegarde a échoué (pnputil, code {code}).");
+        var folder = Path.Combine(Path.GetFullPath(parent), $"Pilotes {DateTime.Now:yyyy-MM-dd HH'h'mm'm'ss}");
+        // The user chose the parent, so any program of theirs can write there: the folder must
+        // be truly new (not a link planted under the expected name), and the folders above it
+        // stay pinned while pnputil, running as administrator, writes into it.
+        // While pnputil fills it, only administrators may write into it (no program of the user
+        // can plant a link inside), and it stays pinned (none can rename it away).
+        using (NativeFiles.PinParents(Path.GetPathRoot(folder)!, folder))
+        {
+            NativeFiles.CreateNewFolder(folder, AdministratorsOnly());
+            using (NativeFiles.Pin(folder))
+            {
+                if (NativeFiles.GenuineFolder(folder) is null) throw new InvalidOperationException($"Dossier de sauvegarde refusé : {folder}");
+                int code = await PnpUtilAsync("/export-driver", "*", folder);
+                if (code != Success) throw new InvalidOperationException($"La sauvegarde a échoué (pnputil, code {code}).");
+            }
+            // Done: the backup takes the rights of the folder it is in, the user's own.
+            var inherit = new DirectorySecurity();
+            inherit.SetAccessRuleProtection(isProtected: false, preserveInheritance: false);
+            new DirectoryInfo(folder).SetAccessControl(inherit);
+        }
         // pnputil writes one subfolder per driver package.
         return (folder, Directory.GetDirectories(folder).Length);
+    }
+
+    static DirectorySecurity AdministratorsOnly()
+    {
+        var security = new DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        foreach (var sid in new[] { WellKnownSidType.LocalSystemSid, WellKnownSidType.BuiltinAdministratorsSid })
+            security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid, null), FileSystemRights.FullControl,
+                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+        return security;
     }
 
     /// <summary>Installs every driver found in a backup folder; returns true if Windows must restart.</summary>

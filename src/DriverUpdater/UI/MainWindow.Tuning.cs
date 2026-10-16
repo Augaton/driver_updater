@@ -12,11 +12,13 @@ public sealed class TweakRow
     public required TweakState State { get; init; }
     public required bool CanUndo { get; init; }
 
-    public bool CanAct => State != TweakState.NotApplicable && (State == TweakState.NotApplied || CanUndo);
+    /// <summary>Applying: a setting not yet set. Undoing: only what this app set (a retired one can only be undone).</summary>
+    public bool Applies => State == TweakState.NotApplied && !Tweak.Retired;
+    public bool CanAct => State != TweakState.NotApplicable && (Applies || CanUndo);
     public string ActionText => State switch
     {
         TweakState.NotApplicable => "Non disponible",
-        TweakState.NotApplied => "Appliquer",
+        _ when Applies => "Appliquer",
         _ => CanUndo ? "Annuler" : "Déjà réglé",
     };
     public string Glyph => State == TweakState.Applied ? "" : State == TweakState.NotApplicable ? "" : "";
@@ -29,7 +31,7 @@ public sealed class TweakRow
     public string Badges => string.Concat(
         Tweak.NeedsAdmin ? "   ADMIN" : "",
         Tweak.NeedsRestart ? "   REDÉMARRAGE" : "",
-        State == TweakState.NotApplicable ? "   WINDOWS 11 SEULEMENT" : "");
+        State != TweakState.NotApplicable ? "" : Tweak.MinBuild >= 22631 ? "   WINDOWS 11 23H2 ET APRÈS" : "   WINDOWS 11 SEULEMENT");
 }
 
 public sealed class CheckRow(PcCheck check)
@@ -59,14 +61,19 @@ public partial class MainWindow
     {
         try
         {
-            // powercfg and the registry: off the interface thread.
+            // powercfg and the registry: off the interface thread. A retired setting only shows
+            // where this app applied it, to be undone.
             tweakRows = await Task.Run(() => TweakCatalog.All
-                .Select(t => new TweakRow { Tweak = t, State = Tuner.State(t), CanUndo = Tuner.CanUndo(t) })
+                .Select(t => (Tweak: t, CanUndo: Tuner.CanUndo(t)))
+                .Where(t => !t.Tweak.Retired || t.CanUndo)
+                .Select(t => new TweakRow { Tweak = t.Tweak, State = Tuner.State(t.Tweak), CanUndo = t.CanUndo })
                 .ToList());
             TweakListGame.ItemsSource = tweakRows.Where(r => r.Tweak.Group == TweakCatalog.Game).ToList();
+            TweakListComfort.ItemsSource = tweakRows.Where(r => r.Tweak.Group == TweakCatalog.Comfort).ToList();
             TweakListPrivacy.ItemsSource = tweakRows.Where(r => r.Tweak.Group == TweakCatalog.Privacy).ToList();
             TweakListSpace.ItemsSource = tweakRows.Where(r => r.Tweak.Group == TweakCatalog.Space).ToList();
-            var possible = tweakRows.Where(r => r.State != TweakState.NotApplicable).ToList();
+            // The gauge counts the gaming settings: privacy and disk space have their own pages.
+            var possible = tweakRows.Where(r => r.Tweak.Group == TweakCatalog.Game && !r.Tweak.Retired && r.State != TweakState.NotApplicable).ToList();
             int applied = possible.Count(r => r.State == TweakState.Applied);
             TuningScore.Text = $"{applied}/{possible.Count}";
             TuningGauge.Value = possible.Count == 0 ? 0 : 100.0 * applied / possible.Count;
@@ -94,7 +101,7 @@ public partial class MainWindow
     async void OnTweakAction(object sender, RoutedEventArgs e)
     {
         if (busy || sender is not Button { Tag: TweakRow row }) return;
-        bool apply = row.State == TweakState.NotApplied;
+        bool apply = row.Applies;
         await RunBusy(row.Tweak.NeedsAdmin ? "En attente de l'autorisation administrateur…" : "Modification…", async () =>
         {
             if (row.Tweak.NeedsAdmin)
@@ -108,19 +115,18 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Every one-click setting not yet applied: the user's own directly, the rest under a single
-    /// administrator consent. A laptop keeps its power plan: the battery would pay for it.
+    /// Every one-click setting of the button's group (its Tag; the gaming ones by default) not yet
+    /// applied: the user's own directly, the rest under a single administrator consent.
     /// </summary>
     async void OnTuneAll(object sender, RoutedEventArgs e)
     {
-        bool laptop = !System.Windows.Forms.SystemInformation.PowerStatus.BatteryChargeStatus
-            .HasFlag(System.Windows.Forms.BatteryChargeStatus.NoSystemBattery);
+        var group = (sender as Button)?.Tag as string ?? TweakCatalog.Game;
         var chosen = tweakRows
-            .Where(r => r.Tweak.InOneClick && r.State == TweakState.NotApplied && !(laptop && r.Tweak.Id == TweakCatalog.PowerPlan))
+            .Where(r => r.Tweak.Group == group && r.Tweak.InOneClick && r.Applies)
             .ToList();
         if (chosen.Count == 0)
         {
-            SetStatus("Tout ce que « Tout optimiser » règle l'est déjà.");
+            SetStatus(tweakRows.Count == 0 ? "Les réglages sont encore en cours de lecture." : "Tout ce que ce bouton règle l'est déjà.");
             return;
         }
         if (Ask($"Appliquer {chosen.Count} réglage(s) ?\n\n" + string.Join("\n", chosen.Select(r => "• " + r.Tweak.Title)) +
@@ -169,8 +175,9 @@ public partial class MainWindow
         {
             if (FindName(action[4..]) is TabItem tab) Tabs.SelectedItem = tab;
         }
-        // Only Windows' own settings pages: the action comes from our list, but stays checked.
-        else if (action.StartsWith("ms-settings:", StringComparison.Ordinal) || action.StartsWith("windowsdefender:", StringComparison.Ordinal))
+        // Only Windows' own settings pages and https pages: the action comes from our list, but stays checked.
+        else if (action.StartsWith("ms-settings:", StringComparison.Ordinal) || action.StartsWith("windowsdefender:", StringComparison.Ordinal)
+                 || Uri.TryCreate(action, UriKind.Absolute, out var page) && page.Scheme == Uri.UriSchemeHttps)
         {
             Process.Start(new ProcessStartInfo(action) { UseShellExecute = true });
         }

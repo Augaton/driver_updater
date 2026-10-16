@@ -51,11 +51,9 @@ public static partial class Tuner
     const string UltimateTemplate = "e9a42b02-d5df-448d-aa00-03f14749eb61";
     const string PowerBackup = TweakEngine.BackupKey + @"\" + TweakCatalog.PowerPlan;
 
-    static bool IsWindows11 => Environment.OSVersion.Version.Build >= 22000;
-
     public static TweakState State(Tweak tweak)
     {
-        if (tweak.Id is "windowed-games" or "end-task" && !IsWindows11) return TweakState.NotApplicable;
+        if (Environment.OSVersion.Version.Build < tweak.MinBuild) return TweakState.NotApplicable;
         return tweak.Id switch
         {
             TweakCatalog.PowerPlan => ActivePlan() is { } plan && (plan == HighPerformance || plan == CreatedPlan())

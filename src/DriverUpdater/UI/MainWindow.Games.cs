@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace DriverUpdater.UI;
 
@@ -13,6 +14,11 @@ public sealed class GpuRow
     public string? Tool { get; init; }
     public string? Url { get; init; }
     public bool HasTool => Url is not null;
+    /// <summary>A newer driver on NVIDIA's site, installed with NVIDIA's own installer.</summary>
+    public NvidiaRelease? Official { get; init; }
+    public bool HasOfficial => Official is not null;
+    public string OfficialText => Official is { } r ? $"Installer {r.Version}" : "";
+    public string? NotesUrl => Official?.DetailsUrl;
 }
 
 public sealed class ComponentRow
@@ -31,21 +37,41 @@ public partial class MainWindow
 {
     List<GpuRow> gpuRows = [];
     List<ComponentRow> componentRows = [];
+    Dictionary<string, NvidiaRelease> nvidiaReleases = []; // by device instance ID
 
-    async Task LoadGames()
+    async Task LoadGames() => await Task.WhenAll(LoadGpus(), CheckComponents(), LoadGameTips());
+
+    async Task LoadGpus()
     {
         try
         {
             var devices = inventory.Count > 0 ? inventory : await LoadInventory();
             var tools = await Task.Run(SystemInfo.Gpus);
-            ShowGpus(devices.Where(d => d.Class.Equals("Display", StringComparison.OrdinalIgnoreCase)), tools, newer: null);
+            var displays = devices.Where(d => d.Class.Equals("Display", StringComparison.OrdinalIgnoreCase)).ToList();
+            ShowGpus(displays, tools, newer: null);
+            // NVIDIA answers in a second: no need to wait for a click.
+            if (displays.Any(IsNvidia))
+            {
+                nvidiaReleases = await NvidiaDrivers.LatestAsync(displays.Where(IsNvidia), Machine.HasBattery);
+                ShowGpus(displays, tools, newer: null);
+            }
         }
         catch (Exception e)
         {
             SetStatus("Lecture de la carte graphique impossible : " + Errors.Describe(e));
         }
-        await Task.WhenAll(CheckComponents(), LoadGameTips());
     }
+
+    // Graphics cards only: an NVIDIA card's HDMI sound and USB-C controller are NVIDIA devices too.
+    static bool IsNvidia(DeviceDriver device) =>
+        device.Class.Equals("Display", StringComparison.OrdinalIgnoreCase) && NvidiaDrivers.CardId(device) is not null;
+
+    /// <summary>The newer NVIDIA release for this card, if NVIDIA has one.</summary>
+    NvidiaRelease? NewerFromNvidia(DeviceDriver device) =>
+        nvidiaReleases.TryGetValue(device.DeviceId, out var release)
+        && (!device.HasDriver || NvidiaModel.NvidiaVersion(device.Version) is not { } installed
+            || Version.TryParse(installed, out var mine) && Version.TryParse(release.Version, out var theirs) && theirs > mine)
+            ? release : null;
 
     void ShowGpus(IEnumerable<DeviceDriver> displays, IReadOnlyList<Hardware> tools, IReadOnlyList<CatalogDriver>? newer)
     {
@@ -54,14 +80,21 @@ public partial class MainWindow
             var tool = tools.FirstOrDefault(t => t.Name.Equals(device.Name, StringComparison.OrdinalIgnoreCase));
             var found = newer?.FirstOrDefault(n => n.DeviceId == device.DeviceId
                 || device.HardwareIds.Contains(n.HardwareId, StringComparer.OrdinalIgnoreCase));
+            var official = NewerFromNvidia(device);
+            bool nvidiaKnown = nvidiaReleases.TryGetValue(device.DeviceId, out var latest);
+            string installed = device.HasDriver ? new InstalledDriver(device.Version, device.Date).ToString() : "aucun pilote";
+            if (NvidiaModel.NvidiaVersion(device.Version) is { } nvidiaNumber && device.HasDriver) installed = $"{nvidiaNumber} ({installed})";
             return new GpuRow
             {
                 Device = device,
                 Name = device.Name,
-                Installed = device.HasDriver ? new InstalledDriver(device.Version, device.Date).ToString() : "aucun pilote",
-                Latest = newer is null ? "cliquez sur « Chercher le dernier pilote »"
+                Installed = installed,
+                Latest = official is { } r ? $"{r.Name} {r.Version}{(r.Date is { } d ? $" du {d:dd/MM/yyyy}" : "")}, sur le site de NVIDIA"
+                    : nvidiaKnown ? $"à jour : {latest!.Version} est le dernier {(latest.Studio ? "pilote Studio" : "Game Ready")}"
+                    : newer is null ? "cliquez sur « Chercher dans le catalogue »"
                     : found is null ? "vous avez déjà le plus récent du catalogue"
                     : found.Entry.Label,
+                Official = official,
                 Newer = found,
                 Tool = tool?.Tool,
                 Url = tool?.Url,
@@ -100,13 +133,34 @@ public partial class MainWindow
         });
     }
 
+    async void OnNvidiaInstall(object sender, RoutedEventArgs e)
+    {
+        if (busy || sender is not Button { Tag: GpuRow { Official: { } release } row } || NvidiaDrivers.CardId(row.Device) is not { } card) return;
+        if (Ask($"Installer le pilote NVIDIA {release.Version} ({release.Name}) ?\n\n" +
+                "Après un point de restauration, il est téléchargé depuis les serveurs de NVIDIA (près de 1 Go) dans un dossier protégé, " +
+                "sa signature est vérifiée, puis l'installateur officiel de NVIDIA s'ouvre : « Installation express » garde vos réglages. " +
+                "L'écran peut clignoter pendant l'installation.") != MessageBoxResult.Yes)
+            return;
+
+        await RunBusy("En attente de l'autorisation administrateur…", async () =>
+        {
+            var report = await RunAdminAsync<NvidiaInstallReport>(AdminCommand.InstallNvidia, card);
+            if (report.Cancelled) return "Installation annulée.";
+            await LoadInventory();
+            await LoadGpus();
+            return report.ExitCode == 0
+                ? $"Installateur NVIDIA {report.Version} terminé. Redémarrez si l'installateur l'a demandé."
+                : $"L'installateur NVIDIA {report.Version} s'est fermé (code {report.ExitCode}) : il a peut-être été annulé.";
+        });
+    }
+
     async Task CheckComponents()
     {
         try
         {
             var names = (await Task.Run(InstalledPrograms.List)).Select(p => p.Name).ToList();
             var outdated = WinGet.IsAvailable
-                ? (await WinGet.ListUpgradesAsync()).Select(u => u.Id).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                ? (await SoftwareUpgrades()).Select(u => u.Id).ToHashSet(StringComparer.OrdinalIgnoreCase)
                 : [];
             // DirectX 9's extras leave no entry in "Apps installées": look for one of their files.
             bool directX = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.SystemX86), "d3dx9_43.dll"));
@@ -165,6 +219,7 @@ public partial class MainWindow
                 if (code != 0) failed.Add($"{row.Component.Name} (0x{code:X8})");
                 BusyBar.Value = i + 1;
             }
+            upgrades = null; // just updated: ask winget again
             await CheckComponents();
             return failed.Count == 0
                 ? $"{chosen.Count} composant(s) installé(s)."

@@ -17,14 +17,20 @@ public interface IRegistry
 /// <summary>
 /// One registry value a tweak sets. <see cref="Flag"/> values are items of a ";"-separated
 /// list ("VRROptimizeEnable=0;SwapEffectUpgradeEnable=1;"): only that item is set, the
-/// others the user may have are kept.
+/// others the user may have are kept. <see cref="WhenAbsent"/> is what Windows does when the
+/// value does not exist (Game Mode is on by default, for one).
 /// </summary>
-public sealed record RegistryValue(Hive Hive, string Key, string Name, object Value, bool Flag = false);
+public sealed record RegistryValue(Hive Hive, string Key, string Name, object Value, bool Flag = false, object? WhenAbsent = null);
 
 /// <param name="Id">Stable identifier: it names the backup and the administrator command.</param>
 /// <param name="InOneClick">Part of "Tout optimiser": safe for everyone. Others need a choice (mouse feel, laptop battery).</param>
+/// <param name="MinBuild">The first Windows build that has the setting (22000: Windows 11).</param>
+/// <param name="Retired">
+/// No longer offered (its effect was not confirmed, or it hurts some PCs); still listed where
+/// this app applied it, so that it can be undone.
+/// </param>
 public sealed record Tweak(string Id, string Group, string Title, string Why, bool NeedsAdmin, bool InOneClick,
-    IReadOnlyList<RegistryValue> Values, bool NeedsRestart = false);
+    IReadOnlyList<RegistryValue> Values, bool NeedsRestart = false, int MinBuild = 0, bool Retired = false);
 
 /// <summary>
 /// Applies and undoes registry tweaks. Before the first change, every value is backed up
@@ -39,7 +45,7 @@ public static class TweakEngine
     public static bool IsApplied(Tweak tweak, IRegistry registry) =>
         tweak.Values.All(v => v.Flag
             ? FlagIn(registry.Get(v.Hive, v.Key, v.Name) as string, (string)v.Value)
-            : Same(registry.Get(v.Hive, v.Key, v.Name), v.Value));
+            : Same(registry.Get(v.Hive, v.Key, v.Name) ?? v.WhenAbsent, v.Value));
 
     public static void Apply(Tweak tweak, IRegistry registry)
     {

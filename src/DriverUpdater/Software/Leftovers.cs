@@ -43,14 +43,24 @@ public static partial class Leftovers
         "Epic Games", "Ubisoft", "Electronic Arts", "Origin", "Riot Games", "JetBrains", "Python",
     };
 
-    public static List<Leftover> Find(string displayName, string? publisher, string? installLocation, LeftoverRoots roots)
+    /// <param name="inUse">
+    /// Install folders of the programs still installed. Office, for one, records the same folder
+    /// for each of its languages: uninstalling one must not offer the folder the others use.
+    /// </param>
+    public static List<Leftover> Find(string displayName, string? publisher, string? installLocation, LeftoverRoots roots,
+        IEnumerable<string?>? inUse = null)
     {
+        var used = (inUse ?? []).Where(p => !string.IsNullOrWhiteSpace(p) && Path.IsPathFullyQualified(p.Trim().Trim('"')))
+            .Select(p => Normalize(p!.Trim().Trim('"'))).ToList();
         var found = new List<Leftover>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Offer(string path, string reason, bool selected)
         {
-            if (IsSafeToRecycle(path, roots, out bool admin) && seen.Add(Normalize(path)))
-                found.Add(new Leftover { Path = Normalize(path), Reason = reason, NeedsAdmin = admin, Selected = selected });
+            if (!IsSafeToRecycle(path, roots, out bool admin) || !seen.Add(Normalize(path))) return;
+            var full = Normalize(path);
+            // The same folder as one still in use, inside it, or holding it: never offered.
+            if (used.Any(u => string.Equals(u, full, StringComparison.OrdinalIgnoreCase) || IsInside(full, u) || IsInside(u, full))) return;
+            found.Add(new Leftover { Path = full, Reason = reason, NeedsAdmin = admin, Selected = selected });
         }
 
         if (!string.IsNullOrWhiteSpace(installLocation)) Offer(installLocation.Trim().Trim('"'), "Dossier d'installation", selected: true);
@@ -84,6 +94,13 @@ public static partial class Leftovers
         if (string.Equals(self, full, StringComparison.OrdinalIgnoreCase) || IsInside(self, full)) return false;
         needsAdmin = roots.Machine.Any(r => IsInside(full, Normalize(r)));
         return true;
+    }
+
+    /// <summary>The all-users root (Program Files, ProgramData…) a folder sits in, or null.</summary>
+    public static string? MachineRootOf(string path, LeftoverRoots roots)
+    {
+        var full = Normalize(path);
+        return roots.Machine.Select(Normalize).FirstOrDefault(r => IsInside(full, r));
     }
 
     static bool IsInside(string path, string root) =>

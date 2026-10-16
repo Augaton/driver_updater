@@ -16,6 +16,18 @@ public sealed class LeftoversTests : IDisposable
 
     string Folder(params string[] parts) => Directory.CreateDirectory(Path.Combine(parts)).FullName;
 
+    // Office records the same install folder for each of its languages.
+    [Fact]
+    public void Never_offers_a_folder_another_installed_program_still_uses()
+    {
+        var office = Folder(roots.ProgramFiles, "Microsoft Office 365");
+        var inside = Folder(office, "root");
+
+        Assert.Empty(Leftovers.Find("Microsoft Office 365 - fr-fr", null, office, roots, inUse: [office]));
+        Assert.Empty(Leftovers.Find("Some Tool", null, inside, roots, inUse: [office]));
+        Assert.Empty(Leftovers.Find("Office", null, office, roots, inUse: [Path.Combine(office, "root", "Office16")]));
+    }
+
     [Fact]
     public void Offers_the_install_folder_ticked_and_same_name_folders_unticked()
     {

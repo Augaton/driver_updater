@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.VisualBasic.FileIO;
 
 namespace DriverUpdater.UI;
 
@@ -18,9 +17,27 @@ public partial class MainWindow
         {
             if (!WinGet.IsAvailable)
                 return "winget est introuvable : installez « Programme d'installation d'application » depuis le Microsoft Store.";
-            ShowSoftware(await WinGet.ListUpgradesAsync());
+            ShowSoftware(await SoftwareUpgrades(fresh: true));
             return software.Count == 0 ? "Vos logiciels sont à jour." : $"{software.Count} logiciel(s) à mettre à jour.";
         });
+
+    Task<List<SoftwareUpdate>>? upgrades;
+    DateTime upgradesAt;
+
+    /// <summary>
+    /// What winget can update. It takes several seconds, and the dashboard and the game
+    /// components ask for the same list: one run serves both for two minutes. A search the
+    /// user asks for, or an update just done, always asks again.
+    /// </summary>
+    Task<List<SoftwareUpdate>> SoftwareUpgrades(bool fresh = false)
+    {
+        if (fresh || upgrades is null || upgrades.IsFaulted || upgrades.IsCanceled || DateTime.UtcNow - upgradesAt > TimeSpan.FromMinutes(2))
+        {
+            upgrades = WinGet.ListUpgradesAsync();
+            upgradesAt = DateTime.UtcNow;
+        }
+        return upgrades;
+    }
 
     void ShowSoftware(List<SoftwareUpdate> list)
     {
@@ -56,6 +73,7 @@ public partial class MainWindow
                 BusyBar.Value = i + 1;
             }
             ShowSoftware(software.Except(done).ToList());
+            upgrades = null; // the next look asks winget again
             return failed.Count == 0
                 ? $"{done.Count} logiciel(s) mis à jour."
                 : $"{done.Count} sur {selected.Count} mis à jour. Échec : {string.Join(", ", failed)}.";
@@ -133,7 +151,8 @@ public partial class MainWindow
 
     async Task ShowLeftovers(InstalledProgram program)
     {
-        leftovers = await Task.Run(() => Leftovers.Find(program.Name, program.Publisher, program.InstallLocation, LeftoverRoots.Current));
+        leftovers = await Task.Run(() => Leftovers.Find(program.Name, program.Publisher, program.InstallLocation, LeftoverRoots.Current,
+            InstalledPrograms.List().Select(p => p.InstallLocation)));
         LeftoverList.ItemsSource = leftovers;
         LeftoverHeading.Text = leftovers.Count == 0
             ? $"« {program.Name} » n'a laissé aucun dossier reconnaissable."
@@ -158,19 +177,23 @@ public partial class MainWindow
         {
             // The user's own folders need no rights; done here, on the window's thread,
             // because the Recycle Bin's dialogs need it.
+            var owner = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            int recycled = 0;
             foreach (var leftover in selected.Where(l => !l.NeedsAdmin))
-                if (Leftovers.IsSafeToRecycle(leftover.Path, LeftoverRoots.Current, out _))
-                    FileSystem.DeleteDirectory(leftover.Path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                if (Leftovers.IsSafeToRecycle(leftover.Path, LeftoverRoots.Current, out _) && NativeFiles.Recycle(leftover.Path, owner))
+                    recycled++;
             var machine = selected.Where(l => l.NeedsAdmin).Select(l => l.Path).ToArray();
             if (machine.Length > 0)
             {
                 SetStatus("En attente de l'autorisation administrateur…");
-                await RunAdminAsync<int>(AdminCommand.Recycle, machine);
+                recycled += await RunAdminAsync<int>(AdminCommand.Recycle, machine);
             }
-            leftovers = leftovers.Except(selected).ToList();
+            leftovers = leftovers.Where(l => System.IO.Directory.Exists(l.Path)).ToList();
             LeftoverList.ItemsSource = leftovers;
             RecycleButton.Visibility = leftovers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            return $"{selected.Count} dossier(s) mis à la corbeille : vous pouvez les y récupérer.";
+            return recycled == selected.Count
+                ? $"{recycled} dossier(s) mis à la corbeille : vous pouvez les y récupérer."
+                : $"{recycled} dossier(s) sur {selected.Count} mis à la corbeille ; les autres sont restés en place.";
         });
     }
 }

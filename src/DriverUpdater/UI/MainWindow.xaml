@@ -35,9 +35,27 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="232" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
 
-    <TabControl x:Name="Tabs" Style="{StaticResource Sidebar}" ItemContainerStyle="{StaticResource NavItem}"
-                SelectionChanged="OnTabChanged">
+    <!-- The menu: a tree built from the pages below, one branch per group (MainWindow.Nav.cs). -->
+    <Border Background="{StaticResource PanelRaised}" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,1,0">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="24,22,18,10">
+          <TextBlock Text="DRIVER" FontFamily="{StaticResource Display}" FontSize="28" Foreground="{StaticResource NeonGradient}" />
+          <TextBlock Text="UPDATER" FontFamily="{StaticResource Display}" FontSize="28" Foreground="{StaticResource Ink}" Margin="0,-10,0,0" />
+        </StackPanel>
+        <TextBlock x:Name="VersionText" DockPanel.Dock="Bottom" Foreground="{StaticResource InkMuted}" FontSize="11" Margin="25,6,0,14" />
+        <TreeView x:Name="Nav" Style="{StaticResource NavTree}" SelectedItemChanged="OnNavSelected"
+                  AutomationProperties.Name="Sections de l'application" />
+      </DockPanel>
+    </Border>
+
+    <!-- One page per feature. Group titles (Style Section) mark the branches of the menu. -->
+    <TabControl x:Name="Tabs" Grid.Column="1" Style="{StaticResource Pages}" ItemContainerStyle="{StaticResource Page}"
+                SelectedIndex="0" SelectionChanged="OnTabChanged">
       <!-- Home: the big button scans every driver, the report says what to do -->
       <TabItem x:Name="HomeTab" Header="Accueil" Tag="&#xE80F;">
         <Grid>
@@ -188,7 +206,7 @@
                 </StackPanel>
               </DockPanel>
             </Button>
-            <Button Style="{StaticResource Tile}" Tag="HealthTab" Click="OnTile">
+            <Button Style="{StaticResource Tile}" Tag="SecurityTab" Click="OnTile">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -199,7 +217,7 @@
                 </StackPanel>
               </DockPanel>
             </Button>
-            <Button Style="{StaticResource Tile}" Tag="HealthTab" Click="OnTile">
+            <Button Style="{StaticResource Tile}" Tag="DisksTab" Click="OnTile">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="24"
                            Foreground="{StaticResource NeonCyan}" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -214,34 +232,28 @@
         </Grid>
       </TabItem>
 
-      <TabItem Header="PILOTES" Style="{StaticResource NavSection}" />
+      <TabItem Header="PILOTES" Style="{StaticResource Section}" />
 
-      <!-- Drivers -->
+      <!-- Driver updates from Windows Update -->
       <TabItem x:Name="DriversTab" Header="Windows Update" Tag="&#xE895;">
-        <Grid Margin="0,12,0,0">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
-
-          <DockPanel Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Mises à jour de pilotes"
+                            Description="Source : Windows Update, pilotes signés et validés par Microsoft pour votre PC. Les « facultatifs » ne servent qu'à corriger un problème précis : ils sont décochés par défaut."
+                            Note="Installer et masquer demandent l'autorisation administrateur.">
+            <StackPanel Orientation="Horizontal">
               <Button x:Name="SearchButton" Content="Rechercher" Click="OnSearch" Margin="0,0,8,0" />
               <Button x:Name="HideButton" Content="Masquer la sélection" Click="OnHide" Margin="0,0,8,0" IsEnabled="False" />
               <Button x:Name="InstallButton" Content="Installer la sélection" Style="{DynamicResource AccentButtonStyle}"
                       Click="OnInstall" IsEnabled="False" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="Mises à jour de pilotes" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Source : Windows Update, pilotes signés et validés par Microsoft. Les « facultatifs » ne servent qu'à corriger un problème précis : ils sont décochés par défaut." />
-              <TextBlock Style="{StaticResource AdminNote}" Text="Installer et masquer demandent l'autorisation administrateur." />
-            </StackPanel>
-          </DockPanel>
-
-          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+          </local:PageHeader>
+          <WrapPanel DockPanel.Dock="Bottom" Margin="0,0,0,12">
+            <CheckBox x:Name="WeeklyCheckBox" Content="Vérifier chaque semaine et me prévenir"
+                      Click="OnWeeklyCheckClick" VerticalAlignment="Center" Margin="0,0,12,0" />
+            <TextBlock x:Name="WeeklyCheckNote" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,16,0" />
+            <Button x:Name="UnhideButton" Content="Réafficher les pilotes masqués" Click="OnUnhide" />
+          </WrapPanel>
+          <Border Style="{StaticResource Card}" Padding="0">
             <Grid>
               <DataGrid x:Name="DriverGrid" AutomationProperties.Name="Pilotes disponibles"
                         AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
@@ -268,97 +280,22 @@
                          Text="Lancez une recherche pour voir les pilotes disponibles." />
             </Grid>
           </Border>
-
-          <WrapPanel Grid.Row="2" Margin="0,0,0,12">
-            <CheckBox x:Name="WeeklyCheckBox" Content="Vérifier chaque semaine et me prévenir"
-                      Click="OnWeeklyCheckClick" VerticalAlignment="Center" Margin="0,0,12,0" />
-            <TextBlock x:Name="WeeklyCheckNote" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,16,0" />
-            <Button x:Name="UnhideButton" Content="Réafficher les pilotes masqués" Click="OnUnhide" />
-          </WrapPanel>
-
-          <Grid Grid.Row="3">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition />
-              <ColumnDefinition Width="12" />
-              <ColumnDefinition />
-            </Grid.ColumnDefinitions>
-
-            <Border Style="{StaticResource Card}" Margin="0">
-              <StackPanel>
-                <TextBlock Text="BIOS et carte graphique" Style="{StaticResource Heading}" FontSize="14" />
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="Windows Update les livre avec des mois de retard, ou pas du tout : l'outil du fabricant est la bonne source." />
-                <TextBlock x:Name="HardwareStatus" Style="{StaticResource Muted}" />
-                <ItemsControl x:Name="HardwareList" Margin="0,8,0,0">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <DockPanel Margin="0,4">
-                        <Button DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
-                                Content="{Binding Tool}" ContentStringFormat="Ouvrir {0}"
-                                Tag="{Binding Url}" Click="OnOpenLink"
-                                Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
-                        <StackPanel>
-                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                          <TextBlock Text="{Binding Detail}" Style="{StaticResource Muted}" />
-                        </StackPanel>
-                      </DockPanel>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
-
-            <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0">
-              <StackPanel>
-                <DockPanel>
-                  <Button DockPanel.Dock="Right" Content="Gestionnaire de périphériques" Tag="devmgmt.msc"
-                          Click="OnOpenSetting" />
-                  <TextBlock x:Name="ProblemHeading" Text="Périphériques en erreur" Style="{StaticResource Heading}"
-                             FontSize="14" VerticalAlignment="Center" />
-                </DockPanel>
-                <TextBlock x:Name="ProblemStatus" Style="{StaticResource Muted}" Text="Chargement…" />
-                <ScrollViewer MaxHeight="110" VerticalScrollBarVisibility="Auto">
-                  <ItemsControl x:Name="ProblemList">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <TextBlock Margin="0,2" TextWrapping="Wrap">
-                          <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" />
-                          <Run Text=" — " />
-                          <Run Text="{Binding Meaning, Mode=OneWay}" />
-                        </TextBlock>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </ScrollViewer>
-              </StackPanel>
-            </Border>
-          </Grid>
-        </Grid>
+        </DockPanel>
       </TabItem>
 
-      <!-- Drivers from the Microsoft Update Catalog -->
+      <!-- Drivers from the makers, through the Microsoft Update Catalog -->
       <TabItem x:Name="CatalogTab" Header="Fabricants" Tag="&#xE896;">
-        <Grid Margin="0,12,0,0">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-          </Grid.RowDefinitions>
-
-          <DockPanel Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Pilotes récents des fabricants"
+                            Description="NVIDIA, AMD, Intel, Realtek… publient leurs pilotes dans le catalogue Microsoft Update, signés par Microsoft, souvent avant que Windows Update ne les propose à votre PC. « Pour votre PC » : fait pour votre modèle exact. « Générique » : fait pour la puce en général ; si votre fabricant a adapté le pilote actuel (portable, audio), Windows le garde. Rien n'est coché d'office."
+                            Note="L'installation demande l'autorisation administrateur et crée d'abord un point de restauration.">
+            <StackPanel Orientation="Horizontal">
               <Button x:Name="SearchCatalogButton" Content="Rechercher" Click="OnSearchCatalog" Margin="0,0,8,0" />
               <Button x:Name="InstallCatalogButton" Content="Installer la sélection" Style="{DynamicResource AccentButtonStyle}"
                       Click="OnInstallCatalog" IsEnabled="False" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="Pilotes récents des fabricants" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="NVIDIA, AMD, Intel, Realtek… publient leurs pilotes dans le catalogue Microsoft Update, signés par Microsoft, souvent avant que Windows Update ne les propose à votre PC. « Pour votre PC » : fait pour votre modèle exact. « Générique » : fait pour la puce en général ; si votre fabricant a adapté le pilote actuel (portable, audio), Windows le garde. Rien n'est coché d'office." />
-              <TextBlock Style="{StaticResource AdminNote}" Text="L'installation demande l'autorisation administrateur et crée d'abord un point de restauration." />
-            </StackPanel>
-          </DockPanel>
-
-          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+          </local:PageHeader>
+          <Border Style="{StaticResource Card}" Padding="0">
             <Grid>
               <DataGrid x:Name="CatalogGrid" AutomationProperties.Name="Pilotes récents"
                         AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
@@ -393,21 +330,89 @@
                          Text="Lancez une recherche : une à deux minutes, le catalogue est interrogé pour chaque périphérique." />
             </Grid>
           </Border>
-        </Grid>
+        </DockPanel>
       </TabItem>
 
-      <!-- Inventory: every device and its driver, and old driver versions kept by Windows -->
-      <TabItem x:Name="InventoryTab" Header="Inventaire" Tag="&#xE772;">
-        <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
+      <!-- The graphics driver: the one driver that changes frame rates -->
+      <TabItem x:Name="GpuTab" Header="Carte graphique" Tag="&#xE7F4;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Pilote de la carte graphique"
+                              Description="Le pilote qui compte le plus en jeu. Pour une carte NVIDIA, le dernier Game Ready est demandé à NVIDIA directement : le catalogue Microsoft a souvent plusieurs semaines de retard et saute des versions. Pour AMD et Intel, l'outil du fabricant donne la toute dernière version ; le catalogue, celles validées par Microsoft.">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="GpuCheckButton" Content="Chercher dans le catalogue" Click="OnGpuCheck" Margin="0,0,8,0" />
+                <Button x:Name="GpuInstallButton" Content="Installer" Style="{DynamicResource AccentButtonStyle}"
+                        Click="OnGpuInstall" IsEnabled="False" />
+              </StackPanel>
+            </local:PageHeader>
+            <ItemsControl x:Name="GpuDriverList" Margin="0,10,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+                    <DockPanel>
+                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <Button Content="Notes de version" Tag="{Binding NotesUrl}" Click="OnOpenLink" Margin="0,0,8,0"
+                                Visibility="{Binding HasOfficial, Converter={StaticResource VisibleIf}}" />
+                        <Button Content="{Binding OfficialText}" Tag="{Binding}" Click="OnNvidiaInstall" Style="{DynamicResource AccentButtonStyle}"
+                                Margin="0,0,8,0" Visibility="{Binding HasOfficial, Converter={StaticResource VisibleIf}}" />
+                        <Button Content="{Binding Tool}" ContentStringFormat="Ouvrir {0}" Tag="{Binding Url}" Click="OnOpenLink"
+                                Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
+                      </StackPanel>
+                      <TextBlock DockPanel.Dock="Left" Text="&#xE7F4;" FontFamily="{StaticResource Icons}" FontSize="26"
+                                 Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                      <StackPanel>
+                        <TextBlock Text="{Binding Name}" FontFamily="{StaticResource Display}" FontSize="16" TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource Muted}">
+                          <Run Text="Installé :" /> <Run Text="{Binding Installed, Mode=OneWay}" Foreground="{StaticResource Ink}" />
+                          <Run Text="   Dernier publié :" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{StaticResource NeonCyan}" />
+                        </TextBlock>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-          <DockPanel Margin="0,0,0,10">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+      <!-- BIOS and motherboard: only the maker updates them -->
+      <TabItem x:Name="BoardTab" Header="Carte mère" Tag="&#xE950;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="BIOS et carte mère"
+                              Description="Windows Update livre les BIOS avec des mois de retard, ou pas du tout : l'outil ou le site du fabricant est la bonne source. Un BIOS à jour corrige des failles de sécurité et la stabilité de la mémoire ; mettez-le à jour depuis l'outil du fabricant, branché sur secteur." />
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock x:Name="HardwareStatus" Style="{StaticResource Muted}" />
+                <ItemsControl x:Name="HardwareList" Margin="0,8,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <DockPanel Margin="0,4">
+                        <Button DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
+                                Content="{Binding Tool}" ContentStringFormat="Ouvrir {0}"
+                                Tag="{Binding Url}" Click="OnOpenLink"
+                                Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
+                        <StackPanel>
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding Detail}" Style="{StaticResource Muted}" />
+                        </StackPanel>
+                      </DockPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- Every device and its driver -->
+      <TabItem x:Name="InventoryTab" Header="Inventaire" Tag="&#xE772;">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Tous vos pilotes"
+                            Description="Chaque périphérique du PC, son pilote et son état. La liste se met à jour toute seule quand vous branchez ou débranchez quelque chose. Un nouveau pilote pose problème ? Sélectionnez le périphérique : « Revenir au pilote précédent » fait comme le Gestionnaire de périphériques.">
+            <StackPanel Orientation="Horizontal">
               <ComboBox x:Name="InventoryFilter" Width="230" Margin="0,0,8,0" SelectedIndex="0"
                         SelectionChanged="OnInventoryFilterChanged" AutomationProperties.Name="Filtrer les périphériques">
                 <ComboBoxItem Content="Tous les périphériques" />
@@ -421,17 +426,9 @@
                       ToolTip="Le périphérique sélectionné reprend le pilote qu'il avait avant sa dernière mise à jour." />
               <Button x:Name="RefreshInventoryButton" Content="Actualiser" Click="OnRefreshInventory" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="INVENTAIRE" Style="{StaticResource Kicker}" />
-              <TextBlock Text="Tous vos pilotes" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Chaque périphérique du PC, son pilote et son état. La liste se met à jour toute seule quand vous branchez ou débranchez quelque chose." />
-            </StackPanel>
-          </DockPanel>
-
-          <TextBlock Grid.Row="1" x:Name="InventorySummary" Foreground="{StaticResource InkMuted}" Margin="0,0,0,10" />
-
-          <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
+          </local:PageHeader>
+          <TextBlock DockPanel.Dock="Top" x:Name="InventorySummary" Foreground="{StaticResource InkMuted}" Margin="0,0,0,10" />
+          <Border Style="{StaticResource Card}" Padding="0">
             <DataGrid x:Name="InventoryGrid" AutomationProperties.Name="Inventaire des pilotes"
                       AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
@@ -457,85 +454,109 @@
               </DataGrid.Columns>
             </DataGrid>
           </Border>
-
-          <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0">
-            <StackPanel>
-              <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                  <Button x:Name="StoreScanButton" Content="Chercher les anciennes versions…" Click="OnStoreScan" Margin="0,0,8,0" />
-                  <Button x:Name="StoreDeleteButton" Content="Supprimer la sélection" Style="{DynamicResource AccentButtonStyle}"
-                          Click="OnStoreDelete" IsEnabled="False" />
-                </StackPanel>
-                <StackPanel Margin="0,0,16,0">
-                  <TextBlock Text="Anciennes versions de pilotes" Style="{StaticResource Heading}" FontSize="16" />
-                  <TextBlock Style="{StaticResource Muted}"
-                             Text="Windows garde chaque version de pilote qu'il a installée : près de 1 Go par mise à jour de pilote graphique. Celles qu'aucun périphérique n'utilise et qu'une version plus récente remplace peuvent partir ; Windows refuse de toute façon de supprimer un pilote utilisé." />
-                  <TextBlock Style="{StaticResource AdminNote}" />
-                </StackPanel>
-              </DockPanel>
-              <TextBlock x:Name="StoreSummary" Margin="0,8,0,0" TextWrapping="Wrap" />
-              <DataGrid x:Name="StoreGrid" AutomationProperties.Name="Anciennes versions de pilotes" MaxHeight="190" Margin="0,8,0,0"
-                        AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" Visibility="Collapsed"
-                        GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
-                <DataGrid.Columns>
-                  <DataGridTemplateColumn Width="44">
-                    <DataGridTemplateColumn.CellTemplate>
-                      <DataTemplate>
-                        <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" Click="OnStoreChoiceChanged"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center"
-                                  AutomationProperties.Name="{Binding Package.OriginalName}" />
-                      </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                  </DataGridTemplateColumn>
-                  <DataGridTextColumn Header="Pilote" Binding="{Binding Package.OriginalName}" Width="*" />
-                  <DataGridTextColumn Header="Fournisseur" Binding="{Binding Package.Provider}" Width="160" />
-                  <DataGridTextColumn Header="Classe" Binding="{Binding Package.Class}" Width="100" />
-                  <DataGridTextColumn Header="Version" Binding="{Binding Package.VersionText}" Width="130" />
-                  <DataGridTextColumn Header="Date" Binding="{Binding Package.DateText}" Width="90" />
-                  <DataGridTextColumn Header="Taille" Binding="{Binding Package.SizeText}" SortMemberPath="Package.Size" Width="80" />
-                </DataGrid.Columns>
-              </DataGrid>
-            </StackPanel>
-          </Border>
-        </Grid>
+        </DockPanel>
       </TabItem>
 
-      <!-- Backup -->
+      <!-- Devices Windows reports in error, with what the code means -->
+      <TabItem x:Name="ProblemsTab" Header="Périphériques en erreur" Tag="&#xE7BA;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Périphériques en erreur"
+                              Description="Ce que le Gestionnaire de périphériques signale, avec le sens de chaque code d'erreur. Le plus souvent, un pilote manquant (onglet Fabricants ou Windows Update) ou un périphérique désactivé.">
+              <StackPanel Orientation="Horizontal">
+                <Button Content="Gestionnaire de périphériques" Tag="devmgmt.msc" Click="OnOpenSetting" />
+              </StackPanel>
+            </local:PageHeader>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock x:Name="ProblemHeading" Text="Périphériques en erreur" Style="{StaticResource Heading}" FontSize="16" />
+                <TextBlock x:Name="ProblemStatus" Style="{StaticResource Muted}" Text="Chargement…" />
+                <ItemsControl x:Name="ProblemList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Margin="0,2" TextWrapping="Wrap">
+                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" />
+                        <Run Text=" — " />
+                        <Run Text="{Binding Meaning, Mode=OneWay}" />
+                      </TextBlock>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- Old driver versions Windows keeps -->
+      <TabItem x:Name="DriverStoreTab" Header="Anciennes versions" Tag="&#xE8F1;">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Anciennes versions de pilotes"
+                            Description="Windows garde chaque version de pilote qu'il a installée : près de 1 Go par mise à jour de pilote graphique. Celles qu'aucun périphérique n'utilise et qu'une version plus récente remplace peuvent partir ; Windows refuse de toute façon de supprimer un pilote utilisé."
+                            Note="Windows demandera l'autorisation administrateur pour ces actions.">
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="StoreScanButton" Content="Chercher les anciennes versions…" Click="OnStoreScan" Margin="0,0,8,0" />
+              <Button x:Name="StoreDeleteButton" Content="Supprimer la sélection" Style="{DynamicResource AccentButtonStyle}"
+                      Click="OnStoreDelete" IsEnabled="False" />
+            </StackPanel>
+          </local:PageHeader>
+          <TextBlock DockPanel.Dock="Top" x:Name="StoreSummary" Margin="0,0,0,10" TextWrapping="Wrap" Foreground="{StaticResource InkMuted}"
+                     Text="Cliquez sur « Chercher les anciennes versions » : la liste vient de Windows lui-même." />
+          <Border Style="{StaticResource Card}" Padding="0">
+            <DataGrid x:Name="StoreGrid" AutomationProperties.Name="Anciennes versions de pilotes"
+                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" Visibility="Collapsed"
+                      GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Width="44">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" Click="OnStoreChoiceChanged"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                AutomationProperties.Name="{Binding Package.OriginalName}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Pilote" Binding="{Binding Package.OriginalName}" Width="*" />
+                <DataGridTextColumn Header="Fournisseur" Binding="{Binding Package.Provider}" Width="160" />
+                <DataGridTextColumn Header="Classe" Binding="{Binding Package.Class}" Width="100" />
+                <DataGridTextColumn Header="Version" Binding="{Binding Package.VersionText}" Width="130" />
+                <DataGridTextColumn Header="Date" Binding="{Binding Package.DateText}" Width="90" />
+                <DataGridTextColumn Header="Taille" Binding="{Binding Package.SizeText}" SortMemberPath="Package.Size" Width="80" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Border>
+        </DockPanel>
+      </TabItem>
+
+      <!-- Backup and restore of the makers' drivers -->
       <TabItem x:Name="BackupTab" Header="Sauvegarde" Tag="&#xE74E;">
-        <StackPanel Margin="0,12,0,0">
-          <Border Style="{StaticResource Card}">
-            <StackPanel>
-              <TextBlock Text="Sauvegarde des pilotes" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Copie dans un dossier tous les pilotes installés par les fabricants, ceux que Windows ne fournit pas lui-même. Après une réinstallation de Windows, « Restaurer » les remet en une fois." />
-              <TextBlock Style="{StaticResource AdminNote}" />
-              <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Sauvegarde des pilotes"
+                              Description="Copie dans un dossier tous les pilotes installés par les fabricants, ceux que Windows ne fournit pas lui-même. Après une réinstallation de Windows, « Restaurer » les remet en une fois."
+                              Note="Windows demandera l'autorisation administrateur pour ces actions.">
+              <StackPanel Orientation="Horizontal">
                 <Button x:Name="BackupButton" Content="Sauvegarder…" Style="{DynamicResource AccentButtonStyle}"
                         Click="OnBackup" Margin="0,0,8,0" />
                 <Button x:Name="RestoreBackupButton" Content="Restaurer une sauvegarde…" Click="OnRestoreBackup" />
               </StackPanel>
-              <TextBlock x:Name="BackupStatus" Margin="0,10,0,0" TextWrapping="Wrap" />
-            </StackPanel>
-          </Border>
-        </StackPanel>
+            </local:PageHeader>
+            <TextBlock x:Name="BackupStatus" Margin="0,10,0,0" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
 
-      <!-- History -->
+      <!-- What Windows Update installed -->
       <TabItem x:Name="HistoryTab" Header="Historique" Tag="&#xE81C;">
-        <Grid Margin="0,12,0,0">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-          </Grid.RowDefinitions>
-          <DockPanel Margin="0,0,0,12">
-            <Button DockPanel.Dock="Right" Content="Actualiser" Click="OnRefreshHistory" VerticalAlignment="Center" />
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="Pilotes installés" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Ce que Windows Update a installé, par cette application ou par lui-même. Un problème apparu après une date ? Le pilote installé ce jour-là est un bon suspect : « Restaurer le système » ou le Gestionnaire de périphériques permettent de revenir en arrière." />
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Pilotes installés"
+                            Description="Ce que Windows Update a installé, par cette application ou par lui-même. Un problème apparu après une date ? Le pilote installé ce jour-là est un bon suspect : revenez au pilote précédent depuis l'Inventaire, ou restaurez le système.">
+            <StackPanel Orientation="Horizontal">
+              <Button Content="Historique de Windows Update" Tag="ms-settings:windowsupdate-history" Click="OnOpenSetting" Margin="0,0,8,0" />
+              <Button Content="Actualiser" Click="OnRefreshHistory" />
             </StackPanel>
-          </DockPanel>
-          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+          </local:PageHeader>
+          <Border Style="{StaticResource Card}" Padding="0">
             <Grid>
               <DataGrid x:Name="HistoryGrid" AutomationProperties.Name="Historique des pilotes"
                         AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
@@ -551,148 +572,12 @@
                          HorizontalAlignment="Center" VerticalAlignment="Center" Text="Chargement…" />
             </Grid>
           </Border>
-        </Grid>
+        </DockPanel>
       </TabItem>
 
-      <TabItem Header="JEUX" Style="{StaticResource NavSection}" />
+      <TabItem Header="JEUX" Style="{StaticResource Section}" />
 
-      <!-- Games: graphics driver, game runtimes, Windows' own gaming settings -->
-      <TabItem x:Name="GamesTab" Header="Jeux" Tag="&#xE7FC;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel>
-            <TextBlock Text="JEUX" Style="{StaticResource Kicker}" />
-            <TextBlock Text="Prêt à jouer" Style="{StaticResource Heading}" FontSize="26" />
-            <TextBlock Style="{StaticResource Muted}" Margin="0,0,0,16"
-                       Text="Le pilote graphique, les composants que les jeux réclament, et les réglages de jeu de Windows." />
-
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <DockPanel>
-                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                    <Button x:Name="GpuCheckButton" Content="Chercher le dernier pilote" Click="OnGpuCheck" Margin="0,0,8,0" />
-                    <Button x:Name="GpuInstallButton" Content="Installer" Style="{DynamicResource AccentButtonStyle}"
-                            Click="OnGpuInstall" IsEnabled="False" />
-                  </StackPanel>
-                  <StackPanel Margin="0,0,16,0">
-                    <TextBlock Text="Pilote graphique" Style="{StaticResource Heading}" FontSize="17" />
-                    <TextBlock Style="{StaticResource Muted}"
-                               Text="Les pilotes « Game Ready » de NVIDIA et AMD sont publiés signés par Microsoft dans le catalogue Microsoft Update, souvent quelques jours après leur sortie. Le jour même, c'est l'application du fabricant." />
-                  </StackPanel>
-                </DockPanel>
-                <ItemsControl x:Name="GpuDriverList" Margin="0,10,0,0">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
-                        <DockPanel>
-                          <Button DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0"
-                                  Content="{Binding Tool}" ContentStringFormat="Ouvrir {0}" Tag="{Binding Url}" Click="OnOpenLink"
-                                  Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
-                          <TextBlock DockPanel.Dock="Left" Text="&#xE7F4;" FontFamily="{StaticResource Icons}" FontSize="26"
-                                     Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                          <StackPanel>
-                            <TextBlock Text="{Binding Name}" FontFamily="{StaticResource Display}" FontSize="16" TextWrapping="Wrap" />
-                            <TextBlock Style="{StaticResource Muted}">
-                              <Run Text="Installé :" /> <Run Text="{Binding Installed, Mode=OneWay}" Foreground="{StaticResource Ink}" />
-                              <Run Text="   Dernier publié :" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{StaticResource NeonCyan}" />
-                            </TextBlock>
-                          </StackPanel>
-                        </DockPanel>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <DockPanel>
-                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                    <Button x:Name="ComponentsCheckButton" Content="Vérifier" Click="OnComponentsCheck" Margin="0,0,8,0" />
-                    <Button x:Name="ComponentsInstallButton" Content="Installer la sélection" Style="{DynamicResource AccentButtonStyle}"
-                            Click="OnComponentsInstall" IsEnabled="False" />
-                  </StackPanel>
-                  <StackPanel Margin="0,0,16,0">
-                    <TextBlock Text="Composants de jeu" Style="{StaticResource Heading}" FontSize="17" />
-                    <TextBlock Style="{StaticResource Muted}"
-                               Text="Visual C++, DirectX 9, XNA, OpenAL, PhysX : un jeu qui ne se lance pas (« MSVCP140.dll introuvable », « d3dx9_43.dll manquant »…) manque souvent de l'un d'eux. Installés via winget, depuis les sources officielles." />
-                  </StackPanel>
-                </DockPanel>
-                <DataGrid x:Name="ComponentGrid" AutomationProperties.Name="Composants de jeu" Margin="0,10,0,0" Visibility="Collapsed"
-                          AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
-                  <DataGrid.Columns>
-                    <DataGridTemplateColumn Width="44">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanInstall}"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    AutomationProperties.Name="{Binding Component.Name}" />
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Composant" Binding="{Binding Component.Name}" Width="230" />
-                    <DataGridTextColumn Header="Utile pour" Binding="{Binding Component.Why}" Width="*" />
-                    <DataGridTextColumn Header="État" Binding="{Binding Status}" Width="140" />
-                  </DataGrid.Columns>
-                </DataGrid>
-              </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <TextBlock Text="Conseils par jeu" Style="{StaticResource Heading}" FontSize="17" />
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="Les réglages que les communautés recommandent, pour les jeux Steam installés sur ce PC. Le cfg ajouté se retire d'un clic, vos propres lignes restent." />
-                <TextBlock x:Name="GameTipsStatus" Style="{StaticResource Muted}" Margin="0,8,0,0" />
-                <ItemsControl x:Name="GameTipList" Margin="0,8,0,0">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
-                        <StackPanel>
-                          <DockPanel>
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                              <Button Content="{Binding CfgAction}" Tag="{Binding}" Click="OnGameCfg" Margin="0,0,8,0"
-                                      Visibility="{Binding Game.HasCfg, Converter={StaticResource VisibleIf}}" />
-                              <Button Content="{Binding Game.Tip.LinkText}" ContentStringFormat="Ouvrir {0}" Tag="{Binding Game.Tip.Link}" Click="OnOpenLink"
-                                      Visibility="{Binding Game.HasLink, Converter={StaticResource VisibleIf}}" />
-                            </StackPanel>
-                            <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{StaticResource NeonViolet}"
-                                       VerticalAlignment="Center" Margin="0,0,12,0" />
-                            <TextBlock Text="{Binding Game.Tip.Game}" FontFamily="{StaticResource Display}" FontSize="16" VerticalAlignment="Center" />
-                          </DockPanel>
-                          <ItemsControl ItemsSource="{Binding Game.Tip.Tips}" Margin="32,6,0,0">
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate>
-                                <TextBlock Text="{Binding StringFormat='• {0}'}" Style="{StaticResource Muted}" Margin="0,2" />
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                        </StackPanel>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <TextBlock Text="Réglages de jeu de Windows" Style="{StaticResource Heading}" FontSize="17" />
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="Le « Game Boost » des boosters arrête des programmes pour libérer de la mémoire : le Mode jeu de Windows le fait déjà, proprement, à chaque partie. La planification GPU à accélération matérielle réduit la latence sur les cartes récentes. Pour voir ce qui consomme vraiment : onglet Performances." />
-                <WrapPanel Margin="0,10,0,0">
-                  <Button Content="Mode jeu" Tag="ms-settings:gaming-gamemode" Click="OnOpenSetting" Margin="0,0,8,8" />
-                  <Button Content="Graphiques et planification GPU" Tag="ms-settings:display-advancedgraphics" Click="OnOpenSetting" Margin="0,0,8,8" />
-                  <Button Content="Xbox Game Bar" Tag="ms-settings:gaming-gamebar" Click="OnOpenSetting" Margin="0,0,8,8" />
-                </WrapPanel>
-              </StackPanel>
-            </Border>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-
-      <!-- "PC de guerre": every setting worth changing for games, applied and undone exactly -->
+      <!-- "PC de guerre": the gaming settings worth changing, applied and undone exactly -->
       <TabItem x:Name="TuningTab" Header="PC de guerre" Tag="&#xE945;">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel>
@@ -712,13 +597,13 @@
                 <TextBlock Text="PC DE GUERRE" Style="{StaticResource Kicker}" />
                 <TextBlock Text="Tout ce qui se règle pour mieux jouer" Style="{StaticResource Heading}" FontSize="26" TextWrapping="Wrap" />
                 <TextBlock Style="{StaticResource Muted}"
-                           Text="Chaque réglage a un effet réel et s'annule exactement : la valeur d'origine est gardée. Les « boosts » sans effet mesurable (réglages réseau TCP, HPET, services coupés à l'aveugle) n'y sont pas." />
+                           Text="Chaque réglage a un effet vérifiable et s'annule exactement : la valeur d'origine est gardée. Les « boosts » sans effet mesuré (réseau TCP, HPET, minuterie, services coupés, plan « Performances optimales ») n'y sont pas." />
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
                   <Button x:Name="TuneAllButton" Content="Tout optimiser" Style="{DynamicResource AccentButtonStyle}" Click="OnTuneAll" Margin="0,0,8,0" />
                   <Button x:Name="TuningRefreshButton" Content="Actualiser" Click="OnTuningRefresh" />
                 </StackPanel>
                 <TextBlock Style="{StaticResource AdminNote}"
-                           Text="« Tout optimiser » laisse de côté ce qui demande un choix (sensation de la souris, portable sur batterie) ; une seule autorisation administrateur pour les réglages qui en ont besoin." />
+                           Text="« Tout optimiser » applique les réglages de performances ; une seule autorisation administrateur pour ceux qui en ont besoin." />
               </StackPanel>
             </Grid>
 
@@ -753,32 +638,115 @@
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Jeu" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Text="Performances en jeu" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}" Text="Ce qui fait gagner des images ou de la latence, mesuré ou documenté par Microsoft, NVIDIA et AMD. Le compteur en haut ne compte qu'eux." />
                 <ItemsControl x:Name="TweakListGame" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
               </StackPanel>
             </Border>
+
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Windows plus discret" Style="{StaticResource Heading}" FontSize="17" />
-                <TextBlock Style="{StaticResource Muted}" Text="Les réglages de confidentialité les plus suivis (ceux de WinUtil de Chris Titus, entre autres), sans ceux qui cassent quelque chose." />
-                <ItemsControl x:Name="TweakListPrivacy" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
+                <TextBlock Text="Confort de jeu" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}" Text="Pratique en jeu, sans gain d'images : c'est dit tel quel." />
+                <ItemsControl x:Name="TweakListComfort" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
               </StackPanel>
             </Border>
+
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Espace disque" Style="{StaticResource Heading}" FontSize="17" />
-                <ItemsControl x:Name="TweakListSpace" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
+                <TextBlock Text="Dans les réglages de Windows" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="Le « Game Boost » des boosters arrête des programmes pour libérer de la mémoire : le Mode jeu de Windows le fait déjà, proprement, à chaque partie. Pour voir ce qui consomme vraiment : Performances." />
+                <WrapPanel Margin="0,10,0,0">
+                  <Button Content="Mode jeu" Tag="ms-settings:gaming-gamemode" Click="OnOpenSetting" Margin="0,0,8,8" />
+                  <Button Content="Graphiques et planification GPU" Tag="ms-settings:display-advancedgraphics" Click="OnOpenSetting" Margin="0,0,8,8" />
+                  <Button Content="Xbox Game Bar" Tag="ms-settings:gaming-gamebar" Click="OnOpenSetting" Margin="0,0,8,8" />
+                  <Button Content="Alimentation" Tag="ms-settings:powersleep" Click="OnOpenSetting" Margin="0,0,8,8" />
+                </WrapPanel>
               </StackPanel>
             </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
 
-      <TabItem Header="SYSTÈME" Style="{StaticResource NavSection}" />
+      <!-- Runtimes games need (Visual C++, DirectX 9, XNA…) -->
+      <TabItem x:Name="ComponentsTab" Header="Composants de jeu" Tag="&#xEA86;">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Composants de jeu"
+                            Description="Visual C++, DirectX 9, XNA, OpenAL, PhysX : un jeu qui ne se lance pas (« MSVCP140.dll introuvable », « d3dx9_43.dll manquant »…) manque souvent de l'un d'eux. Installés via winget, depuis les sources officielles.">
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="ComponentsCheckButton" Content="Vérifier" Click="OnComponentsCheck" Margin="0,0,8,0" />
+              <Button x:Name="ComponentsInstallButton" Content="Installer la sélection" Style="{DynamicResource AccentButtonStyle}"
+                      Click="OnComponentsInstall" IsEnabled="False" />
+            </StackPanel>
+          </local:PageHeader>
+          <Border Style="{StaticResource Card}" Padding="0">
+            <DataGrid x:Name="ComponentGrid" AutomationProperties.Name="Composants de jeu" Visibility="Collapsed"
+                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Width="44">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanInstall}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                AutomationProperties.Name="{Binding Component.Name}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Composant" Binding="{Binding Component.Name}" Width="230" />
+                <DataGridTextColumn Header="Utile pour" Binding="{Binding Component.Why}" Width="*" />
+                <DataGridTextColumn Header="État" Binding="{Binding Status}" Width="140" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Border>
+        </DockPanel>
+      </TabItem>
 
-      <!-- Performance -->
+      <!-- Community-recommended settings for the Steam games installed here -->
+      <TabItem x:Name="GameTipsTab" Header="Conseils par jeu" Tag="&#xEA80;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Conseils par jeu"
+                              Description="Les réglages que les communautés recommandent, pour les jeux Steam installés sur ce PC. Le cfg ajouté se retire d'un clic, vos propres lignes restent." />
+            <TextBlock x:Name="GameTipsStatus" Style="{StaticResource Muted}" Margin="0,8,0,0" />
+            <ItemsControl x:Name="GameTipList" Margin="0,8,0,0">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+                    <StackPanel>
+                      <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                          <Button Content="{Binding CfgAction}" Tag="{Binding}" Click="OnGameCfg" Margin="0,0,8,0"
+                                  Visibility="{Binding Game.HasCfg, Converter={StaticResource VisibleIf}}" />
+                          <Button Content="{Binding Game.Tip.LinkText}" ContentStringFormat="Ouvrir {0}" Tag="{Binding Game.Tip.Link}" Click="OnOpenLink"
+                                  Visibility="{Binding Game.HasLink, Converter={StaticResource VisibleIf}}" />
+                        </StackPanel>
+                        <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{StaticResource NeonViolet}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock Text="{Binding Game.Tip.Game}" FontFamily="{StaticResource Display}" FontSize="16" VerticalAlignment="Center" />
+                      </DockPanel>
+                      <ItemsControl ItemsSource="{Binding Game.Tip.Tips}" Margin="32,6,0,0">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding StringFormat='• {0}'}" Style="{StaticResource Muted}" Margin="0,2" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="SYSTÈME" Style="{StaticResource Section}" />
+
+      <!-- What slows the PC down, measured -->
       <TabItem x:Name="PerformanceTab" Header="Performances" Tag="&#xEC4A;">
-        <Grid Margin="0,12,0,0">
+        <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -786,17 +754,13 @@
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
 
-          <DockPanel Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <local:PageHeader Title="Ce qui ralentit le PC"
+                            Description="Observe le PC pendant 10 secondes et classe les applications par ce qu'elles consomment. Lancez-la quand le PC rame. Pour agir : Démarrage (ce qui se lance tout seul) ou Désinstaller.">
+            <StackPanel Orientation="Horizontal">
               <Button Content="Gestionnaire des tâches" Tag="taskmgr.exe" Click="OnOpenSetting" Margin="0,0,8,0" />
               <Button x:Name="MeasureButton" Content="Analyser (10 s)" Style="{DynamicResource AccentButtonStyle}" Click="OnMeasure" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="Ce qui ralentit le PC" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Observe le PC pendant 10 secondes et classe les applications par ce qu'elles consomment. Lancez-la quand le PC rame. Pour agir : onglet Démarrage (ce qui se lance tout seul) ou Logiciels (désinstaller)." />
-            </StackPanel>
-          </DockPanel>
+          </local:PageHeader>
 
           <WrapPanel Grid.Row="1" x:Name="UsagePanel" Visibility="Collapsed">
             <Border Style="{StaticResource Card}" Margin="0,0,14,14" Padding="14">
@@ -880,25 +844,21 @@
 
       <!-- Startup programs and boot measurements -->
       <TabItem x:Name="StartupTab" Header="Démarrage" Tag="&#xE7E8;">
-        <Grid Margin="0,12,0,0">
+        <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
 
-          <DockPanel Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <local:PageHeader Title="Programmes au démarrage"
+                            Description="Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages."
+                            Note="Les entrées « Tous les utilisateurs », et parfois la mesure, demandent l'autorisation administrateur.">
+            <StackPanel Orientation="Horizontal">
               <Button x:Name="RefreshStartupButton" Content="Actualiser" Click="OnRefreshStartup" Margin="0,0,8,0" />
               <Button x:Name="BootReportButton" Content="Mesurer leur impact" Style="{DynamicResource AccentButtonStyle}" Click="OnBootReport" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="Programmes au démarrage" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages." />
-              <TextBlock Style="{StaticResource AdminNote}" Text="Les entrées « Tous les utilisateurs », et parfois la mesure, demandent l'autorisation administrateur." />
-            </StackPanel>
-          </DockPanel>
+          </local:PageHeader>
 
           <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
             <DataGrid x:Name="StartupGrid" AutomationProperties.Name="Programmes au démarrage"
@@ -988,39 +948,58 @@
         </Grid>
       </TabItem>
 
-      <!-- Health -->
-      <TabItem x:Name="HealthTab" Header="Santé et nettoyage" Tag="&#xE95E;">
+      <!-- Privacy settings, reversible -->
+      <TabItem x:Name="PrivacyTab" Header="Confidentialité" Tag="&#xE72E;">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel Margin="0,12,0,0">
-
-            <Border Style="{StaticResource Card}">
-              <StackPanel>
-                <DockPanel>
-                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                    <Button Content="Sécurité Windows" Tag="windowsdefender:" Click="OnOpenSetting" Margin="0,0,8,0" />
-                    <Button Content="Windows Update" Tag="ms-settings:windowsupdate" Click="OnOpenSetting" />
-                  </StackPanel>
-                  <TextBlock Text="Sécurité" Style="{StaticResource Heading}" />
-                </DockPanel>
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="Ce que Windows Security surveille déjà : antivirus actif et à jour, pare-feu actif, mises à jour de Windows en attente. Pas de « score » : des faits, et où agir." />
-                <TextBlock x:Name="SecuritySummary" Margin="0,8,0,0" TextWrapping="Wrap" Text="Chargement…" />
+          <StackPanel>
+            <local:PageHeader Title="Windows plus discret"
+                              Description="Les réglages de confidentialité les plus suivis (ceux de WinUtil de Chris Titus, entre autres), sans ceux qui cassent quelque chose. Ils ne rendent pas le PC plus rapide : ils limitent ce que Windows collecte, suggère et affiche. Chacun s'annule exactement.">
+              <StackPanel Orientation="Horizontal">
+                <Button Content="Confidentialité de Windows" Tag="ms-settings:privacy" Click="OnOpenSetting" Margin="0,0,8,0" />
+                <Button x:Name="PrivacyAllButton" Content="Tout appliquer" Tag="Windows plus discret" Style="{DynamicResource AccentButtonStyle}" Click="OnTuneAll" />
               </StackPanel>
+            </local:PageHeader>
+            <Border Style="{StaticResource Card}">
+              <ItemsControl x:Name="TweakListPrivacy" ItemTemplate="{StaticResource TweakRowTemplate}" />
             </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
+      <!-- Antivirus, firewall, pending Windows updates -->
+      <TabItem x:Name="SecurityTab" Header="Sécurité" Tag="&#xEA18;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Sécurité"
+                              Description="Ce que Sécurité Windows surveille déjà : antivirus actif et à jour, pare-feu actif, mises à jour de Windows en attente. Pas de « score » : des faits, et où agir.">
+              <StackPanel Orientation="Horizontal">
+                <Button Content="Sécurité Windows" Tag="windowsdefender:" Click="OnOpenSetting" Margin="0,0,8,0" />
+                <Button Content="Windows Update" Tag="ms-settings:windowsupdate" Click="OnOpenSetting" />
+              </StackPanel>
+            </local:PageHeader>
+            <Border Style="{StaticResource Card}">
+              <TextBlock x:Name="SecuritySummary" TextWrapping="Wrap" Text="Chargement…" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- System restore points -->
+      <TabItem x:Name="RestoreTab" Header="Points de restauration" Tag="&#xE777;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Points de restauration"
+                              Description="L'application en crée un avant chaque installation de pilote. Créez-en un vous-même avant de tester un réglage risqué ; « Restaurer le système » remet Windows à la date choisie, sans toucher à vos documents."
+                              Note="Windows demandera l'autorisation administrateur pour lire la liste et créer un point.">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="RestorePointsButton" Content="Afficher" Click="OnRestorePoints" Margin="0,0,8,0" />
+                <Button x:Name="CreateRestorePointButton" Content="Créer maintenant" Click="OnCreateRestorePoint" Margin="0,0,8,0" />
+                <Button Content="Restaurer le système" Tag="rstrui.exe" Click="OnOpenSetting" />
+              </StackPanel>
+            </local:PageHeader>
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <DockPanel>
-                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
-                    <Button x:Name="RestorePointsButton" Content="Afficher" Click="OnRestorePoints" Margin="0,0,8,0" />
-                    <Button x:Name="CreateRestorePointButton" Content="Créer maintenant" Click="OnCreateRestorePoint" Margin="0,0,8,0" />
-                    <Button Content="Restaurer le système" Tag="rstrui.exe" Click="OnOpenSetting" />
-                  </StackPanel>
-                  <TextBlock Text="Points de restauration" Style="{StaticResource Heading}" />
-                </DockPanel>
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="L'application en crée un avant chaque installation de pilote. Créez-en un vous-même avant de tester un réglage risqué ; « Restaurer le système » remet Windows à la date choisie, sans toucher à vos documents." />
-                <TextBlock Style="{StaticResource AdminNote}" Text="Windows demandera l'autorisation administrateur pour lire la liste et créer un point." />
+                <TextBlock x:Name="RestorePointsHint" Style="{StaticResource Muted}" Text="« Afficher » lit la liste des points que Windows garde." />
                 <ItemsControl x:Name="RestorePointList" Margin="0,8,0,0">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -1034,16 +1013,24 @@
                 </ItemsControl>
               </StackPanel>
             </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
+      <!-- Disk health, SSD wear and temperature, laptop battery -->
+      <TabItem x:Name="DisksTab" Header="Disques et batterie" Tag="&#xEDA2;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Disques et batterie"
+                              Description="État rapporté par Windows. « Avertissement » ou « Défaillant », ou une usure proche de 100 % : sauvegardez vos données sans attendre. L'usure, la température et la batterie demandent l'autorisation administrateur.">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="HealthDetailsButton" Content="Usure et température…"
+                        Click="OnHealthDetails" />
+              </StackPanel>
+            </local:PageHeader>
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <DockPanel>
-                  <Button x:Name="HealthDetailsButton" DockPanel.Dock="Right" Content="Usure et température…"
-                          Click="OnHealthDetails" VerticalAlignment="Top" />
-                  <TextBlock Text="Disques" Style="{StaticResource Heading}" />
-                </DockPanel>
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="État rapporté par Windows. « Avertissement » ou « Défaillant », ou une usure proche de 100 % : sauvegardez vos données sans attendre. L'usure, la température et la batterie demandent l'autorisation administrateur." />
+                <TextBlock Text="Disques" Style="{StaticResource Heading}" FontSize="17" />
                 <DataGrid x:Name="DiskGrid" Margin="0,8,0,0" AutomationProperties.Name="Disques"
                           AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
@@ -1059,10 +1046,9 @@
                 <TextBlock x:Name="DiskStatus" Style="{StaticResource Muted}" />
               </StackPanel>
             </Border>
-
             <Border x:Name="BatteryCard" Style="{StaticResource Card}" Visibility="Collapsed">
               <StackPanel>
-                <TextBlock Text="Batterie" Style="{StaticResource Heading}" />
+                <TextBlock Text="Batterie" Style="{StaticResource Heading}" FontSize="17" />
                 <TextBlock Style="{StaticResource Muted}"
                            Text="Capacité restante comparée à une batterie neuve. Sous 80 %, l'autonomie baisse nettement ; sous 60 %, pensez à la remplacer." />
                 <DataGrid x:Name="BatteryGrid" Margin="0,8,0,0" AutomationProperties.Name="Batteries"
@@ -1078,10 +1064,23 @@
                 </DataGrid>
               </StackPanel>
             </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
+      <!-- What really frees disk space, without breaking anything -->
+      <TabItem x:Name="CleanupTab" Header="Nettoyage" Tag="&#xEA99;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Nettoyage"
+                              Description="Ce qui libère vraiment de la place, sans rien casser : fichiers temporaires, anciennes versions des composants de Windows, fichier de mise en veille prolongée. Pas de « nettoyage du registre » : il ne fait rien gagner et c'est la première cause de casse.">
+              <StackPanel Orientation="Horizontal">
+                <Button Content="Assistant de stockage" Tag="ms-settings:storagesense" Click="OnOpenSetting" />
+              </StackPanel>
+            </local:PageHeader>
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Fichiers temporaires" Style="{StaticResource Heading}" />
+                <TextBlock Text="Fichiers temporaires" Style="{StaticResource Heading}" FontSize="17" />
                 <TextBlock Style="{StaticResource Muted}"
                            Text="Fichiers de plus de 2 jours dans votre dossier temporaire. Les fichiers en cours d'utilisation sont laissés en place. Le dossier temporaire de Windows (C:\Windows\Temp) demande l'autorisation administrateur." />
                 <WrapPanel Margin="0,10,0,0">
@@ -1097,65 +1096,60 @@
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Réparer Windows" Style="{StaticResource Heading}" />
+                <TextBlock Text="Composants de Windows" Style="{StaticResource Heading}" FontSize="17" />
                 <TextBlock Style="{StaticResource Muted}"
-                           Text="Les outils de Microsoft. SFC vérifie et répare les fichiers système ; DISM répare l'image de Windows dont SFC se sert (à lancer d'abord si SFC n'y arrive pas) ; le nettoyage des composants supprime les anciennes versions gardées après les mises à jour et libère souvent plusieurs Go. Comptez 10 à 30 minutes." />
+                           Text="Windows garde les anciennes versions de ses composants après chaque mise à jour. Le nettoyage de Microsoft (DISM) les supprime et libère souvent plusieurs Go ; les mises à jour déjà installées ne pourront plus être désinstallées. Comptez 10 à 30 minutes." />
                 <TextBlock Style="{StaticResource AdminNote}" />
                 <WrapPanel Margin="0,10,0,0">
-                  <Button x:Name="SfcButton" Content="Vérifier les fichiers système (SFC)" Tag="sfc" Click="OnRepair" Margin="0,0,8,8" />
-                  <Button x:Name="DismRestoreButton" Content="Réparer l'image Windows (DISM)" Tag="dism-restore" Click="OnRepair" Margin="0,0,8,8" />
                   <Button x:Name="DismCleanupButton" Content="Nettoyer les composants Windows" Tag="dism-cleanup" Click="OnRepair" Margin="0,0,8,8" />
                 </WrapPanel>
-                <TextBlock x:Name="RepairStatus" TextWrapping="Wrap" />
+                <TextBlock x:Name="ComponentCleanupStatus" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
-                <TextBlock Text="Réglages Windows utiles" Style="{StaticResource Heading}" />
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="Les outils intégrés font mieux qu'un « booster » : ils montrent l'impact réel de chaque élément." />
-                <WrapPanel Margin="0,10,0,0">
-                  <Button Content="Applications au démarrage" Tag="ms-settings:startupapps" Click="OnOpenSetting" Margin="0,0,8,8" />
-                  <Button Content="Assistant de stockage" Tag="ms-settings:storagesense" Click="OnOpenSetting" Margin="0,0,8,8" />
-                  <Button Content="Alimentation" Tag="ms-settings:powersleep" Click="OnOpenSetting" Margin="0,0,8,8" />
-                  <Button Content="Historique des mises à jour" Tag="ms-settings:windowsupdate-history" Click="OnOpenSetting" Margin="0,0,8,8" />
-                  <Button Content="Restaurer le système" Tag="rstrui.exe" Click="OnOpenSetting" Margin="0,0,8,8" />
-                </WrapPanel>
+                <TextBlock Text="Espace réservé par Windows" Style="{StaticResource Heading}" FontSize="17" />
+                <ItemsControl x:Name="TweakListSpace" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
               </StackPanel>
             </Border>
-
           </StackPanel>
         </ScrollViewer>
       </TabItem>
 
-      <TabItem Header="LOGICIELS" Style="{StaticResource NavSection}" />
+      <!-- SFC and DISM, Microsoft's own repair tools -->
+      <TabItem x:Name="RepairTab" Header="Réparer Windows" Tag="&#xE90F;">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <local:PageHeader Title="Réparer Windows"
+                              Description="Les outils de Microsoft. SFC vérifie et répare les fichiers système ; DISM répare l'image de Windows dont SFC se sert : lancez-le d'abord si SFC n'y arrive pas. Comptez 10 à 30 minutes."
+                              Note="Windows demandera l'autorisation administrateur pour ces actions.">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="SfcButton" Content="Vérifier les fichiers système (SFC)" Tag="sfc" Click="OnRepair" Margin="0,0,8,0" />
+                <Button x:Name="DismRestoreButton" Content="Réparer l'image Windows (DISM)" Tag="dism-restore" Click="OnRepair" />
+              </StackPanel>
+            </local:PageHeader>
+            <Border Style="{StaticResource Card}">
+              <TextBlock x:Name="RepairStatus" TextWrapping="Wrap" />
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-      <!-- Software: updates and installed programs -->
-      <TabItem x:Name="SoftwareTab" Header="Logiciels" Tag="&#xE71D;">
-        <Grid Margin="0,12,0,0">
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="2*" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
+      <TabItem Header="LOGICIELS" Style="{StaticResource Section}" />
 
-          <DockPanel Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+      <!-- Software updates through winget -->
+      <TabItem x:Name="SoftwareTab" Header="Mises à jour" Tag="&#xE71D;">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Mises à jour de logiciels"
+                            Description="Via winget, le gestionnaire de logiciels intégré à Windows. Un logiciel à jour, c'est des failles de sécurité en moins. Windows peut demander une autorisation pour certains d'entre eux.">
+            <StackPanel Orientation="Horizontal">
               <Button x:Name="SearchSoftwareButton" Content="Rechercher" Click="OnSearchSoftware" Margin="0,0,8,0" />
               <Button x:Name="UpgradeSoftwareButton" Content="Mettre à jour la sélection" Style="{DynamicResource AccentButtonStyle}"
                       Click="OnUpgradeSoftware" IsEnabled="False" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="Mises à jour de logiciels" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Via winget, le gestionnaire de logiciels intégré à Windows. Un logiciel à jour, c'est des failles de sécurité en moins. Windows peut demander une autorisation pour certains d'entre eux." />
-            </StackPanel>
-          </DockPanel>
-
-          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+          </local:PageHeader>
+          <Border Style="{StaticResource Card}" Padding="0">
             <Grid>
               <DataGrid x:Name="SoftwareGrid" AutomationProperties.Name="Logiciels à mettre à jour"
                         AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
@@ -1181,36 +1175,22 @@
                          Text="Lancez une recherche pour voir les logiciels à mettre à jour." />
             </Grid>
           </Border>
+        </DockPanel>
+      </TabItem>
 
-          <DockPanel Grid.Row="2" Margin="0,0,0,12">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
+      <!-- Installed programs, their uninstaller, and what they leave behind -->
+      <TabItem x:Name="ProgramsTab" Header="Désinstaller" Tag="&#xE74D;">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Programmes installés"
+                            Description="Désinstaller lance le désinstalleur du programme. Ensuite, « Chercher les restes » propose les dossiers qu'il a laissés ; ils partent à la corbeille, donc rien n'est perdu. Le registre n'est pas « nettoyé » : ça ne fait rien gagner et c'est la cause de casse n° 1.">
+            <StackPanel Orientation="Horizontal">
               <TextBox x:Name="ProgramFilter" Width="200" Margin="0,0,8,0" VerticalContentAlignment="Center"
                        TextChanged="OnProgramFilterChanged" AutomationProperties.Name="Filtrer les programmes" />
               <Button x:Name="UninstallButton" Content="Désinstaller…" Click="OnUninstall" Margin="0,0,8,0" />
               <Button x:Name="FindLeftoversButton" Content="Chercher les restes" Click="OnFindLeftovers" />
             </StackPanel>
-            <StackPanel Margin="0,0,16,0">
-              <TextBlock Text="Programmes installés" Style="{StaticResource Heading}" />
-              <TextBlock Style="{StaticResource Muted}"
-                         Text="Désinstaller lance le désinstalleur du programme. Ensuite, « Chercher les restes » propose les dossiers qu'il a laissés ; ils partent à la corbeille, donc rien n'est perdu. Le registre n'est pas « nettoyé » : ça ne fait rien gagner et c'est la cause de casse n° 1." />
-            </StackPanel>
-          </DockPanel>
-
-          <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0">
-            <DataGrid x:Name="ProgramGrid" AutomationProperties.Name="Programmes installés" SelectionMode="Single"
-                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
-              <DataGrid.Columns>
-                <DataGridTextColumn Header="Programme" Binding="{Binding Name}" Width="*" />
-                <DataGridTextColumn Header="Éditeur" Binding="{Binding Publisher}" Width="180" />
-                <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="110" />
-                <DataGridTextColumn Header="Taille" Binding="{Binding SizeText}" SortMemberPath="Size" Width="80" />
-                <DataGridTextColumn Header="Installé le" Binding="{Binding InstalledOn, StringFormat=dd/MM/yyyy}" Width="90" />
-              </DataGrid.Columns>
-            </DataGrid>
-          </Border>
-
-          <Border x:Name="LeftoverCard" Grid.Row="4" Style="{StaticResource Card}" Margin="0,12,0,0" Visibility="Collapsed">
+          </local:PageHeader>
+          <Border x:Name="LeftoverCard" DockPanel.Dock="Bottom" Style="{StaticResource Card}" Visibility="Collapsed">
             <StackPanel>
               <DockPanel>
                 <Button x:Name="RecycleButton" DockPanel.Dock="Right" Content="Mettre à la corbeille" Style="{DynamicResource AccentButtonStyle}"
@@ -1236,12 +1216,25 @@
               </ScrollViewer>
             </StackPanel>
           </Border>
-        </Grid>
+          <Border Style="{StaticResource Card}" Padding="0">
+            <DataGrid x:Name="ProgramGrid" AutomationProperties.Name="Programmes installés" SelectionMode="Single"
+                      AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Programme" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="Éditeur" Binding="{Binding Publisher}" Width="180" />
+                <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="110" />
+                <DataGridTextColumn Header="Taille" Binding="{Binding SizeText}" SortMemberPath="Size" Width="80" />
+                <DataGridTextColumn Header="Installé le" Binding="{Binding InstalledOn, StringFormat=dd/MM/yyyy}" Width="90" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Border>
+        </DockPanel>
       </TabItem>
 
     </TabControl>
 
-    <StackPanel Grid.Row="1">
+    <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
       <Border x:Name="DeviceBanner" Background="#1A00E5FF" BorderBrush="{StaticResource NeonCyan}" BorderThickness="0,1,0,0"
               Padding="20,10" Visibility="Collapsed">
         <DockPanel>

@@ -35,6 +35,7 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
     public const string TweakUndo = "tweak-undo";
     public const string RestorePoints = "restore-points";
     public const string CreateRestorePoint = "create-restore-point";
+    public const string InstallNvidia = "install-nvidia";
 
     /// <summary>Pipe names the app creates: anything else (such as \\server\pipe) is refused.</summary>
     public static bool IsPipeName(string name) => PipeNamePattern().IsMatch(name);
@@ -51,9 +52,10 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
             case Install or Hide or InstallCatalog:
                 if (rest.Count == 0) throw new ArgumentException("Aucune mise à jour indiquée.");
                 // Update IDs end up inside a Windows Update search string: only plain GUIDs pass.
+                // Two devices can share one package: each is installed once.
                 return new(name, rest.Select(id => Guid.TryParseExact(id, "D", out var guid)
                     ? guid.ToString("D")
-                    : throw new ArgumentException($"Identifiant de mise à jour invalide : {id}")).ToList());
+                    : throw new ArgumentException($"Identifiant de mise à jour invalide : {id}")).Distinct().ToList());
             case ExportDrivers or ImportDrivers:
                 if (rest.Count != 1 || !Path.IsPathFullyQualified(rest[0]) || rest[0].StartsWith(@"\\", StringComparison.Ordinal))
                     throw new ArgumentException("Un dossier local, avec son chemin complet, est attendu.");
@@ -73,16 +75,23 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                     return Guid.TryParseExact(item[prefix.Length..], "D", out var guid)
                         ? prefix + guid.ToString("D")
                         : throw new ArgumentException($"Identifiant de mise à jour invalide : {item}");
-                }).ToList());
+                }).Distinct().ToList());
             case Rollback:
                 // A device instance ID ("PCI\VEN_10DE&DEV_2504&…\4&2B6DDD8&0&0008"): only looked up, never a path.
                 if (rest.Count != 1 || rest[0].Length is 0 or > 260 || rest[0].Any(char.IsControl))
                     throw new ArgumentException("Identifiant de périphérique invalide.");
                 return new(name, rest);
+            case InstallNvidia:
+                // A PCI device ID, four hex digits: the helper asks NVIDIA itself what to install.
+                if (rest.Count != 1 || rest[0].Length != 4 || !rest[0].All(Uri.IsHexDigit))
+                    throw new ArgumentException("Identifiant de carte graphique invalide.");
+                return new(name, [rest[0].ToUpperInvariant()]);
             case TweakApply or TweakUndo:
                 // Only tweaks of the catalog that need these rights: never a registry key from outside.
-                if (rest.Count == 0 || rest.Any(id => DriverUpdater.Tuning.TweakCatalog.Find(id) is not { NeedsAdmin: true }))
-                    throw new ArgumentException("Réglage inconnu ou ne demandant pas l'administrateur.");
+                // A retired one may still be undone, never applied.
+                if (rest.Count == 0 || rest.Any(id => DriverUpdater.Tuning.TweakCatalog.Find(id) is not { NeedsAdmin: true } tweak
+                                                      || (name == TweakApply && tweak.Retired)))
+                    throw new ArgumentException("Réglage inconnu, retiré, ou ne demandant pas l'administrateur.");
                 return new(name, rest);
             case DeleteDrivers:
                 // Published driver package names only ("oem12.inf"), checked again against the store.

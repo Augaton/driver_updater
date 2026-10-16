@@ -224,7 +224,9 @@ public static class SystemInfo
         key?.SetValue(Frequency, 0, Microsoft.Win32.RegistryValueKind.DWord);
         try
         {
-            return CreatePoint(onDemand ? "Driver Updater : point créé à la demande" : "Driver Updater : avant installation de pilotes");
+            return onDemand
+                ? CreatePoint("Driver Updater : point créé à la demande", ModifySettings)
+                : CreatePoint("Driver Updater : avant installation de pilotes", DeviceDriverInstall);
         }
         finally
         {
@@ -236,7 +238,9 @@ public static class SystemInfo
         }
     }
 
-    static RestorePointResult CreatePoint(string description)
+    const uint DeviceDriverInstall = 10, ModifySettings = 12; // RestorePointType
+
+    static RestorePointResult CreatePoint(string description, uint type)
     {
         try
         {
@@ -244,7 +248,7 @@ public static class SystemInfo
             using var restore = new ManagementClass(scope, new ManagementPath("SystemRestore"), null);
             using var args = restore.GetMethodParameters("CreateRestorePoint");
             args["Description"] = description;
-            args["RestorePointType"] = 10u; // DEVICE_DRIVER_INSTALL
+            args["RestorePointType"] = type;
             args["EventType"] = 100u;       // BEGIN_SYSTEM_CHANGE
             using var result = restore.InvokeMethod("CreateRestorePoint", args, null);
             uint code = Convert.ToUInt32(result["ReturnValue"]);
@@ -260,7 +264,7 @@ public static class SystemInfo
                 ? "Aucun point de restauration n'a été créé."
                 : $"Impossible de créer un point de restauration (code {code}). La protection du système est peut-être désactivée.");
         }
-        catch (ManagementException e)
+        catch (Exception e) when (e is ManagementException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
         {
             return new(false, "Points de restauration indisponibles : " + e.Message);
         }

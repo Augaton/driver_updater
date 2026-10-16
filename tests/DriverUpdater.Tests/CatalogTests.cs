@@ -71,3 +71,36 @@ public sealed class CatalogTests
         Assert.False(Catalog.Fits(old));
     }
 }
+
+public sealed class InfClassTests
+{
+    [Fact]
+    public void Reads_the_class_from_the_version_section_only()
+    {
+        const string inf = """
+            ; Copyright
+            [Version]
+            Signature   = "$WINDOWS NT$"
+            ClassGuid   = {4d36e97b-e325-11ce-bfc1-08002be10318}
+            Class       = SCSIAdapter ; storage controllers
+            Provider    = %Intel%
+
+            [Strings]
+            Class = "Display"
+            """;
+
+        Assert.Equal("SCSIAdapter", Catalog.InfClass(inf));
+    }
+
+    [Fact]
+    public void Spots_a_storage_driver_by_its_class_guid_alone()
+    {
+        Assert.True(Catalog.IsBootCritical("[Version]\r\nClassGuid={4D36E97B-E325-11CE-BFC1-08002BE10318}\r\n"));
+        Assert.True(Catalog.IsBootCritical("[Version]\r\nClass=HDC\r\n"));
+        Assert.False(Catalog.IsBootCritical("[Version]\r\nClass=Display\r\nClassGuid={4d36e968-e325-11ce-bfc1-08002be10318}\r\n"));
+    }
+
+    [Fact]
+    public void Gives_nothing_when_the_class_is_missing() =>
+        Assert.Null(Catalog.InfClass("[Version]\r\nSignature=\"$WINDOWS NT$\"\r\n[Manufacturer]\r\nClass=Display\r\n"));
+}

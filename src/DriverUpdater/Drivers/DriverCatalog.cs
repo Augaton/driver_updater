@@ -93,7 +93,7 @@ public static class DriverCatalog
         await gate.WaitAsync();
         try
         {
-            return Catalog.ParseSearch(await http.GetStringAsync(Catalog.SearchUrl + Uri.EscapeDataString(query)))
+            return Catalog.ParseSearch(await http.GetStringAsync(Catalog.SearchUrl + Uri.EscapeDataString(query)).ConfigureAwait(false))
                 .Where(Catalog.Fits).ToList();
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
@@ -162,6 +162,16 @@ public static class DriverCatalog
             int expand = await RunAsync(Path.Combine(Environment.SystemDirectory, "expand.exe"), cab, "-F:*", files.FullName);
             if (expand != 0) return new(updateId, false, false, $"extraction impossible (code {expand})");
 
+            // pnputil installs every INF of the package on every device it fits, and a platform
+            // bundle can hold a storage-controller driver next to the one chosen: those never
+            // go in this way (see CatalogScope.BootCritical).
+            var infs = Directory.GetFiles(files.FullName, "*.inf", SearchOption.AllDirectories);
+            if (infs.Length == 0) return new(updateId, false, false, "le paquet ne contient aucun pilote (.inf)");
+            var bootCritical = infs.Where(inf => Catalog.IsBootCritical(File.ReadAllText(inf))).ToList();
+            foreach (var inf in bootCritical) File.Delete(inf);
+            if (bootCritical.Count == infs.Length)
+                return new(updateId, false, false, "ce paquet ne contient que des pilotes nécessaires au démarrage (stockage) : laissé à Windows Update");
+
             progress("Installation du pilote…");
             int code = await DriverBackup.PnpUtilAsync("/add-driver", Path.Combine(files.FullName, "*.inf"), "/subdirs", "/install");
             return code switch
@@ -182,32 +192,20 @@ public static class DriverCatalog
     {
         using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
-        long? total = response.Content.Headers.ContentLength;
         // The catalog only publishes SHA-1. It is enough here: forging a file to match an
         // existing digest (a second preimage) is still out of reach, unlike making two new
         // files collide. HTTPS and pnputil's signature check come on top.
 #pragma warning disable CA5350
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
 #pragma warning restore CA5350
-        await using (var source = await response.Content.ReadAsStreamAsync())
-        await using (var target = File.Create(path))
+        int lastPercent = -1;
+        await Download.ToFileAsync(response, path, (read, all) =>
         {
-            var buffer = new byte[1 << 16];
-            long read = 0;
-            int lastPercent = -1;
-            for (int n; (n = await source.ReadAsync(buffer)) > 0;)
-            {
-                await target.WriteAsync(buffer.AsMemory(0, n));
-                hash.AppendData(buffer, 0, n);
-                read += n;
-                int percent = total > 0 ? (int)(100 * read / total.Value) : -1;
-                if (percent != lastPercent && percent % 5 == 0)
-                {
-                    lastPercent = percent;
-                    progress($"Téléchargement du pilote : {percent} % de {Bytes.Format(total ?? 0)}…");
-                }
-            }
-        }
+            int percent = all > 0 ? (int)(100 * read / all) : -1;
+            if (percent == lastPercent || percent % 5 != 0) return;
+            lastPercent = percent;
+            progress($"Téléchargement du pilote : {percent} % de {Bytes.Format(all)}…");
+        }, TimeSpan.FromSeconds(60), data: (buffer, count) => hash.AppendData(buffer, 0, count));
         return Convert.ToBase64String(hash.GetHashAndReset()) == digest;
     }
 
@@ -215,7 +213,7 @@ public static class DriverCatalog
     /// A new folder only SYSTEM and Administrators can write to, created with those rights
     /// in one step: nobody can slip a file in between the checks and pnputil.
     /// </summary>
-    static DirectoryInfo ProtectedFolder()
+    internal static DirectoryInfo ProtectedFolder()
     {
         var security = new DirectorySecurity();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);

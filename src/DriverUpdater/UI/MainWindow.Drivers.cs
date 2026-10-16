@@ -26,7 +26,8 @@ public partial class MainWindow
         try
         {
             var (computer, gpus) = await Task.Run(() => (SystemInfo.Computer(), SystemInfo.Gpus()));
-            HardwareList.ItemsSource = new[] { computer }.Concat(gpus).ToList();
+            // The graphics cards have their own page, with their driver.
+            HardwareList.ItemsSource = new[] { computer };
             PcTitle.Text = computer.Name;
             var memory = new Microsoft.VisualBasic.Devices.ComputerInfo();
             PcSummary.Text = string.Join("\n", new[]

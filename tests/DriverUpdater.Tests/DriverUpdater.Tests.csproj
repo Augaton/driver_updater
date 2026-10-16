@@ -10,9 +10,11 @@
   <!-- The app targets Windows only; linking its portable logic lets the tests run anywhere. -->
   <ItemGroup>
     <Compile Include="..\..\src\DriverUpdater\Maintenance\TempCleaner.cs" Link="Maintenance\TempCleaner.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Common\NativeFiles.cs" Link="Common\NativeFiles.cs" />
     <Compile Include="..\..\src\DriverUpdater\Admin\AdminCommand.cs" Link="Admin\AdminCommand.cs" />
     <Compile Include="..\..\src\DriverUpdater\Software\WingetOutput.cs" Link="Software\WingetOutput.cs" />
     <Compile Include="..\..\src\DriverUpdater\Common\UpdateCheck.cs" Link="Common\UpdateCheck.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Common\Download.cs" Link="Common\Download.cs" />
     <Compile Include="..\..\src\DriverUpdater\Common\Bytes.cs" Link="Common\Bytes.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\Catalog.cs" Link="Drivers\Catalog.cs" />
     <Compile Include="..\..\src\DriverUpdater\Software\CommandLine.cs" Link="Software\CommandLine.cs" />
@@ -22,11 +24,13 @@
     <Compile Include="..\..\src\DriverUpdater\Maintenance\BootEvents.cs" Link="Maintenance\BootEvents.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\DriverModel.cs" Link="Drivers\DriverModel.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\DriverReport.cs" Link="Drivers\DriverReport.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Drivers\NvidiaModel.cs" Link="Drivers\NvidiaModel.cs" />
     <Compile Include="..\..\src\DriverUpdater\Software\GameComponents.cs" Link="Software\GameComponents.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\InstalledDriver.cs" Link="Drivers\InstalledDriver.cs" />
     <Compile Include="..\..\src\DriverUpdater\Tuning\Tweak.cs" Link="Tuning\Tweak.cs" />
     <Compile Include="..\..\src\DriverUpdater\Tuning\TweakCatalog.cs" Link="Tuning\TweakCatalog.cs" />
     <Compile Include="..\..\src\DriverUpdater\Tuning\GameTips.cs" Link="Tuning\GameTips.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Tuning\HardwareRules.cs" Link="Tuning\HardwareRules.cs" />
     <Compile Include="..\..\src\DriverUpdater\Maintenance\SecurityModel.cs" Link="Maintenance\SecurityModel.cs" />
   </ItemGroup>
 

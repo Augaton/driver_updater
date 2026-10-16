@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
 
@@ -25,15 +26,78 @@ public static class Elevation
     public const string Argument = "--admin";
     const int ErrorCancelled = 1223; // the user said no to the Windows prompt
 
+    /// <summary>
+    /// Who may open the pipe: this account, and administrators. On a standard account Windows
+    /// asks for an administrator's password, and the helper then runs as that other account.
+    /// Which process actually connected is checked right after, by its process ID.
+    /// </summary>
+    static PipeSecurity PipeAccess()
+    {
+        var user = WindowsIdentity.GetCurrent().User!;
+        var security = new PipeSecurity();
+        security.SetOwner(user);
+        security.AddAccessRule(new PipeAccessRule(user, PipeAccessRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null),
+            PipeAccessRights.FullControl, AccessControlType.Allow));
+        return security;
+    }
+
+    /// <summary>
+    /// Whether only administrators and Windows itself can change the app's folder: owned by
+    /// one of them, and no write access for anyone else. Program Files passes.
+    /// </summary>
+    internal static bool AppFolderIsProtected()
+    {
+        var trusted = new HashSet<SecurityIdentifier>
+        {
+            new(WellKnownSidType.BuiltinAdministratorsSid, null),
+            new(WellKnownSidType.LocalSystemSid, null),
+            new("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464"), // TrustedInstaller
+            new(WellKnownSidType.CreatorOwnerSid, null), // stands for whoever creates a file: only those above can
+        };
+        const FileSystemRights GenericAll = (FileSystemRights)0x10000000, GenericWrite = (FileSystemRights)0x40000000;
+        const FileSystemRights Writes = FileSystemRights.WriteData | FileSystemRights.AppendData | FileSystemRights.WriteAttributes
+            | FileSystemRights.WriteExtendedAttributes | FileSystemRights.Delete | FileSystemRights.DeleteSubdirectoriesAndFiles
+            | FileSystemRights.ChangePermissions | FileSystemRights.TakeOwnership | GenericAll | GenericWrite;
+        // In the parent, what lets someone rename the app's folder away and put their own in its place.
+        const FileSystemRights Swaps = FileSystemRights.DeleteSubdirectoriesAndFiles | FileSystemRights.ChangePermissions
+            | FileSystemRights.TakeOwnership | GenericAll;
+
+        bool OnlyTrusted(DirectoryInfo folder, FileSystemRights rights)
+        {
+            var security = folder.GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner);
+            if (security.GetOwner(typeof(SecurityIdentifier)) is not SecurityIdentifier owner || !trusted.Contains(owner)) return false;
+            return security.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>()
+                .Where(rule => rule.AccessControlType == AccessControlType.Allow && (rule.FileSystemRights & rights) != 0)
+                .All(rule => trusted.Contains((SecurityIdentifier)rule.IdentityReference));
+        }
+
+        try
+        {
+            var app = new DirectoryInfo(AppContext.BaseDirectory);
+            return OnlyTrusted(app, Writes) && (app.Parent is null || OnlyTrusted(app.Parent, Swaps));
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Runs <paramref name="command"/> as administrator and returns its result.</summary>
     /// <param name="ask">Answers the helper's yes/no questions, e.g. "go on without a restore point?".</param>
     public static async Task<T> RunAsync<T>(string command, IEnumerable<string> args, IProgress<string> progress,
         Func<string, bool> ask, string? exePath = null)
     {
+        // The helper runs these very files as administrator: from a folder any program can write
+        // to (a portable copy in Downloads), one could swap a file in before the user consents.
+        if (exePath is null && !AppFolderIsProtected())
+            throw new InvalidOperationException(
+                "Les actions administrateur sont désactivées pour cette copie : n'importe quel programme peut modifier les fichiers " +
+                "de son dossier. Installez Driver Updater avec son installateur, ou placez-le dans un dossier que seuls les administrateurs modifient.");
+
         var pipeName = AdminCommand.NewPipeName();
-        // CurrentUserOnly: only this Windows account may open the pipe.
-        using var pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly | PipeOptions.FirstPipeInstance);
+        using var pipe = NamedPipeServerStreamAcl.Create(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance, 0, 0, PipeAccess());
 
         var start = new ProcessStartInfo(exePath ?? Environment.ProcessPath!) { UseShellExecute = true, Verb = "runas" };
         foreach (var argument in new[] { Argument, pipeName, command }.Concat(args)) start.ArgumentList.Add(argument);

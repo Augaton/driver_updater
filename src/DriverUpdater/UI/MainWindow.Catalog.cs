@@ -47,7 +47,8 @@ public partial class MainWindow
                 selected.Select(d => d.Entry.UpdateId).ToArray());
             if (report.Cancelled) return "Installation annulée.";
 
-            var byId = selected.ToDictionary(d => d.Entry.UpdateId, StringComparer.OrdinalIgnoreCase);
+            var byId = selected.GroupBy(d => d.Entry.UpdateId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
             var lines = report.Results.Select(r =>
                 $"{(r.Succeeded ? "✔" : "✘")} {(byId.TryGetValue(r.UpdateId, out var d) ? $"{d.Device} {d.Entry.Version}" : r.UpdateId)} : {r.Outcome}");
             bool reboot = report.Results.Any(r => r.RebootRequired);

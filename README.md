@@ -5,105 +5,112 @@ elle ne propose que ce qui marche vraiment.
 
 ## Ce qu'elle fait
 
-- **Analyse de tous les pilotes.** Le gros bouton de l'accueil compare chaque périphérique
-  aux dernières versions de Windows Update et des fabricants, et rend un rapport : version
-  installée, version disponible, source, et un verdict (à jour, mise à jour, aucun pilote,
-  erreur). Tout ce qui est à mettre à jour arrive coché ; un bouton installe la sélection
-  en une seule fois, sous une seule autorisation administrateur, après un point de
-  restauration. Le même passage vérifie aussi logiciels, démarrage et disques.
-- **Jeux.** Le pilote graphique comparé au dernier publié (les pilotes « Game Ready » de
-  NVIDIA et AMD arrivent signés par Microsoft dans le catalogue) et l'outil du fabricant ;
-  les composants que les jeux réclament (Visual C++ 2005 à 2022, DirectX 9, XNA, OpenAL,
-  PhysX), détectés et installés via winget ; les réglages de jeu de Windows (Mode jeu,
-  planification GPU). Pas de « Game Boost » : le Mode jeu de Windows fait déjà ce travail.
-  Pour les jeux Steam installés, les conseils des communautés, et pour Garry's Mod le cfg
-  multicœur conseillé, ajouté à `autoexec.cfg` et retiré d'un clic sans toucher à vos
-  propres lignes.
-- **PC de guerre.** Tous les réglages utiles pour jouer, regroupés sur un écran avec une
-  jauge : mode d'alimentation performances, Mode jeu, pas d'enregistrement vidéo en
-  arrière-plan, optimisations des jeux fenêtrés, planification GPU, précision du pointeur,
-  et les réglages de confidentialité les plus suivis (ceux de WinUtil de Chris Titus,
-  entre autres) : identifiant publicitaire, suggestions, Bing dans la recherche,
-  historique des activités, télémétrie. Chacun s'annule exactement, valeur d'origine
-  comprise ; « Tout optimiser » applique les autres en une fois. Ce qui ne se règle pas
-  d'ici est signalé : écran réglé sous sa fréquence maximale, mémoire sans XMP/EXPO,
-  disque système plein. Pas de « boosts » sans effet mesurable (réglages TCP, HPET,
-  services coupés à l'aveugle, suppression d'Edge).
-- **Pilotes.** Elle cherche les mises à jour de pilotes sur Windows Update, avec, en face
-  de chacune, le pilote installé aujourd'hui. Elle installe ceux que vous cochez, un par un,
-  après avoir créé un point de restauration système. Les pilotes « recommandés » sont
-  cochés ; les « facultatifs » ne le sont pas, car Microsoft ne les conseille que pour
-  corriger un problème précis. Un pilote refusé peut être masqué pour ne plus revenir.
-- **Inventaire.** Chaque périphérique avec son pilote, sa date, son fournisseur, sa
-  signature et son état, filtrable (à problème, sans pilote, plus de 3 ans, non signés).
-  Il se met à jour tout seul quand on branche ou débranche un périphérique ; un nouveau
-  périphérique sans pilote est signalé avec un bouton pour lui en chercher un. Un pilote
-  qui pose problème revient à sa version précédente d'un clic, comme dans le Gestionnaire
-  de périphériques.
-- **Anciennes versions de pilotes.** Windows garde chaque version installée (près de 1 Go
-  par mise à jour de pilote graphique). Celles qu'aucun périphérique n'utilise et qu'une
-  version plus récente remplace sont proposées à la suppression ; Windows refuse de toute
-  façon de supprimer un pilote utilisé.
-- **Pilotes récents des fabricants.** NVIDIA, AMD, Intel, Realtek… publient leurs pilotes
-  dans le catalogue Microsoft Update, signés par Microsoft, souvent avant que Windows
-  Update ne les propose. L'application y cherche une version plus récente pour chaque
-  périphérique, la télécharge depuis les serveurs de Microsoft, vérifie son empreinte et
-  laisse Windows l'installer : il garde le pilote actuel s'il est plus adapté au PC
-  (pilote adapté par le fabricant du portable, par exemple). Couvre les cartes PCI,
-  l'audio, l'USB, le chipset (ACPI) et les pavés tactiles (HID), et cherche aussi un
-  pilote de fabricant pour le graphique, le réseau, l'audio, le Bluetooth et les caméras
-  qui tournent sur un pilote générique de Windows. On peut choisir la version à installer
-  (l'avant-dernière, si la dernière pose problème). Les contrôleurs de stockage ne sont
-  jamais touchés : un mauvais pilote à cet endroit empêche Windows de démarrer.
-- **Vérification hebdomadaire.** Option : chaque mercredi, l'application cherche en
-  silence et affiche une notification seulement s'il y a du nouveau.
-- **BIOS et carte graphique.** Windows Update les livre avec retard, ou pas du tout :
-  l'application affiche les versions installées et ouvre l'outil du fabricant (Lenovo,
-  Dell, HP, ASUS, Acer, MSI, Gigabyte, ASRock ; NVIDIA, AMD, Intel).
-- **Logiciels.** Mise à jour des logiciels installés via winget, le gestionnaire de
-  logiciels intégré à Windows. Désinstallation par le désinstalleur du programme, puis
-  recherche des dossiers laissés derrière lui, mis à la corbeille (donc récupérables).
-  Le registre n'est pas « nettoyé » : ça ne fait rien gagner et c'est la première cause
-  de casse de ce genre d'outil.
+Une page par fonction, rangées dans une barre latérale en quatre branches repliables
+(au clavier aussi : flèches haut et bas, gauche et droite pour replier et déplier).
+
+**Accueil.** Le gros bouton compare chaque périphérique à trois sources : Windows Update,
+le catalogue Microsoft Update (les pilotes des fabricants) et, pour une carte NVIDIA, le
+site de NVIDIA. Le rapport donne pour chacun la version installée, la version disponible,
+sa source et un verdict (à jour, mise à jour, aucun pilote, erreur). Ce qui est à mettre à
+jour arrive coché et s'installe en une fois, sous une seule autorisation administrateur,
+après un point de restauration. Le même passage vérifie logiciels, démarrage, sécurité et
+disques.
+
+### Pilotes
+
+- **Windows Update.** Les mises à jour de pilotes, en face du pilote installé. Les
+  « recommandées » sont cochées, les « facultatives » non (Microsoft ne les conseille que
+  pour un problème précis). Un pilote refusé peut être masqué. Option : une vérification
+  silencieuse chaque semaine, avec une notification seulement s'il y a du nouveau.
+- **Fabricants.** Pour chaque périphérique, une version plus récente dans le catalogue
+  Microsoft Update, signée par Microsoft, téléchargée depuis ses serveurs et vérifiée.
+  Windows garde le pilote actuel s'il est plus adapté au PC. On peut choisir la version (la
+  précédente, si la dernière pose problème). Les pilotes de stockage ne sont jamais
+  installés ainsi, même s'ils sont dans le même paquet : un mauvais pilote à cet endroit
+  empêche Windows de démarrer.
+- **Carte graphique.** Le pilote qui compte le plus en jeu. Pour NVIDIA, le dernier Game
+  Ready est demandé à NVIDIA directement : le catalogue a souvent plusieurs semaines de
+  retard et saute des versions. Une seule autorisation : point de restauration, puis
+  installateur officiel téléchargé depuis les serveurs de NVIDIA et lancé seulement si
+  Windows valide sa signature et que le signataire est NVIDIA. Pour AMD et Intel, l'outil
+  du fabricant.
+- **Carte mère.** Le BIOS installé et l'outil du fabricant pour le mettre à jour.
+- **Inventaire.** Chaque périphérique, son pilote, sa date, sa signature et son état,
+  filtrable ; mis à jour tout seul quand on branche ou débranche quelque chose. « Revenir
+  au pilote précédent » fait comme le Gestionnaire de périphériques.
+- **Périphériques en erreur.** Ce que signale le Gestionnaire de périphériques, avec le sens
+  de chaque code d'erreur.
+- **Anciennes versions.** Windows garde chaque version installée (près de 1 Go par pilote
+  graphique). Celles qu'aucun périphérique n'utilise peuvent partir ; la précédente de
+  chaque pilote est gardée, pour pouvoir y revenir.
+- **Sauvegarde.** Tous les pilotes des fabricants copiés dans un dossier, et réinstallés
+  en une fois après une réinstallation de Windows.
+- **Historique.** Ce que Windows Update a installé, quand, et avec quel résultat.
+
+### Jeux
+
+- **PC de guerre.** Une jauge et tous les réglages qui font gagner en jeu, chacun avec ce
+  qui le justifie : Mode jeu (activé par défaut, indispensable aux Ryzen X3D),
+  enregistrement en arrière-plan coupé (jusqu'à 7 % d'images), optimisations des jeux
+  fenêtrés (recommandées par Microsoft), planification GPU (nécessaire au DLSS Frame
+  Generation). « Tout optimiser » les applique en une fois ; chacun s'annule exactement,
+  valeur d'origine comprise. À part, sans gain d'images et dit tel quel : la précision du
+  pointeur et « Fin de tâche ». Et ce qu'aucun réglage ne corrige d'ici, vérifié sur le
+  matériel :
+  - écran réglé sous sa meilleure fréquence, ou branché sur la carte mère alors qu'il y a
+    une carte graphique ;
+  - mémoire sans profil XMP/EXPO (lu aussi dans la référence des barrettes, quand le
+    BIOS ne le dit pas), ou une seule barrette ;
+  - mode d'alimentation qui bride le processeur ; Ryzen X3D sans son pilote de cache 3D,
+    sans Game Bar ou hors du mode Équilibré ;
+  - jeux Steam installés sur un disque dur ; disque système plein.
+
+  Laissés de côté parce que rien ne les mesure ou qu'ils nuisent : réglages réseau
+  (Nagle, MMCSS), HPET et minuterie, parcage des cœurs, services coupés, MPO, et le plan
+  « Performances optimales » (aucun gain mesuré, et il casse le cache 3D des Ryzen X3D).
+  Ceux qui l'avaient appliqué avec une version précédente gardent le bouton « Annuler ».
+- **Composants de jeu.** Visual C++ 2005 à 2022, DirectX 9, XNA, OpenAL, PhysX, détectés
+  et installés via winget.
+- **Conseils par jeu.** Pour les jeux Steam installés, les réglages des communautés ; pour
+  Garry's Mod, le cfg multicœur, ajouté à `autoexec.cfg` et retiré d'un clic sans toucher
+  à vos propres lignes.
+
+### Système
+
+- **Performances.** Dix secondes d'observation, les applications classées par processeur,
+  mémoire, disque et carte graphique, et un verdict en clair.
 - **Démarrage.** Les programmes lancés avec Windows, activés ou désactivés comme dans le
-  Gestionnaire des tâches (réversible), avec le temps que chacun fait perdre d'après les
-  mesures que Windows enregistre lui-même à chaque démarrage, et le graphique de la durée
-  des 30 derniers démarrages.
-- **Performances.** Dix secondes d'observation, puis les applications classées par
-  processeur, mémoire, disque et carte graphique, et un verdict en clair : ressource
-  saturée et responsable, mode économie d'énergie, processeur bridé par la chaleur.
-- **Historique.** Les pilotes installés par Windows Update, quand, et avec quel résultat.
+  Gestionnaire des tâches, avec le temps que chacun fait perdre d'après les mesures de
+  Windows, et le graphique des 30 derniers démarrages.
+- **Confidentialité.** Les réglages les plus suivis (dont ceux de WinUtil de Chris Titus) :
+  identifiant publicitaire, expériences personnalisées, applications suggérées, Bing dans
+  la recherche, historique des activités, télémétrie. Ils ne rendent pas le PC plus
+  rapide, et c'est dit ; chacun s'annule exactement.
 - **Sécurité.** Antivirus actif et à jour, pare-feu actif, mises à jour de Windows en
-  attente, lus dans Windows lui-même, avec un lien vers l'endroit où agir. Pas de « score ».
-- **Points de restauration.** La liste, un bouton pour en créer un tout de suite, un autre
-  pour ouvrir la restauration du système.
-- **Santé.** État des disques, usure et température des SSD, état de la batterie d'un
-  portable.
-- **Réparer Windows.** SFC, DISM et le nettoyage des composants Windows, les outils
-  officiels de Microsoft.
-- **Sauvegarde des pilotes.** Copie tous les pilotes des fabricants dans un dossier, et
-  les réinstalle en une fois après une réinstallation de Windows.
-- **Fichiers temporaires.** Suppression des fichiers de plus de 2 jours dans
-  `AppData\Local\Temp` et, sur demande, `C:\Windows\Temp`.
-- **Copier le diagnostic.** Un rapport texte (versions, matériel, actions récentes) à
-  coller dans un signalement de bug.
-- **Nouvelle version.** Un bandeau prévient quand une version plus récente est publiée
-  sur GitHub, et l'installe d'un clic. L'application interroge pour cela l'API publique de
-  GitHub à chaque démarrage ; elle n'envoie rien d'autre.
+  attente, avec un lien vers l'endroit où agir. Pas de « score ».
+- **Points de restauration.** La liste, en créer un, ouvrir la restauration du système.
+- **Disques et batterie.** État, usure et température des disques, santé de la batterie.
+- **Nettoyage.** Fichiers temporaires de plus de 2 jours, anciennes versions des composants
+  de Windows (DISM), mise en veille prolongée. Pas de « nettoyage du registre ».
+- **Réparer Windows.** SFC et DISM, les outils de Microsoft.
 
-Interface sombre aux accents néon, barre latérale rangée par thèmes (Pilotes, Jeux,
-Système, Logiciels), jauges circulaires pour les performances.
+### Logiciels
 
-Pourquoi Windows Update et pas « la toute dernière version » : les pilotes de Windows
-Update sont signés et validés par Microsoft pour votre matériel. Les versions plus
-récentes publiées directement par les fabricants sont parfois des bêtas.
+- **Mises à jour.** Les logiciels installés, mis à jour via winget.
+- **Désinstaller.** Le désinstalleur du programme, puis les dossiers laissés derrière lui,
+  mis à la corbeille. Un dossier qu'un autre programme installé utilise encore n'est
+  jamais proposé.
+
+**Et aussi.** « Copier le diagnostic » prépare un rapport texte pour signaler un bug. Un
+bandeau prévient quand une nouvelle version est publiée sur GitHub et l'installe d'un clic.
 
 ## Installer
 
 Téléchargez `DriverUpdater-Setup-x.y.z.exe` depuis la page
 [Releases](https://github.com/Augaton/driver_updater/releases). Il installe l'application
 dans `C:\Program Files\Driver Updater` et l'ajoute au menu Démarrer. Le zip « portable »
-fonctionne aussi.
+fonctionne aussi, mais ses actions administrateur ne s'ouvrent que s'il est placé dans un
+dossier que seuls les administrateurs peuvent modifier (voir Sécurité).
 
 Lancé alors que Driver Updater est déjà installé, l'installateur indique la version en
 place et propose ce qui a du sens : mettre à jour, réparer (même version : tous les
@@ -128,6 +135,13 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
   restes dans Program Files, anciennes versions de pilotes) relance l'application en administrateur pour cette seule action : Windows
   demande l'autorisation, l'action se fait, le processus se termine. Aucun processus
   administrateur ne reste ouvert pour qu'un autre programme lui parle.
+- **Jamais depuis un dossier modifiable par tous.** Le module administrateur exécute les
+  fichiers de l'application : depuis un dossier où n'importe quel programme peut écrire (un
+  zip portable dans Téléchargements), un fichier pourrait être remplacé avant que vous
+  n'acceptiez. La fenêtre refuse alors les actions administrateur et dit pourquoi.
+- **Comptes standard.** Sur un compte sans droits, Windows demande le mot de passe d'un
+  administrateur et le module tourne sous ce compte-là : le canal l'accepte, et vérifie
+  toujours quel processus s'y connecte.
 - **Seule la fenêtre de Driver Updater commande le module administrateur.** N'importe quel
   programme peut le lancer avec une commande valide et obtenir de Windows la question
   « Autoriser Driver Updater ? », à laquelle on répondrait oui. Le module vérifie donc que
@@ -154,10 +168,24 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
   gardée sous `HKCU\Software\Driver Updater\Tweaks` ; « Annuler » la remet telle quelle,
   ou supprime la valeur si elle n'existait pas. Le module administrateur n'accepte que les
   identifiants de réglages de sa propre liste.
+- **Pilotes NVIDIA.** Demandés au service qu'utilise l'application de NVIDIA ; une réponse
+  qui ne ressemble pas à ce qui est attendu est ignorée. La fenêtre ne transmet que le
+  numéro de la carte : le module administrateur redemande lui-même la version à NVIDIA, la
+  télécharge depuis les serveurs de NVIDIA seulement (HTTPS, révocation des certificats
+  vérifiée, aucune redirection suivie, abandon si le serveur cesse d'envoyer) dans un
+  dossier où seuls les administrateurs peuvent écrire (rien ne peut être déposé à côté de
+  l'installateur), Windows vérifie sa signature sur le fichier ouvert en lecture seule, et
+  il n'est lancé que si le signataire est NVIDIA.
+- **Sauvegarde des pilotes.** Le dossier de sauvegarde est créé neuf (jamais un lien posé à
+  sa place), réservé aux administrateurs pendant que `pnputil` le remplit, puis il reprend
+  les droits du dossier qui le contient.
 - **Restes de désinstallation.** Seulement dans Program Files, ProgramData et AppData,
-  jamais un dossier partagé par plusieurs programmes (Microsoft, Common Files…), jamais un
-  lien, jamais le dossier de l'application ; le module administrateur revérifie chaque
-  dossier avant de le mettre à la corbeille.
+  jamais un dossier partagé par plusieurs programmes (Microsoft, Common Files…) ou encore
+  utilisé par un programme installé, jamais un lien, jamais le dossier de l'application. Le
+  module administrateur ne s'occupe que de Program Files et ProgramData : il revérifie
+  chaque dossier en gardant ouverts tous ceux qui mènent à lui, pour qu'aucun ne puisse être
+  remplacé par un lien entre la vérification et le déplacement. Si un dossier est trop
+  gros pour la corbeille, Windows demande avant de le supprimer pour de bon.
 - **Emplacement.** L'installateur place l'application dans `Program Files`, que seul un
   administrateur peut modifier : personne ne peut remplacer l'exe que Windows élèvera.
 - **Programmes lancés.** Les outils Windows sont appelés par leur chemin complet dans
@@ -194,8 +222,8 @@ paquets.
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.7.1
-git push origin v0.7.1
+git tag v0.8.0
+git push origin v0.8.0
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`
@@ -239,10 +267,10 @@ le pipeline.
 | `Admin/` | Élévation : lancement du module administrateur, canal privé avec la fenêtre, commandes admises et leur vérification, exécution |
 | `Drivers/` | Windows Update, catalogue Microsoft Update, inventaire, détection des branchements, rapport de tous les pilotes, magasin de pilotes, sauvegarde, retour au pilote précédent, vérification hebdomadaire |
 | `Maintenance/` | Matériel et santé (WMI), sécurité, points de restauration, performances, démarrage de Windows, programmes au démarrage, réparation (SFC, DISM), fichiers temporaires, diagnostic |
-| `Tuning/` | « PC de guerre » : réglages réversibles et leur liste, vérifications du matériel, écrans, jeux Steam et leurs conseils |
+| `Tuning/` | « PC de guerre » : réglages réversibles et leur liste, vérifications du matériel et leurs règles, écrans et cartes graphiques, jeux Steam et leurs conseils |
 | `Software/` | winget, programmes installés et désinstallation, restes, composants de jeu |
-| `Common/` | Messages d'erreur, tailles, nouvelle version de l'application (détection, téléchargement vérifié) |
-| `UI/` | La fenêtre, un fichier par section (`MainWindow.Home.cs`, `.Games.cs`…), la jauge |
+| `Common/` | Messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
+| `UI/` | La fenêtre, son menu en arbre (`MainWindow.Nav.cs`), un fichier par domaine (`MainWindow.Home.cs`, `.Games.cs`…), l'en-tête commun des pages, la jauge |
 | (racine) | `App.xaml` (thème néon), manifeste, icône, projet |
 
 | Ailleurs | Contenu |
@@ -250,5 +278,5 @@ le pipeline.
 | `installer/DriverUpdater.iss` | Installateur Inno Setup : thème sombre, mise à jour, réparation, désinstallation |
 | `installer/art/make-art.py` | Dessine l'icône et les images de l'installateur |
 | `build/sign.ps1` | Signature avec votre propre certificat |
-| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour |
-| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre et capture de chaque section, réglages dans le vrai registre, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |
+| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour, règles du matériel (XMP, écrans), réponses de NVIDIA |
+| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre et capture de chaque section, réglages dans le vrai registre, signatures Authenticode, service de NVIDIA, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |

@@ -100,62 +100,26 @@ public static class TempCleaner
     static class WindowsFiles
     {
         const uint AccessDelete = 0x00010000, AccessReadAttributes = 0x80;
-        const uint FlagOpenReparsePoint = 0x00200000, FlagBackupSemantics = 0x02000000;
         const int FileDispositionInfo = 4;
 
-        /// <summary>
-        /// The folder's real path, or null if a junction, link or short name anywhere on the
-        /// way changes where it leads. Callers pass paths built from known folders.
-        /// </summary>
-        public static string? GenuineFolder(string folder)
-        {
-            using var handle = Open(folder, AccessReadAttributes, FlagBackupSemantics);
-            if (handle.IsInvalid) return null;
-            string? real = FinalPath(handle);
-            string expected = @"\\?\" + Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
-            return string.Equals(real, expected, StringComparison.OrdinalIgnoreCase) ? real : null;
-        }
+        public static string? GenuineFolder(string folder) => NativeFiles.GenuineFolder(folder);
 
         /// <summary>Deletes the file if it is still old, plain, and inside <paramref name="root"/>; returns its size.</summary>
         public static long? DeleteWithin(string path, string root, DateTime cutoffUtc)
         {
             // Every check below reads the object this handle points to, and the delete goes
             // through the same handle: swapping folders after the checks cannot redirect it.
-            using var handle = Open(path, AccessDelete | AccessReadAttributes, FlagOpenReparsePoint);
+            using var handle = NativeFiles.Open(path, AccessDelete | AccessReadAttributes, NativeFiles.FlagOpenReparsePoint);
             if (handle.IsInvalid) return null;
             if ((File.GetAttributes(handle) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0) return null;
             if (File.GetLastWriteTimeUtc(handle) >= cutoffUtc) return null;
-            string? real = FinalPath(handle);
+            string? real = NativeFiles.FinalPath(handle);
             if (real is null || !real.StartsWith(root + @"\", StringComparison.OrdinalIgnoreCase)) return null;
 
             long size = RandomAccess.GetLength(handle);
             byte deleteFile = 1;
             return SetFileInformationByHandle(handle, FileDispositionInfo, ref deleteFile, 1) ? size : null;
         }
-
-        static SafeFileHandle Open(string path, uint access, uint flags) =>
-            CreateFileW(path, access, FileShare.ReadWrite | FileShare.Delete, IntPtr.Zero, FileMode.Open, flags, IntPtr.Zero);
-
-        static string? FinalPath(SafeFileHandle handle)
-        {
-            var buffer = new char[512];
-            while (true)
-            {
-                uint length = GetFinalPathNameByHandleW(handle, buffer, (uint)buffer.Length, 0);
-                if (length == 0) return null;
-                if (length < buffer.Length) return new string(buffer, 0, (int)length);
-                buffer = new char[length]; // too small: length is the size needed
-            }
-        }
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        static extern SafeFileHandle CreateFileW(string fileName, uint access, FileShare share, IntPtr security,
-            FileMode mode, uint flags, IntPtr template);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        static extern uint GetFinalPathNameByHandleW(SafeFileHandle file, [Out] char[] path, uint length, uint flags);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

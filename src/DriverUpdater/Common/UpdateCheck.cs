@@ -77,6 +77,26 @@ public static class UpdateCheck
             .FirstOrDefault();
 
     /// <summary>
+    /// Removes this app's download folders from %TEMP% older than a day: their installer has
+    /// run long ago (NVIDIA's weighs close to 1 GB). One still in use is simply left.
+    /// </summary>
+    public static void CleanOldDownloads()
+    {
+        foreach (var folder in new DirectoryInfo(Path.GetTempPath()).EnumerateDirectories("DriverUpdater-*"))
+        {
+            var suffix = folder.Name["DriverUpdater-".Length..];
+            if (suffix.Length != 32 || !suffix.All(Uri.IsHexDigit) || folder.CreationTimeUtc > DateTime.UtcNow.AddDays(-1)) continue;
+            try
+            {
+                folder.Delete(recursive: true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    /// <summary>
     /// Downloads the installer into a new folder and checks it against SHA256SUMS.txt. Throws if
     /// anything does not match: nothing unchecked is ever started.
     /// </summary>
@@ -89,12 +109,15 @@ public static class UpdateCheck
         var expected = ExpectedHash(await http.GetStringAsync(release.ChecksumsUrl), fileName)
             ?? throw new InvalidOperationException("L'empreinte de l'installateur manque dans SHA256SUMS.txt.");
 
+        CleanOldDownloads();
         var folder = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "DriverUpdater-" + Guid.NewGuid().ToString("N")));
         var path = Path.Combine(folder.FullName, fileName);
         progress.Report($"Téléchargement de {fileName}…");
-        await using (var source = await http.GetStreamAsync(release.SetupUrl))
-        await using (var target = File.Create(path))
-            await source.CopyToAsync(target);
+        using (var response = await http.GetAsync(release.SetupUrl, HttpCompletionOption.ResponseHeadersRead))
+        {
+            response.EnsureSuccessStatusCode();
+            await Download.ToFileAsync(response, path, progress: null, TimeSpan.FromSeconds(60));
+        }
 
         // Hashed through the handle that then keeps it locked: what was checked is what runs.
         var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);

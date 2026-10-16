@@ -18,16 +18,33 @@ public sealed class TweakTests
     [Fact]
     public void Applies_and_undoes_to_exactly_what_was_there()
     {
+        var suggestions = TweakCatalog.Find("suggested-apps-off")!;
         var registry = new FakeRegistry();
-        registry.Set(Hive.CurrentUser, @"Software\Microsoft\GameBar", "AutoGameModeEnabled", 0); // the other value is absent
+        const string Key = @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
+        registry.Set(Hive.CurrentUser, Key, "SilentInstalledAppsEnabled", 1); // the other value is absent
         var before = new Dictionary<(Hive, string, string), object>(registry.Values);
 
-        TweakEngine.Apply(GameMode, registry);
-        Assert.True(TweakEngine.IsApplied(GameMode, registry));
+        TweakEngine.Apply(suggestions, registry);
+        Assert.True(TweakEngine.IsApplied(suggestions, registry));
 
-        Assert.True(TweakEngine.Undo(GameMode, registry));
+        Assert.True(TweakEngine.Undo(suggestions, registry));
         Assert.Equal(before, registry.Values); // the absent value is absent again, the backups are gone
     }
+
+    // Game Mode is on when its value does not exist: nothing to do on a fresh Windows.
+    [Fact]
+    public void A_missing_value_counts_as_what_windows_does_by_default()
+    {
+        var registry = new FakeRegistry();
+        Assert.True(TweakEngine.IsApplied(GameMode, registry));
+
+        registry.Set(Hive.CurrentUser, @"Software\Microsoft\GameBar", "AutoGameModeEnabled", 0);
+        Assert.False(TweakEngine.IsApplied(GameMode, registry));
+    }
+
+    [Fact]
+    public void Retired_tweaks_are_never_applied_in_one_click() =>
+        Assert.All(TweakCatalog.All.Where(t => t.Retired), t => Assert.False(t.InOneClick));
 
     [Fact]
     public void Applying_twice_still_undoes_to_the_original()

@@ -130,11 +130,23 @@ public static class WeeklyCheck
             return;
         }
 
-        var current = found.Select(u => u.UpdateId).ToHashSet();
-        bool hasNew = current.Except(Notified()).Any();
-        SaveNotified(current);
-        if (hasNew) Notify(app, found);
-        else app.Shutdown();
+        bool notified = false;
+        try
+        {
+            var current = found.Select(u => u.UpdateId).ToHashSet();
+            bool hasNew = current.Except(Notified()).Any();
+            SaveNotified(current);
+            if (hasNew)
+            {
+                Notify(app, found);
+                notified = true; // the notification ends the app when it closes
+            }
+        }
+        finally
+        {
+            // Hidden and without a window: nothing else would ever end it.
+            if (!notified) app.Shutdown();
+        }
     }
 
     static HashSet<string> Notified()

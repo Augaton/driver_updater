@@ -10,6 +10,7 @@ public partial class MainWindow
     List<ReportRow> report = [];
     List<(string HardwareId, DriverOffer Offer)> windowsUpdateOffers = [];
     Dictionary<string, DriverOffer> catalogOffers = [];
+    Dictionary<string, DriverOffer> vendorOffers = []; // NVIDIA's site, by device instance ID
 
     void OnTile(object sender, RoutedEventArgs e)
     {
@@ -36,6 +37,7 @@ public partial class MainWindow
                 ScanStatus.Text = "Comparaison avec Windows Update et les fabricants : une à deux minutes…";
                 var windowsUpdate = Task.Run(WindowsUpdateDrivers.Search);
                 var catalog = DriverCatalog.FindAsync(devices, new Progress<string>(m => ScanStatus.Text = m));
+                var nvidia = NvidiaDrivers.LatestAsync(devices.Where(IsNvidia), Machine.HasBattery);
                 var failures = new List<string>();
                 try
                 {
@@ -59,15 +61,21 @@ public partial class MainWindow
                 {
                     failures.Add("catalogue : " + Errors.Describe(ex));
                 }
+                nvidiaReleases = await nvidia; // an unreachable NVIDIA is simply no offer
+                vendorOffers = devices.Where(d => nvidiaReleases.ContainsKey(d.DeviceId))
+                    .ToDictionary(d => d.DeviceId, d => NvidiaModel.Offer(nvidiaReleases[d.DeviceId], d.ParsedVersion ?? new Version(32, 0, 0, 0)),
+                        StringComparer.OrdinalIgnoreCase);
 
-                report = DriverReport.Build(devices, windowsUpdateOffers, catalogOffers);
+                report = DriverReport.Build(devices, windowsUpdateOffers, catalogOffers, vendorOffers);
                 ShowReport();
                 ScanStatus.Text = failures.Count == 0
                     ? $"Analyse du {DateTime.Now:dd/MM à HH:mm}. Tout ce qui est à mettre à jour est coché."
                     : "Analyse incomplète, " + string.Join(" ; ", failures);
                 await otherChecks;
-                int updates = report.Count(r => r.CanInstall);
-                return updates == 0 ? "Analyse terminée : vos pilotes sont à jour." : $"Analyse terminée : {updates} pilote(s) à mettre à jour.";
+                int updates = report.Count(r => r.Offer is not null);
+                bool graphics = report.Any(r => r.Offer?.Source == DriverOffer.Nvidia);
+                return (updates == 0 ? "Analyse terminée : vos pilotes sont à jour." : $"Analyse terminée : {updates} pilote(s) à mettre à jour.")
+                       + (graphics ? " Pilote NVIDIA plus récent : il s'installe depuis la page Carte graphique." : "");
             }
             finally
             {
@@ -91,7 +99,7 @@ public partial class MainWindow
         ReportGrid.ItemsSource = shown;
         ReportTotal.Text = report.Count.ToString();
         ReportOk.Text = report.Count(r => r.Verdict is Verdict.UpToDate or Verdict.Disabled).ToString();
-        ReportUpdates.Text = report.Count(r => r.CanInstall).ToString();
+        ReportUpdates.Text = report.Count(r => r.Offer is not null).ToString();
         ReportIssues.Text = report.Count(r => !r.CanInstall && r.Verdict is Verdict.NoDriver or Verdict.Problem).ToString();
         ReportPlaceholder.Text = report.Count == 0 ? "Le rapport apparaîtra ici." : "Tous vos pilotes sont à jour.";
         ReportPlaceholder.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -104,7 +112,7 @@ public partial class MainWindow
 
     void UpdateReportButton()
     {
-        int chosen = report.Where(r => r.Selected && r.Offer is not null).Select(r => r.Offer!.UpdateId).Distinct().Count();
+        int chosen = report.Where(r => r.Selected && r.CanInstall).Select(r => r.Offer!.UpdateId).Distinct().Count();
         UpdateAllButton.Content = chosen == 0 ? "Mettre à jour la sélection" : $"Mettre à jour ({chosen})";
         UpdateButtons();
     }
@@ -112,7 +120,7 @@ public partial class MainWindow
     /// <summary>Everything ticked, from both sources, under a single administrator consent.</summary>
     async void OnUpdateAll(object sender, RoutedEventArgs e)
     {
-        var offers = report.Where(r => r.Selected && r.Offer is not null).Select(r => r.Offer!).DistinctBy(o => o.UpdateId).ToList();
+        var offers = report.Where(r => r.Selected && r.CanInstall).Select(r => r.Offer!).DistinctBy(o => o.UpdateId).ToList();
         if (offers.Count == 0) return;
         if (Ask($"Installer {offers.Count} pilote(s) ?\n\nUn point de restauration système sera créé avant. " +
                 "Windows garde un pilote actuel s'il est plus adapté à votre PC.") != MessageBoxResult.Yes)
@@ -137,7 +145,7 @@ public partial class MainWindow
             var done = result.Results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
             windowsUpdateOffers = windowsUpdateOffers.Where(w => !done.Contains(w.Offer.UpdateId)).ToList();
             catalogOffers = catalogOffers.Where(c => !done.Contains(c.Value.UpdateId)).ToDictionary(StringComparer.OrdinalIgnoreCase);
-            report = DriverReport.Build(await LoadInventory(), windowsUpdateOffers, catalogOffers);
+            report = DriverReport.Build(await LoadInventory(), windowsUpdateOffers, catalogOffers, vendorOffers);
             ShowReport();
             await LoadHistory();
             return $"{done.Count} pilote(s) sur {offers.Count} mis à jour." + (reboot ? " Redémarrage requis." : "");
@@ -147,7 +155,7 @@ public partial class MainWindow
     Task CheckSoftwareTile() => Tile(TileSoftwareValue, TileSoftwareText, async () =>
     {
         if (!WinGet.IsAvailable) return ("—", "winget absent");
-        ShowSoftware(await WinGet.ListUpgradesAsync());
+        ShowSoftware(await SoftwareUpgrades());
         return (software.Count.ToString(), software.Count == 0 ? "logiciels à jour" : "logiciel(s) à mettre à jour");
     });
 

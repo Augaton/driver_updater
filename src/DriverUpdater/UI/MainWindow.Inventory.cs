@@ -163,6 +163,13 @@ public partial class MainWindow
                 deviceSettle.Start();
                 return;
             }
+            // A scan or an install reads the inventory itself: look once it is done.
+            if (busy)
+            {
+                deviceSettle.Interval = TimeSpan.FromSeconds(10);
+                deviceSettle.Start();
+                return;
+            }
             deviceSettle.Interval = TimeSpan.FromSeconds(2);
             lastDeviceLook = DateTime.UtcNow;
             await OnDevicesChanged();
@@ -177,13 +184,17 @@ public partial class MainWindow
 
     async Task OnDevicesChanged()
     {
-        var before = inventory.Select(d => d.DeviceId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var previous = inventory.ToList();
+        var before = previous.Select(d => d.DeviceId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool hadInventory = before.Count > 0;
         var now = await LoadInventory();
-        await LoadHardware();
         if (!hadInventory) return; // first look: nothing to compare with
 
         var arrived = now.Where(d => !before.Contains(d.DeviceId)).ToList();
+        var after = now.Select(d => d.DeviceId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var left = previous.Where(d => !after.Contains(d.DeviceId));
+        // The dashboard names the graphics cards: read it again only when one came or went.
+        if (arrived.Concat(left).Any(d => d.Class.Equals("Display", StringComparison.OrdinalIgnoreCase))) await LoadHardware();
         newDevicesWithoutDriver = arrived.Where(d => !d.HasDriver).ToList();
         if (newDevicesWithoutDriver.Count > 0)
         {

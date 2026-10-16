@@ -78,4 +78,18 @@ public sealed class AdminCommandTests
         Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallAll, "wu:not-a-guid"]));
         Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallAll]));
     }
+
+    [Fact]
+    public void Install_nvidia_takes_only_a_pci_device_id()
+    {
+        Assert.Equal(["2684"], AdminCommand.Parse([AdminCommand.InstallNvidia, "2684"]).Args);
+        Assert.Equal(["2B85"], AdminCommand.Parse([AdminCommand.InstallNvidia, "2b85"]).Args);
+        foreach (var bad in new[] { "268", "26845", "zzzz", @"..\x", "https://evil.example/x.exe" })
+            Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallNvidia, bad]));
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallNvidia]));
+    }
+
+    [Fact]
+    public void Duplicate_packages_are_installed_once() =>
+        Assert.Equal([Guid1], AdminCommand.Parse([AdminCommand.InstallCatalog, Guid1, Guid1.ToUpperInvariant()]).Args);
 }

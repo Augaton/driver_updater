@@ -71,18 +71,25 @@ public static class StartupApps
         var folder = StartupFolder(machine);
         if (!Directory.Exists(folder)) return;
         dynamic? shell = null; // created once, only if there are shortcuts to read
-        foreach (var file in Directory.EnumerateFiles(folder))
+        try
         {
-            var name = Path.GetFileName(file);
-            if (name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
-            var program = file;
-            if (name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
-                program = ShortcutTarget(shell ??= Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")!)!, file);
-            list.Add(new StartupEntry
+            foreach (var file in Directory.EnumerateFiles(folder))
             {
-                Name = name, Kind = Folder, Machine = machine, Command = program, Program = program,
-                Publisher = PublisherOf(program), Enabled = IsEnabled(Folder, name, machine),
-            });
+                var name = Path.GetFileName(file);
+                if (name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
+                var program = file;
+                if (name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+                    program = ShortcutTarget(shell ??= Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")!)!, file);
+                list.Add(new StartupEntry
+                {
+                    Name = name, Kind = Folder, Machine = machine, Command = program, Program = program,
+                    Publisher = PublisherOf(program), Enabled = IsEnabled(Folder, name, machine),
+                });
+            }
+        }
+        finally
+        {
+            if (shell is not null) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
         }
     }
 

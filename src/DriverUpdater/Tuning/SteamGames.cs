@@ -20,7 +20,8 @@ public sealed class InstalledGame
 /// </summary>
 public static class SteamGames
 {
-    public static List<InstalledGame> Find()
+    /// <summary>Steam's library folders on this PC; empty without Steam.</summary>
+    public static List<string> Libraries()
     {
         using var steam = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
         if (steam?.GetValue("SteamPath") is not string steamPath) return [];
@@ -29,10 +30,22 @@ public static class SteamGames
         var libraries = new List<string> { steamPath };
         var vdf = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
         if (File.Exists(vdf)) libraries.AddRange(GameTips.LibraryFolders(File.ReadAllText(vdf)));
+        return libraries.Distinct(StringComparer.OrdinalIgnoreCase).Where(Directory.Exists).ToList();
+    }
 
+    /// <summary>How many games a library holds (one manifest each).</summary>
+    public static int GameCount(string library)
+    {
+        var apps = Path.Combine(library, "steamapps");
+        return Directory.Exists(apps) ? Directory.EnumerateFiles(apps, "appmanifest_*.acf").Count() : 0;
+    }
+
+    public static List<InstalledGame> Find()
+    {
+        var libraries = Libraries();
         var games = new List<InstalledGame>();
         foreach (var tip in GameTips.Known)
-            foreach (var library in libraries.Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (var library in libraries)
             {
                 var manifest = Path.Combine(library, "steamapps", $"appmanifest_{tip.SteamAppId}.acf");
                 if (!File.Exists(manifest) || GameTips.InstallDir(File.ReadAllText(manifest)) is not { } dir) continue;

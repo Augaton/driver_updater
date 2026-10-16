@@ -119,6 +119,13 @@ public static class AdminHelper
                 }
                 return command.Args.Count;
 
+            case AdminCommand.InstallNvidia:
+            {
+                if (await RestorePointAsync(channel) is not { } restorePoint) return new NvidiaInstallReport("", true, "", 0);
+                var (version, exitCode) = await NvidiaDrivers.InstallAsync(command.Args[0], channel.Progress);
+                return new NvidiaInstallReport(restorePoint, false, version, exitCode);
+            }
+
             case AdminCommand.RestorePoints:
                 return await Task.Run(SystemInfo.RestorePoints);
 
@@ -157,17 +164,30 @@ public static class AdminHelper
         return new InstallReport(point, false, results);
     }
 
-    /// <summary>Moves leftover folders to the Recycle Bin, each checked again against the leftover rules.</summary>
+    /// <summary>
+    /// Moves leftover folders of the all-users locations to the Recycle Bin (the user's own
+    /// folders need no rights: the window recycles those). Each is checked again against the
+    /// leftover rules with every folder on its way held open, so none can be swapped for a link
+    /// between the check and the move. Returns how many went.
+    /// </summary>
     static int Recycle(IReadOnlyList<string> folders)
     {
         var roots = LeftoverRoots.Current;
         foreach (var folder in folders)
-            if (!Leftovers.IsSafeToRecycle(folder, roots, out _))
+            if (!Leftovers.IsSafeToRecycle(folder, roots, out bool machine) || !machine)
                 throw new ArgumentException($"Dossier refusé : {folder}");
+        int recycled = 0;
         foreach (var folder in folders)
-            Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(folder,
-                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-        return folders.Count;
+        {
+            var root = Leftovers.MachineRootOf(folder, roots) ?? throw new ArgumentException($"Dossier refusé : {folder}");
+            using (NativeFiles.PinParents(root, folder))
+            {
+                if (NativeFiles.GenuineFolder(folder) is null || !Leftovers.IsSafeToRecycle(folder, roots, out _))
+                    throw new ArgumentException($"Dossier refusé : {folder}");
+                if (NativeFiles.Recycle(folder, IntPtr.Zero)) recycled++;
+            }
+        }
+        return recycled;
     }
 
     static async Task<CatalogInstallReport> InstallCatalogAsync(IReadOnlyList<string> ids, HelperChannel channel)

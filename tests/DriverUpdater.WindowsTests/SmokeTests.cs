@@ -35,15 +35,27 @@ public sealed class SmokeTests
                     ShowActivated = false, ShowInTaskbar = false,
                 };
                 window.Show();
+                Settle((FrameworkElement)window.Content);
+                // Opens on the dashboard, with each page's text style applied (not Windows' black).
+                Assert.Same(window.HomeTab, window.Tabs.SelectedItem);
+                Assert.Equal(((SolidColorBrush)app.Resources["Ink"]).Color, ((SolidColorBrush)window.HomeTab.Foreground).Color);
                 Pump(window.LoadLocalData());
+
+                // The menu lists every page once, in order, under its branch.
+                var pages = window.Tabs.Items.OfType<TabItem>().Where(t => t.IsEnabled).ToList();
+                var menu = window.Nav.Items.OfType<TreeViewItem>()
+                    .SelectMany(i => i.Tag is TabItem ? [i] : i.Items.OfType<TreeViewItem>())
+                    .Select(i => i.Tag).ToList();
+                Assert.Equal(pages, menu);
 
                 var root = (FrameworkElement)window.Content;
                 var background = (Brush)app.Resources["Void"];
                 int index = 0;
-                foreach (var tab in window.Tabs.Items.OfType<TabItem>().Where(t => t.IsEnabled && t.Name.Length > 0))
+                foreach (var tab in pages.Where(t => t.Name.Length > 0))
                 {
                     window.Tabs.SelectedItem = tab;
                     Settle(root);
+                    Assert.Same(tab, (window.Nav.SelectedItem as TreeViewItem)?.Tag); // the menu follows the page
                     Save(Render(root, background), Path.Combine(folder, $"{++index:00}-{tab.Name}.png"));
                     if (tab.Content is ScrollViewer { ScrollableHeight: > 0 } scroller)
                     {
@@ -362,6 +374,105 @@ public sealed class SmokeTests
         {
             folder.Delete(recursive: true);
         }
+    }
+
+    // What keeps the administrator helper from being steered by a planted link.
+    [Fact]
+    public void Refuses_folders_swapped_for_links()
+    {
+        // Next to the tests, not in %TEMP%: its path may hold short 8.3 names (RUNNER~1).
+        var root = Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "links-" + Guid.NewGuid().ToString("N"))).FullName;
+        try
+        {
+            var real = Directory.CreateDirectory(Path.Combine(root, "real", "sub")).FullName;
+            Assert.NotNull(NativeFiles.GenuineFolder(real));
+            using (NativeFiles.PinParents(root, real))
+                Assert.Throws<IOException>(() => Directory.Move(Path.Combine(root, "real"), Path.Combine(root, "moved")));
+            Directory.Move(Path.Combine(root, "real"), Path.Combine(root, "moved")); // free again once unpinned
+            Directory.Move(Path.Combine(root, "moved"), Path.Combine(root, "real"));
+
+            var link = Path.Combine(root, "link");
+            Directory.CreateSymbolicLink(link, Path.Combine(root, "real"));
+            Assert.Null(NativeFiles.GenuineFolder(link));
+            Assert.Throws<InvalidOperationException>(() => NativeFiles.PinParents(root, Path.Combine(link, "sub", "x")));
+            Assert.ThrowsAny<Exception>(() => NativeFiles.CreateNewFolder(real));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    // Old installers go (an NVIDIA driver is close to 1 GB); anything else stays.
+    [Fact]
+    public void Cleans_only_its_own_old_downloads()
+    {
+        var temp = Path.GetTempPath();
+        var old = Directory.CreateDirectory(Path.Combine(temp, "DriverUpdater-" + Guid.NewGuid().ToString("N")));
+        var recent = Directory.CreateDirectory(Path.Combine(temp, "DriverUpdater-" + Guid.NewGuid().ToString("N")));
+        var other = Directory.CreateDirectory(Path.Combine(temp, "DriverUpdater-keep-" + Guid.NewGuid().ToString("N")));
+        try
+        {
+            File.WriteAllText(Path.Combine(old.FullName, "setup.exe"), "old");
+            Directory.SetCreationTimeUtc(old.FullName, DateTime.UtcNow.AddDays(-3));
+            Directory.SetCreationTimeUtc(other.FullName, DateTime.UtcNow.AddDays(-3));
+
+            UpdateCheck.CleanOldDownloads();
+
+            Assert.False(old.Exists && Directory.Exists(old.FullName));
+            Assert.True(Directory.Exists(recent.FullName));
+            Assert.True(Directory.Exists(other.FullName));
+        }
+        finally
+        {
+            foreach (var folder in new[] { old, recent, other })
+                if (Directory.Exists(folder.FullName)) folder.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Reads_the_machine_facts_the_gaming_checks_need()
+    {
+        Machine.IsDualDieX3D();
+        Machine.GameBarInstalled();
+        Assert.NotNull(Machine.ActivePowerPlan());
+        Machine.OnHardDisk(Environment.SystemDirectory); // null is fine: virtual disks may not say
+        Displays.Adapters();
+    }
+
+    [Fact]
+    public void Checks_signatures_like_windows_does()
+    {
+        // dotnet.exe carries Microsoft's own Authenticode signature.
+        var signed = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe");
+        using (var file = new FileStream(signed, FileMode.Open, FileAccess.Read, FileShare.Read))
+        using (var signer = Authenticode.Signer(file.SafeFileHandle, signed))
+        {
+            Assert.NotNull(signer);
+            Assert.True(Authenticode.IsSignedBy(signer, "Microsoft Corporation"));
+            Assert.False(Authenticode.IsSignedBy(signer, "NVIDIA Corporation"));
+        }
+
+        var unsigned = Path.Combine(Directory.CreateTempSubdirectory("DriverUpdater-test-").FullName, "setup.exe");
+        File.WriteAllBytes(unsigned, [0x4D, 0x5A, 1, 2, 3]);
+        using (var file = new FileStream(unsigned, FileMode.Open, FileAccess.Read, FileShare.Read))
+            Assert.Null(Authenticode.Signer(file.SafeFileHandle, unsigned));
+    }
+
+    // NVIDIA's lookup is undocumented: this fails the day it changes, before users notice.
+    [Fact]
+    public async Task Nvidia_still_answers_for_a_current_card()
+    {
+        var card = new DeviceDriver
+        {
+            DeviceId = @"PCI\VEN_10DE&DEV_2684\TEST", Name = "NVIDIA GeForce RTX 4090", Class = "Display", Provider = "NVIDIA",
+            Version = "32.0.15.6094", Date = null, Signed = true, Problem = 0, InfName = "oem1.inf", HardwareIds = [@"PCI\VEN_10DE&DEV_2684"],
+        };
+        var found = await NvidiaDrivers.LatestAsync([card], laptop: false);
+
+        var release = Assert.Single(found).Value;
+        Assert.True(Version.TryParse(release.Version, out var version) && version.Major >= 500);
+        Assert.True(NvidiaModel.IsTrustedDownload(release.DownloadUrl));
     }
 
     [Fact]

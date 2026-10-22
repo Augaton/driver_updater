@@ -45,8 +45,10 @@ public static class TempCleaner
                 IgnoreInaccessible = true,
                 AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System,
             };
+            // Extracted or copied files keep their old modification date (a zip opened from
+            // Explorer, an installer unpacking itself): their creation date says when they came.
             foreach (var file in new DirectoryInfo(target.Folder).EnumerateFiles("*", options))
-                if (file.LastWriteTimeUtc < cutoffUtc) files.Add(new Candidate(file, root));
+                if (file.LastWriteTimeUtc < cutoffUtc && file.CreationTimeUtc < cutoffUtc) files.Add(new Candidate(file, root));
         }
         return new ScanResult(files, files.Sum(c => c.File.Length), refused);
     }
@@ -89,7 +91,7 @@ public static class TempCleaner
     static long? DeleteByPath(FileInfo file, DateTime cutoffUtc)
     {
         file.Refresh();
-        if (!file.Exists || file.LastWriteTimeUtc >= cutoffUtc || file.Attributes.HasFlag(FileAttributes.ReparsePoint))
+        if (!file.Exists || file.LastWriteTimeUtc >= cutoffUtc || file.CreationTimeUtc >= cutoffUtc || file.Attributes.HasFlag(FileAttributes.ReparsePoint))
             return null;
         long size = file.Length;
         file.Delete();
@@ -112,7 +114,7 @@ public static class TempCleaner
             using var handle = NativeFiles.Open(path, AccessDelete | AccessReadAttributes, NativeFiles.FlagOpenReparsePoint);
             if (handle.IsInvalid) return null;
             if ((File.GetAttributes(handle) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0) return null;
-            if (File.GetLastWriteTimeUtc(handle) >= cutoffUtc) return null;
+            if (File.GetLastWriteTimeUtc(handle) >= cutoffUtc || File.GetCreationTimeUtc(handle) >= cutoffUtc) return null;
             string? real = NativeFiles.FinalPath(handle);
             if (real is null || !real.StartsWith(root + @"\", StringComparison.OrdinalIgnoreCase)) return null;
 

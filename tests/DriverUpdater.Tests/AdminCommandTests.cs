@@ -32,6 +32,17 @@ public sealed class AdminCommandTests
     public void Refuses_a_folder_that_is_not_a_full_local_path(string folder) =>
         Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.ImportDrivers, folder]));
 
+    [Theory]
+    [InlineData("//server/share/drivers")]
+    [InlineData(@"\??\UNC\server\share\drivers")]
+    [InlineData(@"\\?\UNC\server\share\drivers")]
+    public void Refuses_a_share_whatever_its_spelling(string folder)
+    {
+        if (!OperatingSystem.IsWindows()) return; // Windows spellings
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.ImportDrivers, folder]));
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.Recycle, folder]));
+    }
+
     [Fact]
     public void Accepts_a_full_local_folder()
     {

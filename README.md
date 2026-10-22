@@ -169,6 +169,9 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
   programme peut le lancer avec une commande valide et obtenir de Windows la question
   « Autoriser Driver Updater ? », à laquelle on répondrait oui. Le module vérifie donc que
   le processus à l'autre bout du canal est bien l'exe de Driver Updater, et refuse sinon.
+  La fenêtre vérifie de son côté que c'est bien le module qu'elle a lancé, et le module
+  n'agit qu'après son feu vert : un module lancé par un autre programme sur le même canal
+  est refusé avant d'avoir rien fait.
 - **Module administrateur.** Il n'accepte qu'une liste fermée de commandes, et vérifie
   leurs arguments : identifiants de mise à jour au format GUID, dossiers locaux en chemin
   complet, nom de canal généré par l'application. Il rend compte par un canal nommé privé
@@ -259,8 +262,8 @@ les paquets.
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.9.0
-git push origin v0.9.0
+git tag v0.9.1
+git push origin v0.9.1
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`

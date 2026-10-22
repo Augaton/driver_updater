@@ -11,6 +11,7 @@ public partial class MainWindow
     List<(string HardwareId, DriverOffer Offer)> windowsUpdateOffers = [];
     Dictionary<string, DriverOffer> catalogOffers = [];
     Dictionary<string, DriverOffer> vendorOffers = []; // NVIDIA's site, by device instance ID
+    string? reportGaps; // the sources the last analysis could not reach, if any
 
     void OnTile(object sender, RoutedEventArgs e)
     {
@@ -30,7 +31,7 @@ public partial class MainWindow
             {
                 foreach (var number in new[] { ReportTotal, ReportOk, ReportUpdates, ReportIssues }) number.Text = "…";
                 ScanStatus.Text = L.T("Inventaire des périphériques…");
-                var devices = await LoadInventory();
+                var devices = await LoadInventory(required: true);
                 ReportTotal.Text = devices.Count.ToString();
                 var otherChecks = Task.WhenAll(CheckSoftwareTile(), CheckStartupTile(), CheckDisksTile(), CheckSecurityTile());
 
@@ -67,11 +68,12 @@ public partial class MainWindow
                         StringComparer.OrdinalIgnoreCase);
 
                 report = DriverReport.Build(devices, windowsUpdateOffers, catalogOffers, vendorOffers);
+                reportGaps = failures.Count == 0 ? null : L.T("Analyse incomplète, ") + string.Join(" ; ", failures);
                 ShowReport();
-                ScanStatus.Text = failures.Count == 0
-                    ? L.F("Analyse du {0:dd/MM à HH:mm}. Tout ce qui est à mettre à jour est coché.", DateTime.Now)
-                    : L.T("Analyse incomplète, ") + string.Join(" ; ", failures);
+                ScanStatus.Text = reportGaps ?? L.F("Analyse du {0:dd/MM à HH:mm}. Tout ce qui est à mettre à jour est coché.", DateTime.Now);
                 await otherChecks;
+                // A source out of reach says nothing about the drivers it would have checked.
+                if (reportGaps is not null) return reportGaps;
                 int updates = report.Count(r => r.Offer is not null);
                 bool graphics = report.Any(r => r.Offer?.Source == DriverOffer.Nvidia);
                 return (updates == 0 ? L.T("Analyse terminée : vos pilotes sont à jour.") : L.F("Analyse terminée : {0} pilote(s) à mettre à jour.", updates))
@@ -101,7 +103,7 @@ public partial class MainWindow
         ReportOk.Text = report.Count(r => r.Verdict is Verdict.UpToDate or Verdict.Disabled).ToString();
         ReportUpdates.Text = report.Count(r => r.Offer is not null).ToString();
         ReportIssues.Text = report.Count(r => !r.CanInstall && r.Verdict is Verdict.NoDriver or Verdict.Problem).ToString();
-        ReportPlaceholder.Text = report.Count == 0 ? L.T("Le rapport apparaîtra ici.") : L.T("Tous vos pilotes sont à jour.");
+        ReportPlaceholder.Text = report.Count == 0 ? L.T("Le rapport apparaîtra ici.") : reportGaps ?? L.T("Tous vos pilotes sont à jour.");
         ReportPlaceholder.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateReportButton();
     }
@@ -141,15 +143,26 @@ public partial class MainWindow
                 (reboot ? L.T("\n\nRedémarrez l'ordinateur pour terminer.") : ""), L.T("Résultat des mises à jour"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
 
-            // Installed offers leave the report; the rest stays as found.
             var done = result.Results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            windowsUpdateOffers = windowsUpdateOffers.Where(w => !done.Contains(w.Offer.UpdateId)).ToList();
-            catalogOffers = catalogOffers.Where(c => !done.Contains(c.Value.UpdateId)).ToDictionary(StringComparer.OrdinalIgnoreCase);
-            report = DriverReport.Build(await LoadInventory(), windowsUpdateOffers, catalogOffers, vendorOffers);
-            ShowReport();
+            await ForgetInstalled(done);
             await LoadHistory();
             return L.F("{0} pilote(s) sur {1} mis à jour.", done.Count, offers.Count) + (reboot ? L.T(" Redémarrage requis.") : "");
         });
+    }
+
+    /// <summary>
+    /// Installed drivers leave every list that offered them, wherever they were installed from:
+    /// the report, the Windows Update page and the catalog's. The rest stays as found.
+    /// </summary>
+    async Task ForgetInstalled(IReadOnlySet<string> done)
+    {
+        windowsUpdateOffers = windowsUpdateOffers.Where(w => !done.Contains(w.Offer.UpdateId)).ToList();
+        catalogOffers = catalogOffers.Where(c => !done.Contains(c.Value.UpdateId)).ToDictionary(StringComparer.OrdinalIgnoreCase);
+        await ShowUpdates(drivers.Where(d => !done.Contains(d.UpdateId)).ToList());
+        ShowCatalog(catalogDrivers.Where(d => !done.Contains(d.Entry.UpdateId)).ToList());
+        if (report.Count == 0) return; // no analysis yet
+        report = DriverReport.Build(await LoadInventory(), windowsUpdateOffers, catalogOffers, vendorOffers);
+        ShowReport();
     }
 
     Task CheckSoftwareTile() => Tile(TileSoftwareValue, TileSoftwareText, async () =>

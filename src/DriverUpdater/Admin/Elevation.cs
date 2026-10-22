@@ -124,6 +124,7 @@ public static class Elevation
 
             using var reader = new StreamReader(pipe, leaveOpen: true);
             using var writer = new StreamWriter(pipe, leaveOpen: true) { AutoFlush = true };
+            await writer.WriteLineAsync(HelperChannel.Go);
             while (await reader.ReadLineAsync() is { } line)
             {
                 var message = JsonSerializer.Deserialize<ElevationMessage>(line)
@@ -175,6 +176,21 @@ public sealed class HelperChannel : IDisposable
     /// </summary>
     public bool FromThisApp { get; }
 
+    /// <summary>What the window sends once it has checked who is at the other end of its pipe.</summary>
+    public const string Go = "go";
+
+    /// <summary>
+    /// Whether the window lets this process go on. It does once it has checked that the process
+    /// connected to its pipe is the one it started: another program can start its own helper on
+    /// the same pipe, and if that one is let in first, the window refuses it, but only after it
+    /// has connected. Until the word comes, nothing is read or done.
+    /// </summary>
+    public async Task<bool> WaitForGoAsync()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        return await reader.ReadLineAsync(timeout.Token) == Go;
+    }
+
     public static async Task<HelperChannel> ConnectAsync(string pipeName)
     {
         if (!AdminCommand.IsPipeName(pipeName)) throw new ArgumentException(L.T("Nom de canal invalide."));
@@ -211,7 +227,15 @@ public sealed class HelperChannel : IDisposable
 
     public void Dispose()
     {
-        writer.Dispose();
+        try
+        {
+            writer.Dispose();
+        }
+        catch (IOException)
+        {
+            // The window is gone and the pipe broken: nothing to flush to. The process must
+            // still end, which the exception would prevent.
+        }
         reader.Dispose();
         pipe.Dispose();
     }

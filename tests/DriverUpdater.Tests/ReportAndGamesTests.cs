@@ -44,6 +44,57 @@ public sealed class DriverReportTests
     }
 
     [Fact]
+    public void Matches_a_windows_update_offer_by_the_chip_s_compatible_id()
+    {
+        // As Windows lists a Realtek network card: the bare VEN&DEV its driver targets is only a compatible ID.
+        var nic = new DeviceDriver
+        {
+            DeviceId = @"PCI\VEN_10EC&DEV_8168&SUBSYS_E0001458&REV_15\1", Name = "Realtek", Class = "Net", Provider = "Realtek",
+            Version = "10.70.0.0", Date = null, Signed = true, Problem = 0, InfName = "oem1.inf",
+            HardwareIds = [@"PCI\VEN_10EC&DEV_8168&SUBSYS_E0001458&REV_15", @"PCI\VEN_10EC&DEV_8168&SUBSYS_E0001458"],
+            CompatibleIds = DeviceDriver.ChipIds([@"PCI\VEN_10EC&DEV_8168&REV_15", @"PCI\VEN_10EC&DEV_8168", @"PCI\VEN_10EC&CC_0200", @"PCI\CC_0200"]),
+        };
+
+        var row = Assert.Single(DriverReport.Build([nic], [(@"PCI\VEN_10EC&DEV_8168", Offer(DriverOffer.WindowsUpdate, "10.79.0.0"))],
+            new Dictionary<string, DriverOffer>()));
+
+        Assert.Equal((Verdict.Update, true), (row.Verdict, row.Selected));
+        Assert.Equal("10.70.0.0", InstalledDrivers.ByHardwareId([nic])[@"PCI\VEN_10EC&DEV_8168"].Version);
+    }
+
+    [Fact]
+    public void Keeps_only_the_compatible_ids_that_name_the_chip()
+    {
+        string[] ids =
+        [
+            @"HDAUDIO\FUNC_01&VEN_10EC&DEV_0897&REV_1005", @"HDAUDIO\FUNC_01&VEN_10EC&DEV_0897",
+            @"HDAUDIO\FUNC_01&CTLR_VEN_1022&CTLR_DEV_1487", @"HDAUDIO\FUNC_01&VEN_10EC", @"HDAUDIO\FUNC_01",
+            @"USB\Class_03&SubClass_01", @"PCI\CC_0300",
+        ];
+
+        Assert.Equal(ids[..2], DeviceDriver.ChipIds(ids));
+    }
+
+    [Fact]
+    public void Offers_the_maker_s_driver_over_windows_generic_one_by_date()
+    {
+        // Microsoft's HD Audio (10.0.26100, dated 2006) against Realtek's 6.0.9xxx.
+        var audio = new DeviceDriver
+        {
+            DeviceId = @"HDAUDIO\FUNC_01&VEN_10EC&DEV_0897\1", Name = "Audio", Class = "Media", Provider = "Microsoft",
+            Version = "10.0.26100.1", Date = new DateTime(2006, 6, 21), Signed = true, Problem = 0, InfName = "hdaudio.inf",
+            HardwareIds = [@"HDAUDIO\FUNC_01&VEN_10EC&DEV_0897&SUBSYS_1458A194"],
+        };
+        DriverOffer Realtek(DateTime date) => new(Guid.NewGuid().ToString(), DriverOffer.Catalog, new Version(6, 0, 9733, 1), date, "6.0.9733.1");
+
+        var newer = DriverReport.Build([audio], [], new Dictionary<string, DriverOffer> { [audio.HardwareIds[0]] = Realtek(new DateTime(2024, 5, 2)) });
+        var older = DriverReport.Build([audio], [], new Dictionary<string, DriverOffer> { [audio.HardwareIds[0]] = Realtek(new DateTime(2005, 1, 1)) });
+
+        Assert.Equal((Verdict.Update, true), (newer[0].Verdict, newer[0].Selected));
+        Assert.Equal(Verdict.UpToDate, older[0].Verdict);
+    }
+
+    [Fact]
     public void Shows_one_catalog_offer_on_every_identical_device()
     {
         var first = Device(@"PCI\VEN_10EC&DEV_8168", "10.0.0.0");
@@ -77,6 +128,8 @@ public sealed class GameComponentTests
     [Theory]
     [InlineData("Microsoft.VCRedist.2015+.x64", "Microsoft Visual C++ 2015-2022 Redistributable (x64) - 14.44.35208")]
     [InlineData("Microsoft.VCRedist.2015+.x86", "Microsoft Visual C++ 2017 Redistributable (x86) - 14.16.27033")]
+    [InlineData("Microsoft.VCRedist.2015+.x64", "Microsoft Visual C++ v14 Redistributable (x64) - 14.51.36247")]
+    [InlineData("Microsoft.VCRedist.2015+.x86", "Microsoft Visual C++ v14 Redistributable (x86) - 14.51.36247")]
     [InlineData("Microsoft.VCRedist.2010.x64", "Microsoft Visual C++ 2010  x64 Redistributable - 10.0.40219")]
     [InlineData("Microsoft.VCRedist.2008.x86", "Microsoft Visual C++ 2008 Redistributable - x86 9.0.30729.6161")]
     [InlineData("Microsoft.VCRedist.2005.x86", "Microsoft Visual C++ 2005 Redistributable")]

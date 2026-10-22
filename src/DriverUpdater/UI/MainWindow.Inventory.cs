@@ -21,7 +21,10 @@ public partial class MainWindow
     DispatcherTimer? deviceSettle;
     DateTime lastDeviceLook;
 
-    async Task<List<DeviceDriver>> LoadInventory()
+    /// <param name="required">
+    /// For an analysis: a failed read is its error, not an empty PC whose drivers would all be "up to date".
+    /// </param>
+    async Task<List<DeviceDriver>> LoadInventory(bool required = false)
     {
         try
         {
@@ -32,6 +35,7 @@ public partial class MainWindow
         catch (Exception e)
         {
             InventorySummary.Text = L.T("Lecture impossible : ") + Errors.Describe(e);
+            if (required) throw;
         }
         return inventory;
     }

@@ -63,7 +63,7 @@ public static class DriverReport
         foreach (var device in devices)
         {
             var offers = windowsUpdate
-                .Where(w => device.HardwareIds.Contains(w.HardwareId, StringComparer.OrdinalIgnoreCase))
+                .Where(w => device.Matches(w.HardwareId))
                 .Select(w => w.Offer)
                 .ToList();
             if (device.HardwareIds.Count > 0 && catalog.TryGetValue(device.HardwareIds[0], out var fromCatalog)) offers.Add(fromCatalog);
@@ -72,7 +72,7 @@ public static class DriverReport
             // Highest version wins; on a tie, Windows Update, which Microsoft targeted at this PC,
             // then the catalog: both install from here.
             var best = offers
-                .Where(o => !device.HasDriver || device.ParsedVersion is not { } installed || o.Version is null || o.Version > installed)
+                .Where(o => device.WouldUpdate(o.Version, o.Date))
                 .OrderByDescending(o => o.Version)
                 .ThenBy(o => o.Source switch { DriverOffer.WindowsUpdate => 0, DriverOffer.Catalog => 1, _ => 2 })
                 .FirstOrDefault();

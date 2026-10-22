@@ -121,8 +121,9 @@ public static class WeeklyCheck
         bool notified = false;
         try
         {
-            // Each source on its own: one offline or failing must not silence the others.
-            List<DriverUpdate> drivers = [];
+            // Each source on its own: one offline or failing must not silence the others. Null is
+            // no answer: what it found last time stays told, or the next check would tell it again.
+            List<DriverUpdate>? drivers = null;
             try
             {
                 drivers = await Task.Run(WindowsUpdateDrivers.Search);
@@ -144,7 +145,7 @@ public static class WeeklyCheck
                 {
                 }
             }
-            List<SoftwareUpdate> software = [];
+            List<SoftwareUpdate>? software = null;
             if (Settings.WeeklySoftware && WinGet.IsAvailable)
             {
                 try
@@ -156,16 +157,16 @@ public static class WeeklyCheck
                 }
             }
 
-            var driverIds = drivers.Select(u => u.UpdateId).ToHashSet();
-            var softwareIds = software.Select(s => $"{s.Id}@{s.Available}").ToHashSet();
+            var driverIds = (drivers ?? []).Select(u => u.UpdateId).ToHashSet();
+            var softwareIds = (software ?? []).Select(s => $"{s.Id}@{s.Available}").ToHashSet();
             var news = WeeklyDigest.Compute(driverIds, Notified(NotifiedValue), nvidia?.Version, NotifiedNvidia(),
                 softwareIds, Notified(NotifiedSoftwareValue));
-            Save(NotifiedValue, driverIds);
-            Save(NotifiedSoftwareValue, softwareIds);
+            if (drivers is not null) Save(NotifiedValue, driverIds);
+            if (software is not null) Save(NotifiedSoftwareValue, softwareIds);
             if (nvidia is not null) SaveNvidia(nvidia.Version);
             if (news.HasNew)
             {
-                Notify(app, news, drivers, nvidia is not null, software);
+                Notify(app, news, drivers ?? [], nvidia is not null, software ?? []);
                 notified = true; // the notification ends the app when it closes
             }
         }

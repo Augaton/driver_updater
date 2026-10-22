@@ -106,12 +106,16 @@ public static class NvidiaModel
         !device.HasDriver || NvidiaVersion(device.Version) is not { } installed
         || System.Version.TryParse(installed, out var mine) && System.Version.TryParse(release.Version, out var theirs) && theirs > mine;
 
-    /// <summary>NVIDIA's "617.42" in Windows' numbering, next to the installed one, so they compare.</summary>
+    /// <summary>NVIDIA's "617.42" in Windows' numbering, so it compares with the installed one and the catalog's.</summary>
     public static Version? WindowsVersion(string nvidiaVersion, Version installed)
     {
         if (!System.Version.TryParse(nvidiaVersion, out var v) || v.Major is < 100 or > 999 || v.Minor is < 0 or > 99) return null;
         int digits = v.Major * 100 + v.Minor; // 61742
-        return new Version(installed.Major, installed.Minor, 10 + digits / 10000, digits % 10000);
+        // NVIDIA's drivers start with 32.0 since the 560s. The installed one's prefix is only
+        // taken when newer: Microsoft's basic display driver (10.0.26100) or an older NVIDIA one
+        // (31.0.15.5244 is 552.44) would rank the new release below the catalog's older ones.
+        var (major, minor) = installed.Major >= 32 ? (installed.Major, installed.Minor) : (32, 0);
+        return new Version(major, minor, 10 + digits / 10000, digits % 10000);
     }
 
     /// <summary>The offer for the driver report: the label says where to install it from.</summary>

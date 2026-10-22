@@ -23,6 +23,8 @@ public static class AdminHelper
             // --admin <pipe> <command> [arguments…]
             if (args.Length < 3) throw new ArgumentException(L.T("Arguments manquants."));
             channel = await HelperChannel.ConnectAsync(args[1]);
+            if (!await channel.WaitForGoAsync())
+                throw new UnauthorizedAccessException(L.T("Refusé : seule la fenêtre de Driver Updater peut commander ce module."));
             var command = AdminCommand.Parse(args[2..]);
             // "version" changes nothing, which lets the tests check the whole path.
             if (command.Name != AdminCommand.Version && !channel.FromThisApp)
@@ -238,7 +240,7 @@ public static class AdminHelper
             {
                 results.Add(await DriverCatalog.InstallAsync(id, channel.Progress));
             }
-            catch (Exception e) when (e is System.Net.Http.HttpRequestException or IOException or TaskCanceledException)
+            catch (Exception e) when (e is System.Net.Http.HttpRequestException or IOException or TaskCanceledException or UnauthorizedAccessException)
             {
                 results.Add(new CatalogInstallResult(id, false, false, Errors.Describe(e)));
             }

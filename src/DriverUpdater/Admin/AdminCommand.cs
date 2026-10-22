@@ -40,6 +40,13 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
     /// <summary>Pipe names the app creates: anything else (such as \\server\pipe) is refused.</summary>
     public static bool IsPipeName(string name) => PipeNamePattern().IsMatch(name);
 
+    /// <summary>
+    /// A full path on one of this PC's drives ("C:\…"), not a share whatever its spelling
+    /// ("\\server", "//server", "\??\UNC\server"). Elsewhere than Windows (the tests), any full path.
+    /// </summary>
+    static bool IsLocalPath(string path) =>
+        Path.IsPathFullyQualified(path) && (!OperatingSystem.IsWindows() || char.IsAsciiLetter(path[0]) && path[1] == ':');
+
     public static string NewPipeName() => "DriverUpdater-" + Guid.NewGuid().ToString("N");
 
     public static AdminCommand Parse(IReadOnlyList<string> args)
@@ -57,12 +64,12 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                     ? guid.ToString("D")
                     : throw new ArgumentException(L.F("Identifiant de mise à jour invalide : {0}", id))).Distinct().ToList());
             case ExportDrivers or ImportDrivers:
-                if (rest.Count != 1 || !Path.IsPathFullyQualified(rest[0]) || rest[0].StartsWith(@"\\", StringComparison.Ordinal))
+                if (rest.Count != 1 || !IsLocalPath(rest[0]))
                     throw new ArgumentException(L.T("Un dossier local, avec son chemin complet, est attendu."));
                 return new(name, rest);
             case Recycle:
                 // Each folder is checked again against the leftover rules before anything moves.
-                if (rest.Count == 0 || rest.Any(f => !Path.IsPathFullyQualified(f) || f.StartsWith(@"\\", StringComparison.Ordinal)))
+                if (rest.Count == 0 || rest.Any(f => !IsLocalPath(f)))
                     throw new ArgumentException(L.T("Des dossiers locaux, avec leur chemin complet, sont attendus."));
                 return new(name, rest);
             case InstallAll:

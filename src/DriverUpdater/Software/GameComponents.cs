@@ -46,9 +46,10 @@ public sealed partial record GameComponent(string Name, string WingetId, string 
         return pattern is not null && installedNames.Any(pattern.IsMatch);
     }
 
-    // "Microsoft Visual C++ 2015-2022 Redistributable (x64) - 14.44…", also 2015-2019 and 2017.
+    // "Microsoft Visual C++ 2015-2022 Redistributable (x64) - 14.44…", also 2015-2019 and 2017;
+    // since 14.50, "Microsoft Visual C++ v14 Redistributable (x64) - 14.51…".
     static Regex VcRedist2015(string arch) =>
-        new($@"Visual C\+\+ 20(15|17|19|22)\S*.*Redistributable.*\b{arch}\b", RegexOptions.IgnoreCase);
+        new($@"Visual C\+\+ (20(15|17|19|22)\S*|v14\b).*Redistributable.*\b{arch}\b", RegexOptions.IgnoreCase);
 
     // "…2013 Redistributable (x64)", "…2010  x64 Redistributable", "…2008 Redistributable - x64 9.0…".
     // The 32-bit 2005 one says no architecture at all: 32 bits is whatever does not say x64.

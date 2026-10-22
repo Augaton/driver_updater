@@ -48,13 +48,17 @@ public sealed class DriverStoreRulesTests
         new(published, original, "NVIDIA", "Display", new Version(version), null, bootCritical, 900L << 20);
 
     [Fact]
-    public void Keeps_the_newest_and_whatever_is_in_use()
+    public void Keeps_the_newest_what_is_in_use_and_the_version_below_it()
     {
-        var packages = new[] { Package("oem10.inf", "31.0.15.1"), Package("oem20.inf", "32.0.15.6094"), Package("oem30.inf", "32.0.16.1060") };
+        // oem30 is newer but Windows kept oem20: oem10 is what "Revenir au pilote précédent" needs.
+        var packages = new[]
+        {
+            Package("oem5.inf", "30.0.0.1"), Package("oem10.inf", "31.0.15.1"), Package("oem20.inf", "32.0.15.6094"), Package("oem30.inf", "32.0.16.1060"),
+        };
 
         var removable = DriverStoreRules.Removable(packages, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "oem20.inf" });
 
-        Assert.Equal(["oem10.inf"], removable.Select(p => p.PublishedName));
+        Assert.Equal(["oem5.inf"], removable.Select(p => p.PublishedName));
     }
 
     [Fact]

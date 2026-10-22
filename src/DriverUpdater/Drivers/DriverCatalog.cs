@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.ExceptionServices;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Principal;
@@ -70,10 +71,26 @@ public static class DriverCatalog
         var selected = CatalogScope.Select(devices);
         var http = SearchClient;
         using var gate = new SemaphoreSlim(3); // a few requests at a time: the catalog is a shared public site
+        int answered = 0;
+        Exception? failure = null;
+        async Task<List<CatalogEntry>> SearchOnce(string query)
+        {
+            try
+            {
+                var entries = await SearchAsync(http, gate, query);
+                Interlocked.Increment(ref answered);
+                return entries;
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+            {
+                failure = e;
+                return []; // one failed search must not sink the others
+            }
+        }
         // Devices often share their generic ID (two ports of the same controller…): search each ID once.
         var searches = new ConcurrentDictionary<string, Lazy<Task<List<CatalogEntry>>>>(StringComparer.OrdinalIgnoreCase);
         Task<List<CatalogEntry>> Search(string query) =>
-            searches.GetOrAdd(query, q => new Lazy<Task<List<CatalogEntry>>>(() => SearchAsync(http, gate, q))).Value;
+            searches.GetOrAdd(query, q => new Lazy<Task<List<CatalogEntry>>>(() => SearchOnce(q))).Value;
 
         int done = 0;
         var found = await Task.WhenAll(selected.Select(async device =>
@@ -82,6 +99,8 @@ public static class DriverCatalog
             progress.Report(L.F("Catalogue Microsoft : {0} périphérique(s) sur {1}…", Interlocked.Increment(ref done), selected.Count));
             return driver;
         }));
+        // Not one answer (offline, the site down): that says nothing about the drivers being up to date.
+        if (answered == 0 && failure is not null) ExceptionDispatchInfo.Throw(failure);
         return found.OfType<CatalogDriver>()
             .OrderByDescending(d => d.NoDriver)
             .ThenBy(d => d.Device, StringComparer.CurrentCultureIgnoreCase)
@@ -95,10 +114,6 @@ public static class DriverCatalog
         {
             return Catalog.ParseSearch(await http.GetStringAsync(Catalog.SearchUrl + Uri.EscapeDataString(query)).ConfigureAwait(false))
                 .Where(Catalog.Fits).ToList();
-        }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
-        {
-            return []; // one failed search must not sink the others
         }
         finally
         {
@@ -115,7 +130,9 @@ public static class DriverCatalog
         var installed = device.HasDriver ? device.ParsedVersion : null;
 
         var versions = specific.Concat(generic)
-            .Where(e => installed is null || e.Version > installed)
+            // Over Windows' generic driver, only one made for this PC: one for a cousin of the
+            // chip would not even be picked by Windows.
+            .Where(e => genericOnly.Contains(e.UpdateId) ? installed is null || e.Version > installed : device.WouldUpdate(e.Version, e.Date))
             // One entry per version: the one made for this PC if there is one, else the newest.
             .GroupBy(e => e.Version)
             .Select(g => g.OrderBy(e => genericOnly.Contains(e.UpdateId)).ThenByDescending(e => e.Date).First())
@@ -184,7 +201,14 @@ public static class DriverCatalog
         }
         finally
         {
-            folder.Delete(recursive: true);
+            try
+            {
+                folder.Delete(recursive: true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Still in use or read-only: the driver's outcome stands, Windows' temporary folder is cleaned anyway.
+            }
         }
     }
 

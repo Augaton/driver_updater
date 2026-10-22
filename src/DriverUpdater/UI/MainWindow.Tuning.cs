@@ -39,7 +39,7 @@ public sealed class TweakRow
     public string Badges => string.Concat(
         Tweak.NeedsAdmin ? "   ADMIN" : "",
         Tweak.NeedsRestart ? L.T("   REDÉMARRAGE") : "",
-        State != TweakState.NotApplicable ? "" : Tweak.MinBuild >= 22631 ? L.T("   WINDOWS 11 23H2 ET APRÈS") : "   WINDOWS 11 SEULEMENT");
+        State != TweakState.NotApplicable ? "" : Tweak.MinBuild >= 22631 ? L.T("   WINDOWS 11 23H2 ET APRÈS") : L.T("   WINDOWS 11 SEULEMENT"));
 }
 
 public sealed class CheckRow(PcCheck check)
@@ -150,7 +150,7 @@ public partial class MainWindow
     {
         if (busy || sender is not Button { Tag: TweakRow row }) return;
         bool apply = row.Applies;
-        await RunBusy(row.Tweak.NeedsAdmin ? L.T("En attente de l'autorisation administrateur…") : "Modification…", async () =>
+        await RunBusy(row.Tweak.NeedsAdmin ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
         {
             if (row.Tweak.NeedsAdmin)
                 await RunAdminAsync<int>(apply ? AdminCommand.TweakApply : AdminCommand.TweakUndo, row.Tweak.Id);
@@ -185,6 +185,7 @@ public partial class MainWindow
         await RunBusy(L.T("Application des réglages…"), async () =>
         {
             var failures = new List<string>();
+            int failed = 0; // settings, not messages: the administrator ones fail together
             foreach (var row in chosen.Where(r => !r.Tweak.NeedsAdmin))
             {
                 try
@@ -194,6 +195,7 @@ public partial class MainWindow
                 catch (Exception ex)
                 {
                     failures.Add(L.F("{0} : {1}", row.Tweak.Title, Errors.Describe(ex)));
+                    failed++;
                 }
             }
             var admin = chosen.Where(r => r.Tweak.NeedsAdmin).Select(r => r.Tweak.Id).ToArray();
@@ -207,13 +209,14 @@ public partial class MainWindow
                 catch (Exception ex)
                 {
                     failures.Add(L.T("Réglages administrateur : ") + Errors.Describe(ex));
+                    failed += admin.Length;
                 }
             }
             await LoadTweaks();
             if (failures.Count > 0)
                 MessageBox.Show(this, string.Join("\n", failures), L.T("Réglages non appliqués"), MessageBoxButton.OK, MessageBoxImage.Warning);
             bool restart = chosen.Any(r => r.Tweak.NeedsRestart);
-            return L.F("{0} réglage(s) appliqué(s).", chosen.Count - failures.Count) + (restart ? L.T(" Certains prennent effet au prochain redémarrage.") : "");
+            return L.F("{0} réglage(s) appliqué(s).", chosen.Count - failed) + (restart ? L.T(" Certains prennent effet au prochain redémarrage.") : "");
         });
     }
 

@@ -140,7 +140,7 @@ public partial class MainWindow
             if (report.Cancelled) return L.T("Installation annulée.");
 
             var installed = report.Results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            await ShowUpdates(drivers.Where(d => !installed.Contains(d.UpdateId)).ToList());
+            await ForgetInstalled(installed);
             await LoadHistory();
 
             bool rebootRequired = report.Results.Any(r => r.RebootRequired);

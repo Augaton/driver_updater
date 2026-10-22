@@ -26,13 +26,17 @@ public static partial class WingetOutput
     public static List<SoftwareUpdate> ParseUpgrades(string output)
     {
         // Colour codes ("ESC[0m") would shift the columns; a spinner drawn with \r precedes
-        // the table: keep only what is left on each line once both are gone.
-        var lines = AnsiEscape().Replace(output, "").Split('\n')
+        // the table: keep only what is left on each line once both are gone. Redirected, winget
+        // ends its lines with \r\n: that \r is not a spinner's and must not empty the line.
+        var lines = AnsiEscape().Replace(output, "").Replace("\r\n", "\n").Split('\n')
             .Select(l => new string(l[(l.LastIndexOf('\r') + 1)..].Where(c => c >= ' ').ToArray()).TrimEnd())
             .ToList();
 
         int rule = lines.FindIndex(l => l.Length >= 10 && l.All(c => c == '-'));
         if (rule < 1) return [];
+        // With nothing else to update, the first table is the one of packages that need explicit
+        // targeting (pinned ones…), under its title "… explicit targeting for upgrade:".
+        if (rule >= 2 && lines[rule - 2].EndsWith(':')) return [];
         var header = lines[rule - 1];
         var starts = Enumerable.Range(0, header.Length)
             .Where(i => header[i] != ' ' && (i == 0 || header[i - 1] == ' '))

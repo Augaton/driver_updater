@@ -22,6 +22,7 @@ public sealed class TempCleanerTests : IDisposable
         var path = Path.GetFullPath(Path.Combine(root, relativePath));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllBytes(path, new byte[size]);
+        File.SetCreationTimeUtc(path, lastWriteUtc);
         File.SetLastWriteTimeUtc(path, lastWriteUtc);
         return path;
     }
@@ -87,6 +88,17 @@ public sealed class TempCleanerTests : IDisposable
         Assert.Equal(new TempCleaner.CleanResult(Deleted: 2, FreedBytes: 42, Skipped: 0), result);
         Assert.False(File.Exists(a));
         Assert.False(File.Exists(b));
+    }
+
+    // A zip opened from Explorer: its files arrive today, dated from when they were packed.
+    // (Linux keeps no creation date to set apart.)
+    [WindowsFact]
+    public void Keeps_a_file_extracted_recently_with_an_old_date()
+    {
+        var extracted = MakeFile("temp/Temp1_setup.zip/data1.cab", Old);
+        File.SetCreationTimeUtc(extracted, Recent);
+
+        Assert.Empty(TempCleaner.Find([TempDir()], Cutoff).Files);
     }
 
     [Fact]

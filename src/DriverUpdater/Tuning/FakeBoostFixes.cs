@@ -57,11 +57,13 @@ public static class FakeBoostFixes
     }
 
     /// <summary>
-    /// The performance counter runs at the motherboard timer's frequency (HPET 14.318 MHz, ACPI
-    /// 3.579 MHz) only when the boot options force it: Windows otherwise uses the processor's
-    /// own, reported at 10 MHz. Readable without rights; the boot options themselves are not.
+    /// The performance counter runs at the motherboard timer's frequency (HPET 14.318 MHz, or
+    /// 24 MHz on Intel boards since Skylake; ACPI 3.579 MHz) only when the boot options force it:
+    /// Windows otherwise uses the processor's own, reported at 10 MHz. Readable without rights;
+    /// the boot options themselves are not. (24 MHz is an ordinary counter on ARM PCs.)
     /// </summary>
-    public static bool PlatformClockForced() => QueryPerformanceFrequency(out long frequency) && frequency is 14_318_180 or 3_579_545;
+    public static bool PlatformClockForced() => QueryPerformanceFrequency(out long frequency)
+        && (frequency is 14_318_180 or 3_579_545 || frequency == 24_000_000 && RuntimeInformation.OSArchitecture == Architecture.X64);
 
     /// <summary>Administrator helper: removes the timer options from the current boot entry.</summary>
     public static void RemoveTimerOverrides()

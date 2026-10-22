@@ -78,7 +78,7 @@ public partial class MainWindow
                                                 a.Enabled ? L.T("actif") : L.T("inactif"), a.UpToDate ? L.T("à jour") : L.T("pas à jour"))));
         lines.Add(state.FirewallOn switch
         {
-            true => "✔ Pare-feu Windows : actif",
+            true => L.T("✔ Pare-feu Windows : actif"),
             false => L.T("✘ Pare-feu Windows : désactivé"),
             null => L.T("Pare-feu Windows : état illisible"),
         });

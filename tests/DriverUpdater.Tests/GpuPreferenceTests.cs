@@ -33,4 +33,17 @@ public sealed class GpuPreferenceTests
         Assert.Null(registry.Get(Hive.CurrentUser, GpuPreference.Key, Other));
         Assert.False(GpuPreference.CanUndo(registry));
     }
+
+    [Fact]
+    public void Undo_keeps_a_choice_made_since()
+    {
+        const string Game = @"D:\SteamLibrary\steamapps\common\Game\game.exe";
+        var registry = new FakeRegistry();
+
+        GpuPreference.Force([Game], registry);
+        registry.Set(Hive.CurrentUser, GpuPreference.Key, Game, "GpuPreference=2;SwapEffectUpgradeEnable=0;"); // set in Settings since
+
+        GpuPreference.Undo(registry);
+        Assert.Equal("SwapEffectUpgradeEnable=0;", registry.Get(Hive.CurrentUser, GpuPreference.Key, Game));
+    }
 }

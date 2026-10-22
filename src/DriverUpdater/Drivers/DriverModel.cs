@@ -15,6 +15,27 @@ public sealed class DeviceDriver
     public required int Problem { get; init; }
     public required string InfName { get; init; }
     public required IReadOnlyList<string> HardwareIds { get; init; }
+    /// <summary>
+    /// The compatible IDs that still name this very chip ("PCI\VEN_10EC&amp;DEV_8168", which
+    /// Realtek's driver targets), see <see cref="ChipIds"/>: Windows Update may give one of them
+    /// as the ID an update is for.
+    /// </summary>
+    public IReadOnlyList<string> CompatibleIds { get; init; } = [];
+
+    /// <summary>Whether a Windows Update driver reported for this ID is meant for this device.</summary>
+    public bool Matches(string id) =>
+        HardwareIds.Contains(id, StringComparer.OrdinalIgnoreCase) || CompatibleIds.Contains(id, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Of a device's compatible IDs, those naming its chip ("&amp;DEV_", "&amp;PID_"), not a whole
+    /// class ("PCI\CC_0200", "USB\Class_03") or only the controller it hangs on ("CTLR_DEV_"):
+    /// those are shared by many devices and would pair updates with the wrong driver.
+    /// </summary>
+    public static IReadOnlyList<string> ChipIds(IEnumerable<string> compatibleIds) =>
+        compatibleIds.Where(id => ChipId.IsMatch(id)).ToList();
+
+    static readonly System.Text.RegularExpressions.Regex ChipId =
+        new(@"(?<!CTLR_)DEV_|PID_", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     /// <summary>"PCI", "USB", "HDAUDIO"…: the part of the device ID before the first backslash.</summary>
     public string Bus => DeviceId.Split('\\')[0].ToUpperInvariant();
@@ -36,20 +57,36 @@ public sealed class DeviceDriver
     public string SignedText => Signed switch { true => L.T("Oui"), false => L.T("Non"), null => "—" };
 
     public bool IsOlderThan(int years, DateTime today) => Date is { } d && d < today.AddYears(-years);
+
+    /// <summary>
+    /// Whether a driver of this version and date would replace the device's with a newer one.
+    /// Windows' generic driver, where a maker's is better (<see cref="CatalogScope.OnGenericDriver"/>),
+    /// is numbered apart from the makers' (Microsoft's HD Audio 10.0.26100, Realtek's 6.0.9xxx):
+    /// there, the dates compare instead.
+    /// </summary>
+    public bool WouldUpdate(Version? version, DateTime? date) =>
+        !HasDriver || (CatalogScope.OnGenericDriver(this)
+            ? Date is not { } mine || date is not { } theirs || theirs > mine
+            : ParsedVersion is not { } installed || version is null || version > installed);
 }
 
 public static class InstalledDrivers
 {
     /// <summary>
-    /// Each installed driver under every hardware ID of its device: the ID Windows Update reports
-    /// for the device an update targets. Compatible IDs are left out on purpose: they are generic
-    /// (e.g. "USB\Class_03"), shared by many devices, and would pair updates with the wrong driver.
+    /// Each installed driver under every hardware ID of its device, then under the compatible IDs
+    /// that name its chip (<see cref="DeviceDriver.ChipIds"/>): the ID Windows Update reports for
+    /// the device an update targets is one or the other.
     /// </summary>
     public static Dictionary<string, InstalledDriver> ByHardwareId(IEnumerable<DeviceDriver> devices)
     {
         var map = new Dictionary<string, InstalledDriver>(StringComparer.OrdinalIgnoreCase);
-        foreach (var device in devices.Where(d => d.HasDriver))
+        var withDriver = devices.Where(d => d.HasDriver).ToList();
+        // Hardware IDs first: a device's own ID wins over another's compatible one.
+        foreach (var device in withDriver)
             foreach (var id in device.HardwareIds)
+                map.TryAdd(id, new InstalledDriver(device.Version, device.Date));
+        foreach (var device in withDriver)
+            foreach (var id in device.CompatibleIds)
                 map.TryAdd(id, new InstalledDriver(device.Version, device.Date));
         return map;
     }
@@ -94,6 +131,10 @@ public static class CatalogScope
         && !BootCritical.Contains(device.Class)
         && (!device.HasDriver || !device.IsMicrosoft || WorthReplacingGeneric.Contains(device.Class));
 
+    /// <summary>On Windows' own driver, in a class where a maker's beats it.</summary>
+    public static bool OnGenericDriver(DeviceDriver device) =>
+        device.HasDriver && device.IsMicrosoft && WorthReplacingGeneric.Contains(device.Class);
+
     /// <summary>The devices to search, one per hardware ID (identical twins need one search).</summary>
     public static List<DeviceDriver> Select(IEnumerable<DeviceDriver> devices) =>
         devices.Where(ShouldSearch)
@@ -115,16 +156,21 @@ public sealed record StorePackage(string PublishedName, string OriginalName, str
 /// Old driver versions Windows keeps "just in case": every graphics driver update leaves
 /// the previous one behind, close to 1 GB each. One may go when two newer versions of the
 /// same driver are in the store (the newest, and the one before it that "Revenir au pilote
-/// précédent" goes back to), no device uses it, and Windows does not need it to start.
+/// précédent" goes back to), no device uses it, it is not the one just below a version in use
+/// (a newer package Windows did not pick can sit above that one), and Windows does not need it
+/// to start.
 /// </summary>
 public static class DriverStoreRules
 {
     public static List<StorePackage> Removable(IEnumerable<StorePackage> packages, ISet<string> inUse) =>
         packages
             .GroupBy(p => (p.Class.ToLowerInvariant(), p.Provider.ToLowerInvariant(), p.OriginalName.ToLowerInvariant()))
-            .SelectMany(family => family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date)
-                .Skip(2)
-                .Where(p => !p.BootCritical && !inUse.Contains(p.PublishedName)))
+            .SelectMany(family =>
+            {
+                var newestFirst = family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date).ToList();
+                var rollbacks = newestFirst.Skip(1).Where((_, i) => inUse.Contains(newestFirst[i].PublishedName)).ToHashSet();
+                return newestFirst.Skip(2).Where(p => !p.BootCritical && !inUse.Contains(p.PublishedName) && !rollbacks.Contains(p));
+            })
             .OrderByDescending(p => p.Size)
             .ToList();
 }

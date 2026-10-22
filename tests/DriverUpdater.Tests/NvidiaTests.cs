@@ -49,6 +49,9 @@ public sealed class NvidiaTests
     {
         Assert.Equal(new Version(32, 0, 16, 1742), NvidiaModel.WindowsVersion("617.42", new Version(32, 0, 15, 6094)));
         Assert.Null(NvidiaModel.WindowsVersion("not-a-version", new Version(32, 0, 0, 0)));
+        // Microsoft's basic display driver, an NVIDIA one from before the 560s: never below them.
+        Assert.Equal(new Version(32, 0, 16, 1742), NvidiaModel.WindowsVersion("617.42", new Version(10, 0, 26100, 1150)));
+        Assert.Equal(new Version(32, 0, 16, 1742), NvidiaModel.WindowsVersion("617.42", new Version(31, 0, 15, 5244)));
     }
 
     [Theory]

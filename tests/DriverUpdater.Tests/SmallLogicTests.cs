@@ -7,6 +7,8 @@ public sealed class CommandLineTests
     [InlineData("C:\\Program Files\\App\\uninstall.exe /S", "C:\\Program Files\\App\\uninstall.exe", "/S")]
     [InlineData("MsiExec.exe /X{1234}", "MsiExec.exe", "/X{1234}")]
     [InlineData("\"C:\\App\\app.exe\"", "C:\\App\\app.exe", "")]
+    [InlineData("RunDll32 C:\\PROGRA~2\\COMMON~1\\INSTAL~1\\PROFES~1\\RunTime\\11\\50\\Intel32\\Ctor.dll,LaunchSetup \"C:\\Program Files (x86)\\InstallShield Installation Information\\{1}\\setup.exe\" -l0x9 -removeonly",
+        "RunDll32", "C:\\PROGRA~2\\COMMON~1\\INSTAL~1\\PROFES~1\\RunTime\\11\\50\\Intel32\\Ctor.dll,LaunchSetup \"C:\\Program Files (x86)\\InstallShield Installation Information\\{1}\\setup.exe\" -l0x9 -removeonly")]
     public void Splits_program_and_arguments(string command, string program, string arguments) =>
         Assert.Equal((program, arguments), CommandLine.Split(command));
 }

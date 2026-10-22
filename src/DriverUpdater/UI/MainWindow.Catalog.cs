@@ -11,7 +11,7 @@ public partial class MainWindow
         await RunBusy(L.T("Recherche dans le catalogue Microsoft Update…"), async () =>
         {
             SetStatus(L.T("Inventaire des périphériques…"));
-            var devices = await LoadInventory();
+            var devices = await LoadInventory(required: true);
             ShowCatalog(await DriverCatalog.FindAsync(devices, new Progress<string>(SetStatus)));
             return catalogDrivers.Count == 0
                 ? L.T("Le catalogue n'a pas de pilote plus récent que les vôtres.")
@@ -57,7 +57,7 @@ public partial class MainWindow
                 MessageBoxButton.OK, MessageBoxImage.Information);
 
             var done = report.Results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            ShowCatalog(catalogDrivers.Where(d => !done.Contains(d.Entry.UpdateId)).ToList());
+            await ForgetInstalled(done);
             return L.F("{0} pilote(s) sur {1} traité(s).", done.Count, selected.Count) + (reboot ? L.T(" Redémarrage requis.") : "");
         });
     }

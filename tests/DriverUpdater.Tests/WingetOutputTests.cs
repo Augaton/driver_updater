@@ -46,6 +46,25 @@ public sealed class WingetOutputTests
     }
 
     [Fact]
+    public void Reads_windows_line_endings()
+    {
+        // What winget really writes to a redirected output.
+        var firefox = Assert.Single(WingetOutput.ParseUpgrades(English.Replace("\n", "\r\n")));
+
+        Assert.Equal(("Mozilla.Firefox", "131.0.2"), (firefox.Id, firefox.Available));
+        Assert.Equal(2, WingetOutput.ParseUpgrades(French.Replace("\n", "\r\n")).Count);
+    }
+
+    [Fact]
+    public void A_pinned_package_alone_is_not_an_update()
+    {
+        var onlyPinned = French[French.IndexOf("Les packages suivants", StringComparison.Ordinal)..];
+
+        Assert.Empty(WingetOutput.ParseUpgrades(onlyPinned));
+        Assert.Empty(WingetOutput.ParseUpgrades(onlyPinned.Replace("\n", "\r\n")));
+    }
+
+    [Fact]
     public void Skips_truncated_ids_and_pinned_packages()
     {
         var ids = WingetOutput.ParseUpgrades(French).Select(u => u.Id).ToList();

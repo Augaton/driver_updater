@@ -32,14 +32,19 @@ public static class GpuPreference
 
     public static bool CanUndo(IRegistry registry) => registry.ValueNames(Hive.CurrentUser, Backup).Count > 0;
 
-    /// <summary>Puts every program back as it was; returns how many.</summary>
+    /// <summary>
+    /// Puts every program's graphics choice back as it was, keeping the others made since (HDR,
+    /// windowed optimizations…); returns how many.
+    /// </summary>
     public static int Undo(IRegistry registry)
     {
         var programs = registry.ValueNames(Hive.CurrentUser, Backup);
         foreach (var program in programs)
         {
-            if (registry.Get(Hive.CurrentUser, Backup, program) is string saved && saved.StartsWith("string:", StringComparison.Ordinal))
-                registry.Set(Hive.CurrentUser, Key, program, saved[7..]);
+            var original = registry.Get(Hive.CurrentUser, Backup, program) is string saved && saved.StartsWith("string:", StringComparison.Ordinal)
+                ? saved[7..] : null;
+            if (TweakEngine.RestoreFlag(registry.Get(Hive.CurrentUser, Key, program) as string, original, HighPerformance) is { } restored)
+                registry.Set(Hive.CurrentUser, Key, program, restored);
             else
                 registry.Delete(Hive.CurrentUser, Key, program);
             registry.Delete(Hive.CurrentUser, Backup, program);

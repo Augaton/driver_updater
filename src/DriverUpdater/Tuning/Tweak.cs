@@ -75,7 +75,10 @@ public static class TweakEngine
         {
             var backup = BackupName(value);
             if (registry.Get(value.Hive, BackupKey + @"\" + tweak.Id, backup) is not string saved) continue;
-            if (Decode(saved) is { } previous) registry.Set(value.Hive, value.Key, value.Name, previous);
+            var previous = Decode(saved);
+            // In a list, Windows may have written other items since (VRR, Auto HDR): they stay.
+            if (value.Flag) previous = RestoreFlag(registry.Get(value.Hive, value.Key, value.Name) as string, previous as string, (string)value.Value);
+            if (previous is not null) registry.Set(value.Hive, value.Key, value.Name, previous);
             else registry.Delete(value.Hive, value.Key, value.Name);
             registry.Delete(value.Hive, BackupKey + @"\" + tweak.Id, backup);
             restored = true;
@@ -112,12 +115,22 @@ public static class TweakEngine
     static bool FlagIn(string? list, string flag) =>
         list is not null && list.Split(';').Any(item => item.Trim() == flag);
 
-    public static string WithFlag(string? list, string flag)
+    public static string WithFlag(string? list, string flag) =>
+        string.Join(";", Items(list).Where(item => ItemName(item) != ItemName(flag)).Append(flag)) + ";";
+
+    /// <summary>
+    /// The list as it is now, with the flag's item as it was in <paramref name="original"/> (or
+    /// gone if it was not there); null when nothing is left of a list that did not exist.
+    /// </summary>
+    public static string? RestoreFlag(string? current, string? original, string flag)
     {
-        var name = flag.Split('=')[0];
-        var items = (list ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries)
-            .Where(item => item.Split('=')[0].Trim() != name)
-            .Append(flag);
-        return string.Join(";", items) + ";";
+        var items = Items(current).Where(item => ItemName(item) != ItemName(flag))
+            .Concat(Items(original).Where(item => ItemName(item) == ItemName(flag)))
+            .ToList();
+        return items.Count == 0 ? original is null ? null : "" : string.Join(";", items) + ";";
     }
+
+    static string[] Items(string? list) => (list ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+    static string ItemName(string item) => item.Split('=')[0].Trim();
 }

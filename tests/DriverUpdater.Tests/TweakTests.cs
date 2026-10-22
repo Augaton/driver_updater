@@ -77,6 +77,23 @@ public sealed class TweakTests
     }
 
     [Fact]
+    public void Undoing_one_item_keeps_those_windows_added_since()
+    {
+        var registry = new FakeRegistry();
+        var key = @"Software\Microsoft\DirectX\UserGpuPreferences";
+
+        TweakEngine.Apply(Windowed, registry); // the list did not exist
+        registry.Set(Hive.CurrentUser, key, "DirectXUserGlobalSettings", "SwapEffectUpgradeEnable=1;VRROptimizeEnable=0;"); // VRR turned off in Settings
+        TweakEngine.Undo(Windowed, registry);
+        Assert.Equal("VRROptimizeEnable=0;", registry.Get(Hive.CurrentUser, key, "DirectXUserGlobalSettings"));
+
+        registry.Delete(Hive.CurrentUser, key, "DirectXUserGlobalSettings");
+        TweakEngine.Apply(Windowed, registry);
+        TweakEngine.Undo(Windowed, registry);
+        Assert.Null(registry.Get(Hive.CurrentUser, key, "DirectXUserGlobalSettings")); // nothing left: gone, as it was
+    }
+
+    [Fact]
     public void A_string_one_is_not_the_number_one()
     {
         var registry = new FakeRegistry();

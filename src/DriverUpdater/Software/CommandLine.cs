@@ -15,9 +15,11 @@ public static class CommandLine
             int end = command.IndexOf('"', 1);
             return end > 1 ? (command[1..end], command[(end + 1)..].Trim()) : (command.Trim('"'), "");
         }
-        // Unquoted paths may contain spaces: the program ends at ".exe".
+        // Unquoted paths may contain spaces: the program ends at ".exe", unless that ".exe" is in a
+        // quoted argument (InstallShield: RunDll32 C:\…\Ctor.dll,LaunchSetup "C:\…\setup.exe" -l0x9).
         int exe = command.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
-        if (exe > 0) return (command[..(exe + 4)], command[(exe + 4)..].Trim());
+        int quote = command.IndexOf('"');
+        if (exe > 0 && (quote < 0 || exe < quote)) return (command[..(exe + 4)], command[(exe + 4)..].Trim());
         int space = command.IndexOf(' ');
         return space > 0 ? (command[..space], command[(space + 1)..].Trim()) : (command, "");
     }

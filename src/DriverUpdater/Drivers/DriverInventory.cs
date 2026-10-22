@@ -13,7 +13,7 @@ public static class DriverInventory
                 drivers[id] = driver;
 
         var devices = new List<DeviceDriver>();
-        foreach (var entity in Query("SELECT DeviceID, Name, PNPClass, ConfigManagerErrorCode, HardwareID FROM Win32_PnPEntity"))
+        foreach (var entity in Query("SELECT DeviceID, Name, PNPClass, ConfigManagerErrorCode, HardwareID, CompatibleID FROM Win32_PnPEntity"))
         {
             if (entity.Get("DeviceID") is not string id) continue;
             drivers.TryGetValue(id, out var driver);
@@ -29,6 +29,7 @@ public static class DriverInventory
                 Problem = entity.Get("ConfigManagerErrorCode") is { } code ? Convert.ToInt32(code) : 0,
                 InfName = driver?.Get("InfName") as string ?? "",
                 HardwareIds = entity.Get("HardwareID") as string[] ?? [],
+                CompatibleIds = DeviceDriver.ChipIds(entity.Get("CompatibleID") as string[] ?? []),
             });
         }
         return devices.OrderBy(d => d.Class, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();

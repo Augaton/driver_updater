@@ -51,6 +51,10 @@ public sealed class SmokeTests
                 Assert.Same(window.HomeTab, window.Tabs.SelectedItem);
                 Assert.Equal(((SolidColorBrush)app.Resources["Ink"]).Color, ((SolidColorBrush)window.HomeTab.Foreground).Color);
                 Pump(window.LoadLocalData());
+                // Every device in the report, each state in its color: the chosen-row check below
+                // must meet them on any PC, not only on one with a faulty device.
+                window.ShowUpToDate.IsChecked = true;
+                window.ShowUpToDate.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
 
                 // The menu lists every page once, in order, under its branch.
                 var pages = window.Tabs.Items.OfType<TabItem>().Where(t => t.IsEnabled).ToList();

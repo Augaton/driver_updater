@@ -35,6 +35,11 @@
     <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="#0F1420" />
     <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#1F2A3F" />
     <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#93A1B8" />
+    <!-- A chosen row in a table: a dark cyan, not the theme's light blue with black text, on which
+         the states drawn in their own color (amber, pink, green…) could not be read. Dark enough
+         for the darkest of them, the pink, to keep 4.5:1. -->
+    <SolidColorBrush x:Key="DataGridRowSelectedBackgroundThemeBrush" Color="#072431" />
+    <SolidColorBrush x:Key="DataGridRowSelectedForegroundThemeBrush" Color="#E8EEF7" />
 
     <Style x:Key="Card" TargetType="Border">
       <Setter Property="Background" Value="{StaticResource Panel}" />

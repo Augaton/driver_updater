@@ -105,7 +105,10 @@ public partial class MainWindow
 
     async void OnCreateRestorePoint(object sender, RoutedEventArgs e) =>
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
-            (await RunAdminAsync<RestorePointResult>(AdminCommand.CreateRestorePoint)).Message);
+        {
+            var result = await RunAdminAsync<RestorePointResult>(AdminCommand.CreateRestorePoint);
+            return result.Ok ? Logged(Journal.Maintenance, result.Message) : result.Message;
+        });
 
     // Wear, temperature and often the battery are only readable as administrator.
     async void OnHealthDetails(object sender, RoutedEventArgs e) =>
@@ -137,6 +140,7 @@ public partial class MainWindow
             var result = await Task.Run(() => TempCleaner.Delete(files, cutoff));
             tempScan = null;
             TempStatus.Text = Describe(result);
+            if (result.Deleted > 0) Journal.Add(Journal.Cleanup, L.T("Fichiers temporaires : ") + Describe(result));
             return L.T("Nettoyage terminé.");
         });
 
@@ -145,6 +149,7 @@ public partial class MainWindow
         {
             var result = await RunAdminAsync<TempCleaner.CleanResult>(AdminCommand.CleanWindowsTemp);
             TempStatus.Text = L.T("C:\\Windows\\Temp : ") + Describe(result);
+            if (result.Deleted > 0) Journal.Add(Journal.Cleanup, TempStatus.Text);
             return L.T("Nettoyage terminé.");
         });
 
@@ -160,12 +165,15 @@ public partial class MainWindow
             var report = await RunAdminAsync<RepairReport>(command);
             // The component cleanup lives on the "Nettoyage" page, the repairs on theirs.
             (command == AdminCommand.DismCleanup ? ComponentCleanupStatus : RepairStatus).Text = report.Summary;
-            return report.ExitCode switch
+            var outcome = report.ExitCode switch
             {
                 0 => L.T("Terminé."),
                 3010 => L.T("Terminé : redémarrez l'ordinateur."),
                 _ => L.F("Terminé avec le code {0} : voir le résumé sur la page.", report.ExitCode),
             };
+            Journal.Add(command == AdminCommand.DismCleanup ? Journal.Cleanup : Journal.Maintenance,
+                L.F("{0} : {1}", (sender as Button)?.Content as string ?? command, outcome));
+            return outcome;
         });
     }
 
@@ -198,6 +206,7 @@ public partial class MainWindow
             var report = await RunAdminAsync<ImportReport>(AdminCommand.ImportDrivers, dialog.FolderName);
             if (report.Cancelled) return L.T("Restauration annulée.");
             BackupStatus.Text = L.T("Pilotes restaurés.") + (report.RebootRequired ? L.T(" Redémarrez l'ordinateur pour terminer.") : "");
+            Journal.Add(Journal.Drivers, L.F("Pilotes réinstallés depuis « {0} ».", dialog.FolderName));
             await LoadHistory();
             return L.T("Restauration terminée.");
         });

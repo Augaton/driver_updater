@@ -6,7 +6,7 @@ elle ne propose que ce qui marche vraiment. En français ou en anglais.
 ## Ce qu'elle fait
 
 Une page par fonction, rangées dans une barre latérale en quatre branches repliables,
-plus la page Paramètres (au clavier aussi : flèches haut et bas, gauche et droite pour
+plus les pages Journal et Paramètres (au clavier aussi : flèches haut et bas, gauche et droite pour
 replier et déplier).
 
 **Accueil.** Le gros bouton compare chaque périphérique à trois sources : Windows Update,
@@ -15,7 +15,8 @@ site de NVIDIA. Le rapport donne pour chacun la version installée, la version d
 sa source et un verdict (à jour, mise à jour, aucun pilote, erreur). Ce qui est à mettre à
 jour arrive coché et s'installe en une fois, sous une seule autorisation administrateur,
 après un point de restauration. Le même passage vérifie logiciels, démarrage, sécurité et
-disques.
+disques. D'un lancement à l'autre, l'accueil rappelle la dernière analyse et sa date ;
+démarrage, antivirus, pare-feu et disques se lisent dès l'ouverture.
 
 ### Pilotes
 
@@ -36,7 +37,7 @@ disques.
   choix dans Paramètres. Pour AMD et Intel, l'outil du fabricant.
 - **Carte mère.** Le BIOS installé et l'outil du fabricant pour le mettre à jour.
 - **Inventaire.** Chaque périphérique, son pilote, sa date, sa signature et son état,
-  filtrable ; mis à jour tout seul quand on branche ou débranche quelque chose. « Revenir
+  filtrable et cherchable par nom ; mis à jour tout seul quand on branche ou débranche quelque chose. « Revenir
   au pilote précédent » fait comme le Gestionnaire de périphériques.
 - **Périphériques en erreur.** Ce que signale le Gestionnaire de périphériques, avec le sens
   de chaque code d'erreur.
@@ -76,7 +77,8 @@ disques.
   Ceux qui l'avaient appliqué avec une version précédente gardent le bouton « Annuler ».
   Ceux qu'un autre outil a laissés se défont dans la page Faux boosts.
 - **Composants de jeu.** Visual C++ 2005 à 2022, DirectX 9, XNA, OpenAL, PhysX, détectés
-  et installés via winget.
+  et installés via winget. Arrivent cochés les mises à jour et Visual C++ 2015-2022 s'il
+  manque ; un composant plus ancien ne sert qu'au jeu qui le réclame.
 - **Conseils par jeu.** Pour les jeux Steam installés, les réglages des communautés ; pour
   Garry's Mod, le cfg multicœur, ajouté à `autoexec.cfg` et retiré d'un clic sans toucher
   à vos propres lignes.
@@ -117,11 +119,18 @@ disques.
   mis à la corbeille. Un dossier qu'un autre programme installé utilise encore n'est
   jamais proposé.
 
+**Journal.** Ce que l'application a changé sur le PC, du plus récent au plus ancien :
+pilotes installés ou masqués, réglages, programmes au démarrage, nettoyages, logiciels.
+« Annuler » remet un réglage ou un programme au démarrage comme avant, tant que c'est
+encore le dernier changement ; un pilote se défait depuis l'Inventaire ou avec un point de
+restauration. Le journal (`%LOCALAPPDATA%\Driver Updater\journal.jsonl`, 500 lignes) n'est
+écrit que par la fenêtre, jamais par le module administrateur.
+
 **Paramètres.** La vérification hebdomadaire, silencieuse et sans droits administrateur :
 les pilotes de Windows Update et, au choix, un nouveau pilote NVIDIA et les mises à jour
 de logiciels ; une notification seulement s'il y a du nouveau, une seule fois pour chaque
 nouveauté. Les pilotes NVIDIA Game Ready ou Studio. La langue : français, anglais, ou
-celle de Windows (par défaut).
+celle de Windows (par défaut), appliquée d'un clic sur « Redémarrer maintenant ».
 
 **Et aussi.** « Copier le diagnostic » prépare un rapport texte pour signaler un bug. Un
 bandeau prévient quand une nouvelle version est publiée sur GitHub et l'installe d'un clic.
@@ -262,8 +271,8 @@ les paquets.
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.9.1
-git push origin v0.9.1
+git tag v0.10.0
+git push origin v0.10.0
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`
@@ -309,7 +318,7 @@ le pipeline.
 | `Maintenance/` | Matériel et santé (WMI), sécurité, points de restauration, performances, démarrage de Windows, programmes au démarrage, réparation (SFC, DISM), fichiers temporaires, diagnostic |
 | `Tuning/` | « PC de guerre » : réglages réversibles et leur liste, faux boosts et leur correction, vérifications du matériel et leurs règles, écrans et leur fréquence, carte graphique des jeux sur portable, jeux Steam et leurs conseils |
 | `Software/` | winget, programmes installés et désinstallation, restes, composants de jeu |
-| `Common/` | Textes et langue (`L.cs`), paramètres, messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
+| `Common/` | Textes et langue (`L.cs`), paramètres, journal des changements, messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
 | `Localization/` | `en.json` : l'anglais de chaque texte français |
 | `UI/` | La fenêtre, son menu en arbre (`MainWindow.Nav.cs`), un fichier par domaine (`MainWindow.Home.cs`, `.Games.cs`…), l'en-tête commun des pages, la jauge, la traduction des textes du XAML, la question « garder cet affichage ? » |
 | (racine) | `App.xaml` (thème néon), manifeste, icône, projet |
@@ -319,5 +328,5 @@ le pipeline.
 | `installer/DriverUpdater.iss` | Installateur Inno Setup, en français et en anglais : thème sombre, mise à jour, réparation, désinstallation |
 | `installer/art/make-art.py` | Dessine l'icône et les images de l'installateur |
 | `build/sign.ps1` | Signature avec votre propre certificat |
-| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour, règles du matériel (XMP, écrans), réponses de NVIDIA (Game Ready et Studio), faux boosts, carte graphique des portables, vérification hebdomadaire, temps de démarrage gagné, traduction complète |
+| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour, règles du matériel (XMP, écrans), réponses de NVIDIA (Game Ready et Studio), faux boosts, carte graphique des portables, vérification hebdomadaire, temps de démarrage gagné, journal, traduction complète |
 | `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre parcourue comme un utilisateur, accessibilité, capture de chaque section en français et en anglais, réglages dans le vrai registre, signatures Authenticode, service de NVIDIA, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |

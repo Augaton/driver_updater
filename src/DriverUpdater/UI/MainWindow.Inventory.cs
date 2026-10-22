@@ -52,11 +52,21 @@ public partial class MainWindow
             5 => inventory.Where(d => d.HasDriver && !d.IsMicrosoft),
             _ => inventory,
         };
+        var search = InventorySearch.Text.Trim();
+        if (search.Length > 0)
+            shown = shown.Where(d => d.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase)
+                                     || d.Provider.Contains(search, StringComparison.CurrentCultureIgnoreCase)
+                                     || d.Class.Contains(search, StringComparison.CurrentCultureIgnoreCase));
         InventoryGrid.ItemsSource = shown.ToList();
         InventorySummary.Text =
             L.F("{0} périphériques  ·  {1} à problème  ·  ", inventory.Count, inventory.Count(d => d.NeedsAttention)) +
             L.F("{0} sans pilote  ·  {1} pilotes de plus de 3 ans  ·  ", inventory.Count(d => !d.HasDriver), inventory.Count(d => d.IsOlderThan(3, today))) +
             L.F("{0} non signés", inventory.Count(d => d.Signed == false));
+    }
+
+    void OnInventorySearchChanged(object sender, TextChangedEventArgs e)
+    {
+        if (IsLoaded) ShowInventory();
     }
 
     void OnInventoryFilterChanged(object sender, SelectionChangedEventArgs e)
@@ -88,7 +98,7 @@ public partial class MainWindow
             bool reboot = await RunAdminAsync<bool>(AdminCommand.Rollback, device.DeviceId);
             await LoadInventory();
             await LoadHistory();
-            return L.F("{0} : pilote précédent remis.", device.Name) + (reboot ? L.T(" Redémarrez l'ordinateur pour terminer.") : "");
+            return Logged(Journal.Drivers, L.F("{0} : pilote précédent remis.", device.Name)) + (reboot ? L.T(" Redémarrez l'ordinateur pour terminer.") : "");
         });
     }
 
@@ -135,6 +145,8 @@ public partial class MainWindow
             StoreGrid.ItemsSource = storeChoices;
             UpdateStoreSummary();
             var refused = results.Where(r => !r.Deleted).ToList();
+            if (deleted.Count > 0)
+                Journal.Add(Journal.Cleanup, L.F("Anciennes versions de pilotes : {0} supprimée(s), {1} libérés.", deleted.Count, Bytes.Format(freed)));
             return L.F("{0} version(s) supprimée(s), {1} libérés.", deleted.Count, Bytes.Format(freed)) +
                    (refused.Count > 0 ? L.F(" {0} refusée(s) : {1}.", refused.Count, refused[0].Detail) : "");
         });

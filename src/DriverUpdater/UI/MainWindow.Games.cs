@@ -124,6 +124,8 @@ public partial class MainWindow
             var result = await RunAdminAsync<CatalogInstallReport>(AdminCommand.InstallCatalog, newer.Select(n => n.Entry.UpdateId).ToArray());
             if (result.Cancelled) return L.T("Installation annulée.");
             bool reboot = result.Results.Any(r => r.RebootRequired);
+            foreach (var r in result.Results.Where(r => r.Succeeded))
+                Journal.Add(Journal.Drivers, L.F("{0} : {1}", newer.FirstOrDefault(n => n.Entry.UpdateId.Equals(r.UpdateId, StringComparison.OrdinalIgnoreCase)) is { } n ? $"{n.Device} {n.Entry.Version}" : r.UpdateId, r.Outcome));
             await LoadInventory();
             ShowGpus(inventory.Where(d => d.Class.Equals("Display", StringComparison.OrdinalIgnoreCase)), await Task.Run(SystemInfo.Gpus), newer: null);
             return string.Join(" ; ", result.Results.Select(r => r.Outcome)) + (reboot ? L.T(". Redémarrez l'ordinateur.") : ".");
@@ -145,6 +147,7 @@ public partial class MainWindow
             if (report.Cancelled) return L.T("Installation annulée.");
             await LoadInventory();
             await LoadGpus();
+            if (report.ExitCode == 0) Journal.Add(Journal.Drivers, L.F("Pilote NVIDIA {0} : installateur terminé.", report.Version));
             return report.ExitCode == 0
                 ? L.F("Installateur NVIDIA {0} terminé. Redémarrez si l'installateur l'a demandé.", report.Version)
                 : L.F("L'installateur NVIDIA {0} s'est fermé (code {1}) : il a peut-être été annulé.", report.Version, report.ExitCode);
@@ -170,7 +173,9 @@ public partial class MainWindow
                 {
                     bool installed = c.WingetId == "Microsoft.DirectX" ? directX : c.IsIn(names);
                     var row = new ComponentRow { Component = c, Installed = installed, Outdated = installed && outdated.Contains(c.WingetId) };
-                    row.Selected = row.CanInstall;
+                    // Ticked: updates, and the one runtime nearly every recent game needs. An older
+                    // one only helps the game that asks for it ("MSVCR80.dll introuvable").
+                    row.Selected = row.Outdated || !installed && c.WingetId.StartsWith("Microsoft.VCRedist.2015+", StringComparison.Ordinal);
                     return row;
                 })
                 .OrderBy(r => r.Installed && !r.Outdated)
@@ -214,6 +219,7 @@ public partial class MainWindow
                 SetStatus(L.F("Composant {0} sur {1} : {2} (Windows peut demander une autorisation)…", i + 1, chosen.Count, row.Component.Name));
                 int code = row.Installed ? await WinGet.UpgradeAsync(row.Component.WingetId) : await WinGet.InstallAsync(row.Component.WingetId);
                 if (code != 0) failed.Add($"{row.Component.Name} (0x{code:X8})");
+                else Journal.Add(Journal.Software, L.F("{0} : {1}", row.Component.Name, row.Installed ? L.T("mis à jour") : L.T("installé")));
                 BusyBar.Value = i + 1;
             }
             upgrades = null; // just updated: ask winget again

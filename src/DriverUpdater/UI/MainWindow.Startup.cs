@@ -32,18 +32,24 @@ public partial class MainWindow
         if (sender is not CheckBox { DataContext: StartupEntry entry } box) return;
         bool enable = box.IsChecked == true;
         box.IsChecked = entry.Enabled; // until it is really done
-        await RunBusy(entry.Machine ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
+        await SetStartup(entry, enable);
+        box.IsChecked = entry.Enabled;
+    }
+
+    /// <summary>Turns one startup program on or off, from its page or from the journal.</summary>
+    Task SetStartup(StartupEntry entry, bool enable) =>
+        RunBusy(entry.Machine ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
         {
             if (entry.Machine)
                 await RunAdminAsync<bool>(AdminCommand.StartupSet, entry.Kind, entry.Name, enable ? "on" : "off");
             else
                 StartupApps.SetEnabled(entry.Kind, entry.Name, machine: false, enable);
             entry.Enabled = enable;
-            box.IsChecked = enable;
             Settings.StartupChanged = DateTime.Now; // the boots after this one show what it saved
-            return enable ? L.F("{0} démarrera avec Windows.", entry.Title) : L.F("{0} ne démarrera plus avec Windows.", entry.Title);
+            return Logged(Journal.Startup,
+                enable ? L.F("{0} démarrera avec Windows.", entry.Title) : L.F("{0} ne démarrera plus avec Windows.", entry.Title),
+                new JournalUndo(JournalUndo.Startup, StartupTarget(entry), enable ? "off" : "on"));
         });
-    }
 
     async void OnBootReport(object sender, RoutedEventArgs e) =>
         await RunBusy(L.T("Lecture des mesures de démarrage…"), async () =>

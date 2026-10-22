@@ -97,7 +97,14 @@ public partial class MainWindow
     {
         try
         {
-            CheckList.ItemsSource = (await Task.Run(PcChecks.Run)).Select(c => new CheckRow(c)).ToList();
+            var rows = (await Task.Run(PcChecks.Run)).Select(c => new CheckRow(c)).ToList();
+            // What needs doing stays in sight; what is fine folds under one line, so that the
+            // settings below are not pushed out of the window.
+            CheckList.ItemsSource = rows.Where(r => r.Check.NeedsAttention).ToList();
+            var fine = rows.Where(r => !r.Check.NeedsAttention).ToList();
+            CheckListOk.ItemsSource = fine;
+            CheckOkExpander.Header = L.F("{0} point(s) vérifié(s) : rien à faire", fine.Count);
+            CheckOkExpander.Visibility = fine.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception e)
         {
@@ -149,18 +156,22 @@ public partial class MainWindow
     async void OnTweakAction(object sender, RoutedEventArgs e)
     {
         if (busy || sender is not Button { Tag: TweakRow row }) return;
-        bool apply = row.Applies;
-        await RunBusy(row.Tweak.NeedsAdmin ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
-        {
-            if (row.Tweak.NeedsAdmin)
-                await RunAdminAsync<int>(apply ? AdminCommand.TweakApply : AdminCommand.TweakUndo, row.Tweak.Id);
-            else
-                await Task.Run(() => { if (apply) Tuner.Apply(row.Tweak); else Tuner.Undo(row.Tweak); });
-            await LoadTweaks();
-            return L.F("{0} : {1}.", row.Tweak.Title, apply ? L.T("appliqué") : L.T("remis comme avant")) +
-                   (row.Tweak.NeedsRestart ? L.T(" Effet au prochain redémarrage.") : "");
-        });
+        await ChangeTweak(row.Tweak, row.Applies);
     }
+
+    /// <summary>Applies or undoes one setting, from its page or from the journal.</summary>
+    Task ChangeTweak(Tweak tweak, bool apply) =>
+        RunBusy(tweak.NeedsAdmin ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
+        {
+            if (tweak.NeedsAdmin)
+                await RunAdminAsync<int>(apply ? AdminCommand.TweakApply : AdminCommand.TweakUndo, tweak.Id);
+            else
+                await Task.Run(() => { if (apply) Tuner.Apply(tweak); else Tuner.Undo(tweak); });
+            await LoadTweaks();
+            return Logged(Journal.Tuning, L.F("{0} : {1}.", tweak.Title, apply ? L.T("appliqué") : L.T("remis comme avant")),
+                       apply ? new JournalUndo(JournalUndo.Tweak, tweak.Id) : null) +
+                   (tweak.NeedsRestart ? L.T(" Effet au prochain redémarrage.") : "");
+        });
 
     /// <summary>
     /// Every one-click setting of the button's group (its Tag; the gaming ones by default) not yet
@@ -185,38 +196,40 @@ public partial class MainWindow
         await RunBusy(L.T("Application des réglages…"), async () =>
         {
             var failures = new List<string>();
-            int failed = 0; // settings, not messages: the administrator ones fail together
+            var applied = new List<Tweak>();
             foreach (var row in chosen.Where(r => !r.Tweak.NeedsAdmin))
             {
                 try
                 {
                     await Task.Run(() => Tuner.Apply(row.Tweak));
+                    applied.Add(row.Tweak);
                 }
                 catch (Exception ex)
                 {
                     failures.Add(L.F("{0} : {1}", row.Tweak.Title, Errors.Describe(ex)));
-                    failed++;
                 }
             }
-            var admin = chosen.Where(r => r.Tweak.NeedsAdmin).Select(r => r.Tweak.Id).ToArray();
-            if (admin.Length > 0)
+            var admin = chosen.Where(r => r.Tweak.NeedsAdmin).Select(r => r.Tweak).ToList();
+            if (admin.Count > 0)
             {
                 SetStatus(L.T("En attente de l'autorisation administrateur…"));
                 try
                 {
-                    await RunAdminAsync<int>(AdminCommand.TweakApply, admin);
+                    await RunAdminAsync<int>(AdminCommand.TweakApply, admin.Select(t => t.Id).ToArray());
+                    applied.AddRange(admin); // under one consent: all of them, or none
                 }
                 catch (Exception ex)
                 {
                     failures.Add(L.T("Réglages administrateur : ") + Errors.Describe(ex));
-                    failed += admin.Length;
                 }
             }
+            foreach (var tweak in applied)
+                Journal.Add(Journal.Tuning, L.F("{0} : {1}.", tweak.Title, L.T("appliqué")), new JournalUndo(JournalUndo.Tweak, tweak.Id));
             await LoadTweaks();
             if (failures.Count > 0)
                 MessageBox.Show(this, string.Join("\n", failures), L.T("Réglages non appliqués"), MessageBoxButton.OK, MessageBoxImage.Warning);
             bool restart = chosen.Any(r => r.Tweak.NeedsRestart);
-            return L.F("{0} réglage(s) appliqué(s).", chosen.Count - failed) + (restart ? L.T(" Certains prennent effet au prochain redémarrage.") : "");
+            return L.F("{0} réglage(s) appliqué(s).", applied.Count) + (restart ? L.T(" Certains prennent effet au prochain redémarrage.") : "");
         });
     }
 
@@ -256,9 +269,9 @@ public partial class MainWindow
                 return programs.Count;
             });
             await LoadChecks();
-            return force
+            return Logged(Journal.Tuning, force
                 ? L.F("{0} programme(s) de jeu réglé(s) sur la carte dédiée : effet au prochain lancement de chaque jeu.", count)
-                : L.F("{0} programme(s) remis au choix de Windows.", count);
+                : L.F("{0} programme(s) remis au choix de Windows.", count));
         });
 
     // Tried first without saving; kept only once the user sees the picture and says so.
@@ -272,7 +285,7 @@ public partial class MainWindow
         }
         var dialog = new KeepDisplayDialog(this, L.F("Écran passé à {0} Hz", hz));
         dialog.ShowDialog();
-        if (dialog.Keep && Displays.SaveRefresh(device, hz)) SetStatus(L.F("Écran réglé à {0} Hz.", hz));
+        if (dialog.Keep && Displays.SaveRefresh(device, hz)) SetStatus(Logged(Journal.Tuning, L.F("Écran réglé à {0} Hz.", hz)));
         else
         {
             Displays.RevertMode(device);
@@ -305,9 +318,9 @@ public partial class MainWindow
         {
             await Task.Run(() => { if (remove) SteamGames.RemoveCfg(row.Game); else SteamGames.ApplyCfg(row.Game); });
             await LoadGameTips();
-            return remove
+            return Logged(Journal.Tuning, remove
                 ? L.F("{0} : cfg conseillé retiré, vos propres lignes sont restées.", row.Game.Tip.Game)
-                : L.F("{0} : cfg ajouté à {1}. Il s'applique au prochain lancement du jeu.", row.Game.Tip.Game, row.Game.Tip.CfgPath);
+                : L.F("{0} : cfg ajouté à {1}. Il s'applique au prochain lancement du jeu.", row.Game.Tip.Game, row.Game.Tip.CfgPath));
         });
     }
 }

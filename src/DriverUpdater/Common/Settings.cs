@@ -46,6 +46,26 @@ public static class Settings
         }
     }
 
+    /// <summary>The last analysis's figures and date, shown on the dashboard until a new one.</summary>
+    public static ScanSummary? LastScan
+    {
+        get
+        {
+            try
+            {
+                return Read("LastScan") is string json ? System.Text.Json.JsonSerializer.Deserialize<ScanSummary>(json) : null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null; // unreadable: no figures rather than wrong ones
+            }
+        }
+        set
+        {
+            if (value is not null) Write("LastScan", System.Text.Json.JsonSerializer.Serialize(value));
+        }
+    }
+
     static object? Read(string name)
     {
         using var key = Registry.CurrentUser.OpenSubKey(Key);

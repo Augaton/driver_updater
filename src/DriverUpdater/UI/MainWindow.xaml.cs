@@ -28,9 +28,10 @@ public partial class MainWindow : Window
         BuildNav();
         Loaded += async (_, _) =>
         {
+            ShowLastScan();
             // The inventory too: new devices are spotted by comparing with it. All of it off the
             // window's thread, so the window answers from the first moment.
-            await Task.WhenAll(LoadWeeklyCheck(), StartDeviceWatch(), LoadHardware(), LoadInventory(), CheckForUpdate());
+            await Task.WhenAll(LoadWeeklyCheck(), StartDeviceWatch(), LoadHardware(), LoadInventory(), CheckForUpdate(), CheckLocalTiles());
         };
     }
 
@@ -57,6 +58,7 @@ public partial class MainWindow : Window
         // Lists inside the pages raise SelectionChanged too, and it bubbles up here.
         if (e.OriginalSource != Tabs || Tabs.SelectedItem is not TabItem tab) return;
         ShowInNav(tab);
+        if (tab == JournalTab) await ShowJournal(); // changes come from every page: read again each time
         if (!openedTabs.Add(tab)) return;
         if (tab == DisksTab) await Task.WhenAll(LoadDisks(), LoadBatteries());
         else if (tab == SecurityTab) await (fullSecurity ??= LoadSecurity(askWindowsUpdate: true));

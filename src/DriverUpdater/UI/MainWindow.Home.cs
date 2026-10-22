@@ -30,13 +30,21 @@ public partial class MainWindow
             try
             {
                 foreach (var number in new[] { ReportTotal, ReportOk, ReportUpdates, ReportIssues }) number.Text = "…";
+                // Windows Update is the slowest source and needs no inventory: asked at once. The
+                // security tile asks it too (pending updates), only afterwards: Windows runs one
+                // search at a time, and the drivers' report must not wait behind that one.
+                var windowsUpdate = Task.Run(WindowsUpdateDrivers.Search);
+                async Task SecurityAfterDrivers()
+                {
+                    await Task.WhenAny(windowsUpdate); // its own failure is reported below
+                    await CheckSecurityTile();
+                }
                 ScanStatus.Text = L.T("Inventaire des périphériques…");
                 var devices = await LoadInventory(required: true);
                 ReportTotal.Text = devices.Count.ToString();
-                var otherChecks = Task.WhenAll(CheckSoftwareTile(), CheckStartupTile(), CheckDisksTile(), CheckSecurityTile());
+                var otherChecks = Task.WhenAll(CheckSoftwareTile(), CheckStartupTile(), CheckDisksTile(), SecurityAfterDrivers());
 
                 ScanStatus.Text = L.T("Comparaison avec Windows Update et les fabricants : une à deux minutes…");
-                var windowsUpdate = Task.Run(WindowsUpdateDrivers.Search);
                 var catalog = DriverCatalog.FindAsync(devices, new Progress<string>(m => ScanStatus.Text = m));
                 var nvidia = NvidiaDrivers.LatestAsync(devices.Where(IsNvidia), Machine.HasBattery);
                 var failures = new List<string>();
@@ -70,6 +78,7 @@ public partial class MainWindow
                 report = DriverReport.Build(devices, windowsUpdateOffers, catalogOffers, vendorOffers);
                 reportGaps = failures.Count == 0 ? null : L.T("Analyse incomplète, ") + string.Join(" ; ", failures);
                 ShowReport();
+                SaveLastScan(DateTime.Now);
                 ScanStatus.Text = reportGaps ?? L.F("Analyse du {0:dd/MM à HH:mm}. Tout ce qui est à mettre à jour est coché.", DateTime.Now);
                 await otherChecks;
                 // A source out of reach says nothing about the drivers it would have checked.
@@ -99,14 +108,33 @@ public partial class MainWindow
     {
         var shown = ShowUpToDate.IsChecked == true ? report : report.Where(r => r.Verdict != Verdict.UpToDate).ToList();
         ReportGrid.ItemsSource = shown;
-        ReportTotal.Text = report.Count.ToString();
-        ReportOk.Text = report.Count(r => r.Verdict is Verdict.UpToDate or Verdict.Disabled).ToString();
-        ReportUpdates.Text = report.Count(r => r.Offer is not null).ToString();
-        ReportIssues.Text = report.Count(r => !r.CanInstall && r.Verdict is Verdict.NoDriver or Verdict.Problem).ToString();
+        if (report.Count > 0) ShowFigures(ScanSummary.Of(report)); // before any analysis, the last one's stay
         ReportPlaceholder.Text = report.Count == 0 ? L.T("Le rapport apparaîtra ici.") : reportGaps ?? L.T("Tous vos pilotes sont à jour.");
         ReportPlaceholder.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateReportButton();
     }
+
+    void ShowFigures(ScanSummary figures)
+    {
+        ReportTotal.Text = figures.Devices.ToString();
+        ReportOk.Text = figures.UpToDate.ToString();
+        ReportUpdates.Text = figures.Updates.ToString();
+        ReportIssues.Text = figures.Issues.ToString();
+    }
+
+    /// <summary>At start-up: the last analysis, with its date, until the user runs a new one.</summary>
+    void ShowLastScan()
+    {
+        if (Settings.LastScan is not { } last) return;
+        ShowFigures(last);
+        ScanStatus.Text = L.F("Dernière analyse le {0:dd/MM à HH:mm} : {1} pilote(s) à mettre à jour. ANALYSER vérifie à nouveau.", last.When, last.Updates)
+                          + (last.Complete ? "" : L.T(" Elle était incomplète."));
+    }
+
+    void SaveLastScan(DateTime when) => Settings.LastScan = ScanSummary.Of(report) with { When = when, Complete = reportGaps is null };
+
+    /// <summary>At start-up, what the dashboard's tiles can read at once from the PC itself.</summary>
+    Task CheckLocalTiles() => Task.WhenAll(CheckStartupTile(), CheckDisksTile(), CheckSecurityTile(askWindowsUpdate: false));
 
     void OnShowUpToDate(object sender, RoutedEventArgs e) => ShowReport();
 
@@ -138,6 +166,8 @@ public partial class MainWindow
                 .GroupBy(r => r.Offer!.UpdateId, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(r => r.Device.Name).Distinct()), StringComparer.OrdinalIgnoreCase);
             var lines = result.Results.Select(r => L.F("{0} {1} : {2}", r.Succeeded ? "✔" : "✘", names.GetValueOrDefault(r.UpdateId, r.UpdateId), r.Outcome));
+            foreach (var r in result.Results.Where(r => r.Succeeded))
+                Journal.Add(Journal.Drivers, L.F("{0} : {1}", names.GetValueOrDefault(r.UpdateId, r.UpdateId), r.Outcome));
             bool reboot = result.Results.Any(r => r.RebootRequired);
             MessageBox.Show(this, result.RestorePoint + "\n\n" + string.Join("\n", lines) +
                 (reboot ? L.T("\n\nRedémarrez l'ordinateur pour terminer.") : ""), L.T("Résultat des mises à jour"),
@@ -163,6 +193,7 @@ public partial class MainWindow
         if (report.Count == 0) return; // no analysis yet
         report = DriverReport.Build(await LoadInventory(), windowsUpdateOffers, catalogOffers, vendorOffers);
         ShowReport();
+        SaveLastScan(Settings.LastScan?.When ?? DateTime.Now); // same analysis, fewer updates left
     }
 
     Task CheckSoftwareTile() => Tile(TileSoftwareValue, TileSoftwareText, async () =>
@@ -186,11 +217,19 @@ public partial class MainWindow
         return bad.Count == 0 ? ("OK", L.F("{0} disque(s) en bon état", list.Count)) : (bad.Count.ToString(), L.T("disque(s) à surveiller"));
     });
 
-    Task CheckSecurityTile() => Tile(TileSecurityValue, TileSecurityText, async () =>
+    /// <param name="askWindowsUpdate">
+    /// An analysis asks Windows Update for pending updates too (slow); at start-up, only the
+    /// antivirus and the firewall are read.
+    /// </param>
+    Task CheckSecurityTile(bool askWindowsUpdate = true) => Tile(TileSecurityValue, TileSecurityText, async () =>
     {
-        // A new analysis asks again; the "Santé" card shows the same answer.
-        if (await (fullSecurity = LoadSecurity(askWindowsUpdate: true)) is not { } state) return ("!", L.T("lecture impossible"));
-        return state.Problems.Count == 0 ? ("OK", L.T("antivirus, pare-feu et Windows à jour")) : (state.Problems.Count.ToString(), L.T("point(s) à régler"));
+        // A new analysis asks again; the "Sécurité" page shows the same answer.
+        var reading = LoadSecurity(askWindowsUpdate);
+        if (askWindowsUpdate) fullSecurity = reading;
+        if (await reading is not { } state) return ("!", L.T("lecture impossible"));
+        return state.Problems.Count > 0 ? (state.Problems.Count.ToString(), L.T("point(s) à régler"))
+            : askWindowsUpdate ? ("OK", L.T("antivirus, pare-feu et Windows à jour"))
+            : ("OK", L.T("antivirus et pare-feu actifs"));
     });
 
     /// <summary>Runs one check for one tile; a failure shows on that tile and spares the others.</summary>

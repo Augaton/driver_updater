@@ -68,8 +68,15 @@ public partial class MainWindow
                 var app = selected[i];
                 SetStatus(L.F("Logiciel {0} sur {1} : {2}…", i + 1, selected.Count, app.Name));
                 int code = await WinGet.UpgradeAsync(app.Id);
-                if (code == 0) done.Add(app);
-                else failed.Add($"{app.Name} (0x{code:X8})");
+                if (code == 0)
+                {
+                    done.Add(app);
+                    Journal.Add(Journal.Software, L.F("{0} : {1} → {2}", app.Name, app.Version, app.Available));
+                }
+                else
+                {
+                    failed.Add($"{app.Name} (0x{code:X8})");
+                }
                 BusyBar.Value = i + 1;
             }
             ShowSoftware(software.Except(done).ToList());
@@ -130,7 +137,7 @@ public partial class MainWindow
                 return L.F("{0} est toujours installé (désinstallation annulée ou pas terminée). ", program.Name) +
                        L.T("Une fois terminée, cliquez sur « Chercher les restes ».");
             await ShowLeftovers(program);
-            return L.F("{0} est désinstallé.", program.Name);
+            return Logged(Journal.Software, L.F("{0} est désinstallé.", program.Name));
         });
     }
 
@@ -191,6 +198,7 @@ public partial class MainWindow
             leftovers = leftovers.Where(l => System.IO.Directory.Exists(l.Path)).ToList();
             LeftoverList.ItemsSource = leftovers;
             RecycleButton.Visibility = leftovers.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (recycled > 0) Journal.Add(Journal.Cleanup, L.F("{0} dossier(s) mis à la corbeille : vous pouvez les y récupérer.", recycled));
             return recycled == selected.Count
                 ? L.F("{0} dossier(s) mis à la corbeille : vous pouvez les y récupérer.", recycled)
                 : L.F("{0} dossier(s) sur {1} mis à la corbeille ; les autres sont restés en place.", recycled, selected.Count);

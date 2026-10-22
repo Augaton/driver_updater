@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -47,7 +49,18 @@ public partial class MainWindow
     {
         if (loadingSettings || LanguageBox.SelectedItem is not ComboBoxItem { Tag: string language }) return;
         Settings.Language = language;
+        bool changes = L.Resolve(language, CultureInfo.CurrentUICulture) != L.Language;
+        RestartButton.Visibility = changes ? Visibility.Visible : Visibility.Collapsed;
         SetStatus(L.T("Langue enregistrée : elle s'appliquera au prochain démarrage."));
+    }
+
+    /// <summary>Starts the app again, in the language just chosen.</summary>
+    void OnRestart(object sender, RoutedEventArgs e)
+    {
+        bool closed = false;
+        Closed += (_, _) => closed = true;
+        Close(); // an administrator action under way is asked about first
+        if (closed) Process.Start(Environment.ProcessPath!);
     }
 
     /// <summary>Opened from the weekly check's notification: where the news is.</summary>

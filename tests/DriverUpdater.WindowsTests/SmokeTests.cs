@@ -61,6 +61,7 @@ public sealed class SmokeTests
 
                 var root = (FrameworkElement)window.Content;
                 var background = (Brush)app.Resources["Void"];
+                var unreadable = new List<string>();
                 int index = 0;
                 foreach (var tab in pages.Where(t => t.Name.Length > 0))
                 {
@@ -71,6 +72,8 @@ public sealed class SmokeTests
                     Save(Render(root, background), Path.Combine(folder, $"{prefix}{++index:00}-{tab.Name}.png"));
                     AssertAccessible(tab);
                     if (language == "en") AssertNoFrenchLeft(root);
+                    unreadable.AddRange(Unreadable(root, tab.Name));
+                    unreadable.AddRange(UnreadableWhenUsed(root, tab.Name));
                     if (tab.Content is ScrollViewer { ScrollableHeight: > 0 } scroller)
                     {
                         scroller.ScrollToEnd();
@@ -81,6 +84,7 @@ public sealed class SmokeTests
                 }
                 DriveLikeAUser(window, root);
                 window.Close();
+                Assert.True(unreadable.Count == 0, "Texte peu lisible sur son fond :\n" + string.Join("\n", unreadable.Distinct()));
             }
             catch (Exception e)
             {
@@ -139,6 +143,113 @@ public sealed class SmokeTests
             Assert.False(string.IsNullOrWhiteSpace(peer?.GetName()),
                 $"Page « {page.Header} » : un {element.GetType().Name} sans nom accessible ({(element as ContentControl)?.Content}).");
         }
+    }
+
+    // Every text must stand out from what is painted behind it, as WCAG asks: 4.5:1, 3:1 for
+    // large text and icons. Black text on the near-black pages (a popup, a selected row, a
+    // control the dark theme does not reach) is what this catches. A disabled control is held
+    // to 3:1: it may fade, it must still be read.
+    static IEnumerable<string> Unreadable(DependencyObject root, string where)
+    {
+        // A scroll bar's arrows stay hidden until the pointer comes, by the Windows 11 design.
+        foreach (var text in Descendants(root).OfType<TextBlock>()
+                     .Where(t => t.IsVisible && t.ActualWidth > 0 && !string.IsNullOrWhiteSpace(t.Text))
+                     .Where(t => !Ancestors(t).OfType<ScrollBar>().Any()))
+        {
+            if (text.Foreground is not SolidColorBrush { Color: var ink } || BackgroundBehind(text) is not { } back) continue;
+            var shown = Over(ink, back, OpacityOf(text));
+            bool large = text.FontSize >= 24 || text.FontSize >= 18.66 && text.FontWeight.ToOpenTypeWeight() >= 700;
+            bool icon = text.FontFamily.Source.Contains("Icons", StringComparison.Ordinal);
+            bool disabled = Ancestors(text).OfType<UIElement>().Any(e => !e.IsEnabled);
+            double needed = large || icon || disabled ? 3 : 4.5;
+            double ratio = Contrast(shown, back);
+            if (ratio < needed)
+                yield return $"{where} : « {text.Text.Trim()} » {shown} sur {back} = {ratio:0.0}:1{(disabled ? " (désactivé)" : "")}";
+        }
+    }
+
+    // The same, in the states a page does not show at rest: a folded part open, a row chosen in
+    // each list, each drop-down open.
+    static IEnumerable<string> UnreadableWhenUsed(FrameworkElement root, string where)
+    {
+        var found = new List<string>();
+        foreach (var expander in Descendants(root).OfType<Expander>().Where(x => x.IsVisible && !x.IsExpanded).ToList())
+        {
+            expander.IsExpanded = true;
+            Settle(root);
+            found.AddRange(Unreadable(expander, where + " (dépliée)"));
+            expander.IsExpanded = false;
+        }
+        foreach (var grid in Descendants(root).OfType<DataGrid>().Where(g => g.IsVisible && g.Items.Count > 0).ToList())
+        {
+            grid.SelectedIndex = 0;
+            Settle(root);
+            found.AddRange(Unreadable(grid, where + " (ligne choisie)"));
+            grid.SelectedIndex = -1;
+        }
+        foreach (var combo in Descendants(root).OfType<ComboBox>().Where(c => c.IsVisible && c.IsEnabled).ToList())
+        {
+            combo.IsDropDownOpen = true;
+            Settle(root);
+            if (combo.Template.FindName("PART_Popup", combo) is Popup { Child: { } list })
+            {
+                Settle((UIElement)list);
+                found.AddRange(Unreadable(list, where + " (liste ouverte)"));
+            }
+            combo.IsDropDownOpen = false;
+        }
+        Settle(root);
+        return found;
+    }
+
+    static IEnumerable<DependencyObject> Ancestors(DependencyObject element)
+    {
+        for (var node = element; node is not null; node = VisualTreeHelper.GetParent(node) ?? LogicalTreeHelper.GetParent(node))
+            yield return node;
+    }
+
+    // What is painted behind: the nearest panels and borders with a color, see-through ones blended
+    // onto the first solid one. Controls paint their Background through such a border of their
+    // template. A gradient or an image behind is not judged.
+    static Color? BackgroundBehind(TextBlock text)
+    {
+        var layers = new List<Color>();
+        foreach (var node in Ancestors(text))
+        {
+            var brush = node switch
+            {
+                TextBlock t => t.Background,
+                Panel p => p.Background,
+                Border b => b.Background,
+                _ => null,
+            };
+            if (brush is null || brush is SolidColorBrush { Color.A: 0 }) continue;
+            if (brush is not SolidColorBrush solid) return null;
+            layers.Add(solid.Color);
+            if (solid.Color.A == 255) break;
+        }
+        if (layers.Count == 0 || layers[^1].A != 255) return null;
+        var color = layers[^1];
+        for (int i = layers.Count - 2; i >= 0; i--) color = Over(layers[i], color, 1);
+        return color;
+    }
+
+    static double OpacityOf(DependencyObject element) =>
+        Ancestors(element).OfType<UIElement>().Aggregate(1.0, (product, e) => product * e.Opacity);
+
+    static Color Over(Color top, Color under, double opacity)
+    {
+        double a = top.A / 255.0 * opacity;
+        byte Mix(byte t, byte u) => (byte)Math.Round(t * a + u * (1 - a));
+        return Color.FromRgb(Mix(top.R, under.R), Mix(top.G, under.G), Mix(top.B, under.B));
+    }
+
+    static double Contrast(Color a, Color b)
+    {
+        static double Channel(byte c) => c / 255.0 <= 0.03928 ? c / 255.0 / 12.92 : Math.Pow((c / 255.0 + 0.055) / 1.055, 2.4);
+        static double Luminance(Color c) => 0.2126 * Channel(c.R) + 0.7152 * Channel(c.G) + 0.0722 * Channel(c.B);
+        double l1 = Luminance(a), l2 = Luminance(b);
+        return (Math.Max(l1, l2) + 0.05) / (Math.Min(l1, l2) + 0.05);
     }
 
     static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
@@ -277,6 +388,7 @@ public sealed class SmokeTests
         var devices = DriverInventory.Scan();
 
         Assert.Contains(devices, d => d.HasDriver);
+        Assert.DoesNotContain(devices, d => d.DeviceId == @"HTREE\ROOT\0"); // the tree's root, never a driver
         CatalogScope.Select(devices); // must not fail on real hardware IDs
     }
 
@@ -533,6 +645,7 @@ public sealed class SmokeTests
     {
         Machine.IsDualDieX3D();
         Machine.GameBarInstalled();
+        _ = Machine.HasBattery; // through powrprof's own structure
         Assert.NotNull(Machine.ActivePowerPlan());
         Machine.OnHardDisk(Environment.SystemDirectory); // null is fine: virtual disks may not say
         Displays.Adapters();

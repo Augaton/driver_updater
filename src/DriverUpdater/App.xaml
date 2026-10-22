@@ -152,9 +152,14 @@
     </Style>
 
     <!-- One page of the menu: icon and name; the open one glows. -->
+    <!-- The label (MainWindow.Nav.cs) is the item's logical child: it takes its color and size from
+         the item itself, not from the ContentPresenter that shows it. Set there, they never reached
+         it, and the menu was drawn in the default black. -->
     <Style x:Key="NavPage" TargetType="TreeViewItem">
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Foreground" Value="{StaticResource InkMuted}" />
+      <Setter Property="FontSize" Value="14" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="TreeViewItem">
@@ -163,19 +168,18 @@
               <Grid>
                 <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-13,1,0,1"
                         Background="{StaticResource NeonCyan}" Effect="{StaticResource Glow}" Visibility="Hidden" />
-                <ContentPresenter x:Name="Caption" ContentSource="Header"
-                                  TextElement.Foreground="{StaticResource InkMuted}" TextElement.FontSize="14" />
+                <ContentPresenter ContentSource="Header" />
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger SourceName="Bd" Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#12FFFFFF" />
-                <Setter TargetName="Caption" Property="TextElement.Foreground" Value="{StaticResource Ink}" />
+                <Setter Property="Foreground" Value="{StaticResource Ink}" />
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#1A00E5FF" />
                 <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
-                <Setter TargetName="Caption" Property="TextElement.Foreground" Value="{StaticResource NeonCyan}" />
+                <Setter Property="Foreground" Value="{StaticResource NeonCyan}" />
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
                 <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource NeonCyan}" />

@@ -42,6 +42,23 @@ public sealed class ReportRow
 }
 
 /// <summary>
+/// The report's figures, as the dashboard shows them. Kept from one start to the next, so the
+/// last analysis is shown, with its date, until a new one.
+/// </summary>
+public sealed record ScanSummary(int Devices, int UpToDate, int Updates, int Issues)
+{
+    public DateTime When { get; init; }
+    /// <summary>Every source answered (Windows Update, the catalog).</summary>
+    public bool Complete { get; init; } = true;
+
+    public static ScanSummary Of(IReadOnlyCollection<ReportRow> report) => new(
+        report.Count,
+        report.Count(r => r.Verdict is Verdict.UpToDate or Verdict.Disabled),
+        report.Count(r => r.Offer is not null),
+        report.Count(r => !r.CanInstall && r.Verdict is Verdict.NoDriver or Verdict.Problem));
+}
+
+/// <summary>
 /// Puts every device and every offer together: for each device, the newest offer from either
 /// source, and a verdict. Updates come first and arrive ticked, as asked: "check everything
 /// outdated at the end".

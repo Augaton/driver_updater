@@ -17,6 +17,7 @@
     <Compile Include="..\..\src\DriverUpdater\Common\Download.cs" Link="Common\Download.cs" />
     <Compile Include="..\..\src\DriverUpdater\Common\Bytes.cs" Link="Common\Bytes.cs" />
     <Compile Include="..\..\src\DriverUpdater\Common\L.cs" Link="Common\L.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Common\Journal.cs" Link="Common\Journal.cs" />
     <Compile Include="..\..\src\DriverUpdater\Drivers\Catalog.cs" Link="Drivers\Catalog.cs" />
     <Compile Include="..\..\src\DriverUpdater\Software\CommandLine.cs" Link="Software\CommandLine.cs" />
     <Compile Include="..\..\src\DriverUpdater\Maintenance\StartupApproval.cs" Link="Maintenance\StartupApproval.cs" />

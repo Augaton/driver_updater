@@ -13,8 +13,13 @@ public static class Machine
     public static readonly Guid HighPerformance = new("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c");
     public static readonly Guid PowerSaver = new("a1841308-3541-4fab-bc81-f71556f20b4a");
 
-    public static bool HasBattery => !System.Windows.Forms.SystemInformation.PowerStatus.BatteryChargeStatus
-        .HasFlag(System.Windows.Forms.BatteryChargeStatus.NoSystemBattery);
+    /// <summary>
+    /// A laptop's or tablet's battery. Windows also counts a USB UPS as a system battery, but a
+    /// short-term one: a desktop on a UPS stays a desktop (NVIDIA's desktop drivers, the screen
+    /// and memory checks).
+    /// </summary>
+    public static bool HasBattery =>
+        GetPwrCapabilities(out var power) && power.SystemBatteriesPresent != 0 && power.BatteriesAreShortTerm == 0;
 
     public static string ProcessorName()
     {
@@ -145,6 +150,19 @@ public static class Machine
     [DllImport("powrprof.dll")]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern uint PowerGetActiveScheme(IntPtr rootPowerKey, out IntPtr scheme);
+
+    // SYSTEM_POWER_CAPABILITIES (winnt.h), 76 bytes: only its battery fields are read.
+    [StructLayout(LayoutKind.Explicit, Size = 76)]
+    struct PowerCapabilities
+    {
+        [FieldOffset(30)] public byte SystemBatteriesPresent;
+        [FieldOffset(31)] public byte BatteriesAreShortTerm;
+    }
+
+    [DllImport("powrprof.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    static extern bool GetPwrCapabilities(out PowerCapabilities capabilities);
 
     [DllImport("kernel32.dll")]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

@@ -16,6 +16,9 @@ public static class DriverInventory
         foreach (var entity in Query("SELECT DeviceID, Name, PNPClass, ConfigManagerErrorCode, HardwareID, CompatibleID FROM Win32_PnPEntity"))
         {
             if (entity.Get("DeviceID") is not string id) continue;
+            // The root of the device tree, not a device: it never has a driver, and Device
+            // Manager does not list it either.
+            if (id.Equals(@"HTREE\ROOT\0", StringComparison.OrdinalIgnoreCase)) continue;
             drivers.TryGetValue(id, out var driver);
             devices.Add(new DeviceDriver
             {

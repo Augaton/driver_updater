@@ -140,6 +140,7 @@ public partial class MainWindow
             if (report.Cancelled) return L.T("Installation annulée.");
 
             var installed = report.Results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in report.Results.Where(r => r.Succeeded)) Journal.Add(Journal.Drivers, L.F("{0} : {1}", r.Title, L.T("installé")));
             await ForgetInstalled(installed);
             await LoadHistory();
 
@@ -169,6 +170,7 @@ public partial class MainWindow
         {
             int hidden = await RunAdminAsync<int>(AdminCommand.Hide, selected.Select(d => d.UpdateId).ToArray());
             await ShowUpdates(drivers.Except(selected).ToList());
+            foreach (var d in selected) Journal.Add(Journal.Drivers, L.F("{0} : {1}", d.Title, L.T("masqué dans Windows Update")));
             return L.F("{0} pilote(s) masqué(s).", hidden);
         });
     }
@@ -177,6 +179,7 @@ public partial class MainWindow
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
             int count = await RunAdminAsync<int>(AdminCommand.Unhide);
+            if (count > 0) Journal.Add(Journal.Drivers, L.F("{0} pilote(s) réaffiché(s) dans Windows Update.", count));
             return count == 0 ? L.T("Aucun pilote masqué.") : L.F("{0} pilote(s) réaffiché(s) : relancez la recherche pour les voir.", count);
         });
 }

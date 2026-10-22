@@ -49,8 +49,9 @@ public partial class MainWindow
 
             var byId = selected.GroupBy(d => d.Entry.UpdateId, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-            var lines = report.Results.Select(r =>
-                L.F("{0} {1} : {2}", r.Succeeded ? "✔" : "✘", byId.TryGetValue(r.UpdateId, out var d) ? $"{d.Device} {d.Entry.Version}" : r.UpdateId, r.Outcome));
+            string Name(string id) => byId.TryGetValue(id, out var d) ? $"{d.Device} {d.Entry.Version}" : id;
+            var lines = report.Results.Select(r => L.F("{0} {1} : {2}", r.Succeeded ? "✔" : "✘", Name(r.UpdateId), r.Outcome));
+            foreach (var r in report.Results.Where(r => r.Succeeded)) Journal.Add(Journal.Drivers, L.F("{0} : {1}", Name(r.UpdateId), r.Outcome));
             bool reboot = report.Results.Any(r => r.RebootRequired);
             MessageBox.Show(this, report.RestorePoint + "\n\n" + string.Join("\n", lines) +
                 (reboot ? L.T("\n\nRedémarrez l'ordinateur pour terminer.") : ""), L.T("Résultat de l'installation"),

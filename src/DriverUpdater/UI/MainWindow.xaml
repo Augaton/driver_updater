@@ -7,6 +7,25 @@
         Background="{StaticResource Void}" Foreground="{StaticResource Ink}">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIf" />
+    <!-- One hardware check of "PC de guerre": what needs doing, and what is fine (folded away). -->
+    <DataTemplate x:Key="CheckRowTemplate">
+      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding Action}" Click="OnCheckAction"
+                  VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
+          <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
+                     Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
+          <StackPanel>
+            <TextBlock TextWrapping="Wrap">
+              <Run Text="{Binding Check.Title, Mode=OneWay}" FontWeight="SemiBold" />
+              <Run Text=" — " />
+              <Run Text="{Binding Check.Finding, Mode=OneWay}" />
+            </TextBlock>
+            <TextBlock Text="{Binding Check.Advice}" Style="{StaticResource Muted}" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
     <DataTemplate x:Key="TweakRowTemplate">
       <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
         <DockPanel>
@@ -412,7 +431,10 @@
           <local:PageHeader DockPanel.Dock="Top" Title="Tous vos pilotes"
                             Description="Chaque périphérique du PC, son pilote et son état. La liste se met à jour toute seule quand vous branchez ou débranchez quelque chose. Un nouveau pilote pose problème ? Sélectionnez le périphérique : « Revenir au pilote précédent » fait comme le Gestionnaire de périphériques.">
             <StackPanel Orientation="Horizontal">
-              <ComboBox x:Name="InventoryFilter" Width="230" Margin="0,0,8,0" SelectedIndex="0"
+              <TextBlock Text="Rechercher" Foreground="{StaticResource InkMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <TextBox x:Name="InventorySearch" Width="150" Margin="0,0,8,0" VerticalContentAlignment="Center"
+                       TextChanged="OnInventorySearchChanged" AutomationProperties.Name="Rechercher un périphérique" />
+              <ComboBox x:Name="InventoryFilter" Width="200" Margin="0,0,8,0" SelectedIndex="0"
                         SelectionChanged="OnInventoryFilterChanged" AutomationProperties.Name="Filtrer les périphériques">
                 <ComboBoxItem Content="Tous les périphériques" />
                 <ComboBoxItem Content="À problème" />
@@ -610,28 +632,10 @@
               <StackPanel>
                 <TextBlock Text="À vérifier sur votre matériel" Style="{StaticResource Heading}" FontSize="17" />
                 <TextBlock Style="{StaticResource Muted}" Text="Ce qu'aucun réglage ne corrige d'ici, mais qui coûte le plus en jeu." />
-                <ItemsControl x:Name="CheckList" Margin="0,10,0,0">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
-                        <DockPanel>
-                          <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding Action}" Click="OnCheckAction"
-                                  VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
-                          <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
-                                     Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
-                          <StackPanel>
-                            <TextBlock TextWrapping="Wrap">
-                              <Run Text="{Binding Check.Title, Mode=OneWay}" FontWeight="SemiBold" />
-                              <Run Text=" — " />
-                              <Run Text="{Binding Check.Finding, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock Text="{Binding Check.Advice}" Style="{StaticResource Muted}" />
-                          </StackPanel>
-                        </DockPanel>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <ItemsControl x:Name="CheckList" ItemTemplate="{StaticResource CheckRowTemplate}" Margin="0,10,0,0" />
+                <Expander x:Name="CheckOkExpander" Visibility="Collapsed" Margin="0,2,0,0">
+                  <ItemsControl x:Name="CheckListOk" ItemTemplate="{StaticResource CheckRowTemplate}" Margin="0,8,0,0" />
+                </Expander>
               </StackPanel>
             </Border>
 
@@ -1253,6 +1257,43 @@
       <!-- Back to the root of the menu. -->
       <TabItem Header="" Style="{StaticResource Section}" />
 
+      <!-- What this app changed on the PC, newest first, with the way back where there is one -->
+      <TabItem x:Name="JournalTab" Header="Journal" Tag="&#xE8A5;">
+        <DockPanel>
+          <local:PageHeader DockPanel.Dock="Top" Title="Ce que Driver Updater a changé"
+                            Description="Chaque pilote installé, réglage, programme au démarrage, nettoyage ou logiciel mis à jour ici, du plus récent au plus ancien. « Annuler » remet un réglage ou un programme au démarrage comme avant. Un pilote se défait depuis l'Inventaire (« Revenir au pilote précédent ») ou avec un point de restauration." />
+          <Border Style="{StaticResource Card}" Padding="0">
+            <Grid>
+              <DataGrid x:Name="JournalGrid" AutomationProperties.Name="Journal des changements"
+                        AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                        GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="Date" Binding="{Binding Entry.When, StringFormat=dd/MM/yyyy HH:mm}" Width="130" />
+                  <DataGridTextColumn Header="Domaine" Binding="{Binding Area}" Width="110" />
+                  <DataGridTextColumn Header="Changement" Binding="{Binding Entry.Text}" Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                      <Style TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
+                        <Setter Property="TextWrapping" Value="Wrap" />
+                      </Style>
+                    </DataGridTextColumn.ElementStyle>
+                  </DataGridTextColumn>
+                  <DataGridTemplateColumn Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate>
+                        <Button Content="{local:Translate 'Annuler'}" Click="OnJournalUndo" Margin="4"
+                                Visibility="{Binding CanUndo, Converter={StaticResource VisibleIf}}" />
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
+                </DataGrid.Columns>
+              </DataGrid>
+              <TextBlock x:Name="JournalPlaceholder" Style="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         Text="Rien encore : les pilotes, réglages et nettoyages faits ici s'afficheront." />
+            </Grid>
+          </Border>
+        </DockPanel>
+      </TabItem>
+
       <!-- The user's choices -->
       <TabItem x:Name="SettingsTab" Header="Paramètres" Tag="&#xE713;">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -1293,7 +1334,10 @@
                   <ComboBoxItem Tag="fr" Content="Français" />
                   <ComboBoxItem Tag="en" Content="English" />
                 </ComboBox>
-                <TextBlock Style="{StaticResource Muted}" Margin="0,6,0,0" Text="Prend effet au prochain démarrage de l'application." />
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                  <TextBlock Style="{StaticResource Muted}" VerticalAlignment="Center" Text="Prend effet au prochain démarrage de l'application." />
+                  <Button x:Name="RestartButton" Content="Redémarrer maintenant" Click="OnRestart" Margin="12,0,0,0" Visibility="Collapsed" />
+                </StackPanel>
               </StackPanel>
             </Border>
 

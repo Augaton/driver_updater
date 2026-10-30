@@ -13,12 +13,16 @@ namespace DriverUpdater.Drivers;
 /// </summary>
 public static class NvidiaDrivers
 {
-    /// <summary>The newest release for each NVIDIA graphics card (by device instance ID); cards NVIDIA does not answer for are left out.</summary>
+    /// <summary>
+    /// The newest release for each NVIDIA graphics card (by device instance ID), of the kind
+    /// chosen in Paramètres; cards NVIDIA has nothing for are left out. Throws when NVIDIA
+    /// cannot be reached: that says nothing about the driver being up to date.
+    /// </summary>
     public static async Task<Dictionary<string, NvidiaRelease>> LatestAsync(IEnumerable<DeviceDriver> devices, bool laptop)
     {
         var found = new Dictionary<string, NvidiaRelease>(StringComparer.OrdinalIgnoreCase);
         foreach (var device in devices.Where(d => d.Class.Equals("Display", StringComparison.OrdinalIgnoreCase)))
-            if (CardId(device) is { } id && await LatestForAsync(id, laptop).ConfigureAwait(false) is { } release)
+            if (CardId(device) is { } id && await LatestForAsync(id, laptop, Settings.NvidiaStudio).ConfigureAwait(false) is { } release)
                 found[device.DeviceId] = release;
         return found;
     }
@@ -26,27 +30,30 @@ public static class NvidiaDrivers
     /// <summary>The card's PCI device ID ("2684"), or null for another maker's device.</summary>
     public static string? CardId(DeviceDriver device) => device.HardwareIds.Select(NvidiaModel.DeviceId).FirstOrDefault(id => id is not null);
 
-    /// <summary>The newest driver of the kind the user chose (Game Ready, or Studio in Paramètres).</summary>
-    public static async Task<NvidiaRelease?> LatestForAsync(string deviceId, bool laptop)
+    /// <summary>
+    /// The newest driver of the kind asked for: Game Ready, or Studio. The kind is passed in,
+    /// never read here: the administrator helper may run under another account, whose own
+    /// settings are not the user's.
+    /// </summary>
+    static async Task<NvidiaRelease?> LatestForAsync(string deviceId, bool laptop, bool studio)
     {
         using var http = Client(TimeSpan.FromSeconds(20));
-        bool studio = Settings.NvidiaStudio;
         try
         {
             var answer = await http.GetStringAsync(NvidiaModel.LookupUrl(deviceId, Environment.OSVersion.Version.Build, laptop, studio)).ConfigureAwait(false);
             return NvidiaModel.Parse(answer, studio);
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        catch (HttpRequestException e) when (e.StatusCode is not null)
         {
-            return null; // NVIDIA unreachable, or no driver for this card: the catalog still answers
+            return null; // NVIDIA answered with an error: no driver for this card, the catalog still answers
         }
     }
 
     /// <summary>Administrator helper side: download, signature, NVIDIA's installer; returns its version and exit code.</summary>
-    public static async Task<(string Version, int ExitCode)> InstallAsync(string deviceId, Action<string> progress)
+    public static async Task<(string Version, int ExitCode)> InstallAsync(string deviceId, bool studio, Action<string> progress)
     {
         progress(L.T("Recherche du pilote chez NVIDIA…"));
-        var release = await LatestForAsync(deviceId, Machine.HasBattery)
+        var release = await LatestForAsync(deviceId, Machine.HasBattery, studio)
             ?? throw new InvalidOperationException(L.T("NVIDIA ne propose pas de pilote pour cette carte en ce moment."));
         if (!NvidiaModel.IsTrustedDownload(release.DownloadUrl)) throw new InvalidOperationException(L.T("Adresse de téléchargement refusée."));
 

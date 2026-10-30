@@ -9,8 +9,10 @@ public sealed record AppUsage(string Name, double Cpu, long Memory, double DiskB
 }
 
 /// <param name="CpuPerformance">Speed relative to the processor's nominal frequency (100 = nominal, over 100 = boost).</param>
+/// <param name="DiskActive">The busiest disk's active time: the average of all would hide one at 100 %.</param>
+/// <param name="Disk">Which one it is ("C:"), when there are several.</param>
 public sealed record SystemUsage(double Cpu, long MemoryUsed, long MemoryTotal, double DiskActive, double? Gpu,
-    double? CpuPerformance, string PowerPlan, bool PowerSaver)
+    double? CpuPerformance, string PowerPlan, bool PowerSaver, string? Disk = null)
 {
     public double MemoryPercent => MemoryTotal > 0 ? 100.0 * MemoryUsed / MemoryTotal : 0;
 }
@@ -20,6 +22,18 @@ public sealed record PerfReport(SystemUsage System, List<AppUsage> Apps, List<st
 /// <summary>Plain-language findings from one measurement: what is wrong, and who causes it.</summary>
 public static class PerfVerdict
 {
+    /// <summary>
+    /// The busiest physical disk, from each disk's active time by its counter instance ("1 D:"),
+    /// named by its letters ("D:"), or by its number when it has none. Null without any disk.
+    /// </summary>
+    public static (string Name, double Active)? BusiestDisk(IReadOnlyDictionary<string, double> activeByInstance)
+    {
+        var busiest = activeByInstance.OrderByDescending(d => d.Value).FirstOrDefault();
+        if (busiest.Key is null) return null;
+        var parts = busiest.Key.Split(' ', 2);
+        return (parts.Length == 2 ? parts[1] : L.F("n° {0}", parts[0]), Math.Clamp(busiest.Value, 0, 100));
+    }
+
     public static List<string> Findings(SystemUsage system, IReadOnlyList<AppUsage> apps)
     {
         var findings = new List<string>();
@@ -32,7 +46,8 @@ public static class PerfVerdict
             findings.Add(L.F("Mémoire presque pleine ({0:0} %) : Windows ralentit en écrivant sur le disque.", system.MemoryPercent) +
                          Top(apps.OrderByDescending(a => a.Memory), a => a.MemoryText));
         if (system.DiskActive >= 90)
-            findings.Add(L.F("Disque occupé en permanence ({0:0} %).", system.DiskActive) +
+            findings.Add((system.Disk is { } disk ? L.F("Disque {0} occupé en permanence ({1:0} %).", disk, system.DiskActive)
+                             : L.F("Disque occupé en permanence ({0:0} %).", system.DiskActive)) +
                          Top(apps.OrderByDescending(a => a.DiskBytesPerSecond), a => a.DiskText));
         if (system.Gpu >= 90)
             findings.Add(L.F("Carte graphique à pleine charge ({0:0} %).", system.Gpu) +

@@ -60,7 +60,9 @@ public partial class MainWindow
         bool closed = false;
         Closed += (_, _) => closed = true;
         Close(); // an administrator action under way is asked about first
-        if (closed) Process.Start(Environment.ProcessPath!);
+        if (!closed) return;
+        App.ReleaseWindow(); // or the new copy would find this one and step aside
+        Process.Start(Environment.ProcessPath!);
     }
 
     /// <summary>Opened from the weekly check's notification: where the news is.</summary>

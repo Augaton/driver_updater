@@ -60,8 +60,8 @@ public static class NvidiaModel
         {
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
-            if (!root.TryGetProperty("criteria", out var criteria) || !criteria.TryGetProperty("IsSupported", out var supported)
-                || Text(supported, "state") != "true" || !root.TryGetProperty("DriverAttributes", out var driver))
+            if (!Child(root, "criteria", out var criteria) || !Child(criteria, "IsSupported", out var supported)
+                || Text(supported, "state") != "true" || !Child(root, "DriverAttributes", out var driver))
                 return null;
             var version = Text(driver, "Version");
             var download = Text(driver, "DownloadURLAdmin");
@@ -118,10 +118,20 @@ public static class NvidiaModel
         return new Version(major, minor, 10 + digits / 10000, digits % 10000);
     }
 
+    /// <summary>The report's ID for a release: what an install from the graphics card page takes out of it.</summary>
+    public static string OfferId(string version) => "nvidia:" + version;
+
     /// <summary>The offer for the driver report: the label says where to install it from.</summary>
     public static DriverOffer Offer(NvidiaRelease release, Version installed) =>
-        new("nvidia:" + release.Version, DriverOffer.Nvidia, WindowsVersion(release.Version, installed), release.Date,
+        new(OfferId(release.Version), DriverOffer.Nvidia, WindowsVersion(release.Version, installed), release.Date,
             $"{release.Version}{(release.Date is { } d ? $" — {d:dd/MM/yyyy}" : "")}" + L.T(" (page Carte graphique)"));
+
+    // Only objects are looked into: TryGetProperty throws on null, a number or an array.
+    static bool Child(JsonElement element, string name, out JsonElement child)
+    {
+        child = default;
+        return element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out child) && child.ValueKind == JsonValueKind.Object;
+    }
 
     static string? Text(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

@@ -29,6 +29,20 @@ public sealed class LeftoversTests : IDisposable
     }
 
     [Fact]
+    public void Offers_a_program_installed_for_one_user_but_never_their_programs_folder()
+    {
+        var programs = Folder(roots.LocalAppData, "Programs");
+        var code = Folder(programs, "Microsoft VS Code");
+        var obsidian = Folder(programs, "Obsidian");
+        var common = Folder(programs, "Common", "Obsidian");
+
+        Assert.Contains(Leftovers.Find("Microsoft VS Code (User)", "Microsoft Corporation", code, roots), l => l.Path == code && l.Selected && !l.NeedsAdmin);
+        Assert.Equal([obsidian], Leftovers.Find("Obsidian", "Obsidian", null, roots).Select(l => l.Path));
+        Assert.Empty(Leftovers.Find("Programs", null, programs, roots));
+        Assert.False(Leftovers.IsSafeToRecycle(common, roots, out _));
+    }
+
+    [Fact]
     public void Offers_the_install_folder_ticked_and_same_name_folders_unticked()
     {
         var install = Folder(roots.ProgramFiles, "Discord");

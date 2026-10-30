@@ -18,6 +18,7 @@ public partial class MainWindow
             startupEntries = await Task.Run(StartupApps.List);
             ApplyImpact();
             StartupGrid.ItemsSource = startupEntries;
+            ShowStartupTile();
         }
         catch (Exception e)
         {
@@ -45,6 +46,7 @@ public partial class MainWindow
             else
                 StartupApps.SetEnabled(entry.Kind, entry.Name, machine: false, enable);
             entry.Enabled = enable;
+            ShowStartupTile();
             Settings.StartupChanged = DateTime.Now; // the boots after this one show what it saved
             return Logged(Journal.Startup,
                 enable ? L.F("{0} démarrera avec Windows.", entry.Title) : L.F("{0} ne démarrera plus avec Windows.", entry.Title),

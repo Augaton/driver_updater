@@ -91,12 +91,15 @@ public sealed class AdminCommandTests
     }
 
     [Fact]
-    public void Install_nvidia_takes_only_a_pci_device_id()
+    public void Install_nvidia_takes_only_a_pci_device_id_and_the_kind_of_driver()
     {
-        Assert.Equal(["2684"], AdminCommand.Parse([AdminCommand.InstallNvidia, "2684"]).Args);
-        Assert.Equal(["2B85"], AdminCommand.Parse([AdminCommand.InstallNvidia, "2b85"]).Args);
+        Assert.Equal(["2684", "game-ready"], AdminCommand.Parse([AdminCommand.InstallNvidia, "2684", AdminCommand.NvidiaGameReady]).Args);
+        Assert.Equal(["2B85", "studio"], AdminCommand.Parse([AdminCommand.InstallNvidia, "2b85", AdminCommand.NvidiaStudio]).Args);
         foreach (var bad in new[] { "268", "26845", "zzzz", @"..\x", "https://evil.example/x.exe" })
-            Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallNvidia, bad]));
+            Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallNvidia, bad, AdminCommand.NvidiaGameReady]));
+        // The kind is not read from the settings in the helper, which may run under another account.
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallNvidia, "2684"]));
+        Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallNvidia, "2684", "beta"]));
         Assert.Throws<ArgumentException>(() => AdminCommand.Parse([AdminCommand.InstallNvidia]));
     }
 

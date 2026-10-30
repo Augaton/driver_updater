@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace DriverUpdater.Maintenance;
@@ -15,18 +16,24 @@ public sealed class StartupEntry
     public required string Publisher { get; init; }
     public bool Enabled { get; set; }
     public string Impact { get; set; } = "—";
+    /// <summary>A Store app's name, as Windows shows it.</summary>
+    public string? DisplayName { get; init; }
 
-    public string Title => Kind == StartupApps.Folder ? Path.GetFileNameWithoutExtension(Name) : Name;
+    public string Title => DisplayName ?? (Kind == StartupApps.Folder ? Path.GetFileNameWithoutExtension(Name) : Name);
+    /// <summary>Switched here; a Store app's startup task only in Windows' Settings.</summary>
+    public bool CanSwitch => Kind != StartupApps.Store;
     public string Scope => Machine ? L.T("Tous les utilisateurs") : L.T("Vous");
 }
 
 /// <summary>
 /// Programs Windows starts at sign-in, from the same places Task Manager reads, switched
 /// on and off the same way (see <see cref="StartupApproval"/>). Nothing is ever deleted.
+/// Store apps' startup tasks are listed too, only to be seen: Windows' Settings switch them.
 /// </summary>
 public static class StartupApps
 {
-    public const string Run = "run", Run32 = "run32", Folder = "folder";
+    public const string Run = "run", Run32 = "run32", Folder = "folder", Store = "store";
+    const string AppModel = @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\";
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     const string Run32Key = @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run";
     const string ApprovedKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\";
@@ -39,6 +46,7 @@ public static class StartupApps
         AddRunValues(list, Run32, machine: true);
         AddShortcuts(list, machine: false);
         AddShortcuts(list, machine: true);
+        AddStoreTasks(list);
         return list.OrderBy(e => e.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
@@ -92,6 +100,54 @@ public static class StartupApps
             if (shell is not null) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
         }
     }
+
+    /// <summary>
+    /// The startup tasks Store apps declare (the new Teams, WhatsApp…), each with its state as
+    /// Windows keeps it: 2 on, 4 on by a policy; 0, 1 and 3 off.
+    /// </summary>
+    static void AddStoreTasks(List<StartupEntry> list)
+    {
+        using var apps = Registry.CurrentUser.OpenSubKey(AppModel + "SystemAppData");
+        if (apps is null) return;
+        using var packages = Registry.CurrentUser.OpenSubKey(AppModel + @"Repository\Packages");
+        var installed = packages?.GetSubKeyNames() ?? [];
+        foreach (var family in apps.GetSubKeyNames())
+        {
+            using var app = apps.OpenSubKey(family);
+            foreach (var task in app?.GetSubKeyNames() ?? [])
+            {
+                using var key = app!.OpenSubKey(task);
+                if (key?.GetValue("State") is not int state) continue; // the app's other data, not a startup task
+                list.Add(new StartupEntry
+                {
+                    Name = family + @"\" + task, Kind = Store, Machine = false, Command = family, Program = "", Publisher = "",
+                    Enabled = state is 2 or 4, DisplayName = PackageName(family, installed, packages!),
+                });
+            }
+        }
+    }
+
+    // "MSTeams_8wekyb3d8bbwe" is "Microsoft Teams" in the package's own name, often a resource
+    // ("@{…?ms-resource://…}") Windows reads for us; without it, the family's first part.
+    static string PackageName(string family, string[] installed, RegistryKey? packages)
+    {
+        var (name, publisher) = family.LastIndexOf('_') is > 0 and var cut ? (family[..cut], family[(cut + 1)..]) : (family, "");
+        var full = installed.FirstOrDefault(p => p.StartsWith(name + "_", StringComparison.OrdinalIgnoreCase)
+                                                 && p.EndsWith("_" + publisher, StringComparison.OrdinalIgnoreCase));
+        using var package = full is null ? null : packages?.OpenSubKey(full);
+        if (package?.GetValue("DisplayName") is string { Length: > 0 } shown)
+        {
+            if (!shown.StartsWith('@')) return shown;
+            var buffer = new char[512];
+            if (SHLoadIndirectString(shown, buffer, buffer.Length, IntPtr.Zero) == 0 && buffer[0] != '\0')
+                return new string(buffer, 0, Array.IndexOf(buffer, '\0'));
+        }
+        return name[(name.LastIndexOf('.') + 1)..];
+    }
+
+    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    static extern int SHLoadIndirectString(string source, char[] output, int size, IntPtr reserved);
 
     static bool IsEnabled(string kind, string name, bool machine)
     {

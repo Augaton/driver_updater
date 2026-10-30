@@ -4,7 +4,8 @@ namespace DriverUpdater.Admin;
 
 public sealed record InstallResult(string UpdateId, string Title, bool Succeeded, string Detail, bool RebootRequired);
 public sealed record InstallReport(string RestorePoint, bool Cancelled, List<InstallResult> Results);
-public sealed record BackupReport(string Folder, int Count);
+/// <param name="Failed">The drivers pnputil refused to export, with its code.</param>
+public sealed record BackupReport(string Folder, int Count, List<string> Failed);
 public sealed record ImportReport(string RestorePoint, bool Cancelled, bool RebootRequired);
 public sealed record HealthReport(List<Disk> Disks, List<Battery> Batteries);
 
@@ -70,8 +71,8 @@ public static class AdminHelper
                 return await Task.Run(WindowsUpdateDrivers.UnhideAll);
 
             case AdminCommand.ExportDrivers:
-                var (folder, count) = await DriverBackup.ExportAsync(command.Args[0]);
-                return new BackupReport(folder, count);
+                var (folder, count, failed) = await DriverBackup.ExportAsync(command.Args[0], channel.Progress);
+                return new BackupReport(folder, count, failed);
 
             case AdminCommand.ImportDrivers:
                 var point = await RestorePointAsync(channel);
@@ -113,18 +114,15 @@ public static class AdminHelper
                 return await Task.Run(() => DriverRollback.RollBack(command.Args[0]));
 
             case AdminCommand.TweakApply or AdminCommand.TweakUndo:
-                foreach (var tweak in command.Args.Select(id => DriverUpdater.Tuning.TweakCatalog.Find(id)!))
-                {
-                    channel.Progress(tweak.Title + "…");
-                    if (command.Name == AdminCommand.TweakApply) await Task.Run(() => DriverUpdater.Tuning.Tuner.Apply(tweak));
-                    else await Task.Run(() => DriverUpdater.Tuning.Tuner.Undo(tweak));
-                }
-                return command.Args.Count;
+                // Each on its own: the window journals exactly what changed.
+                var tweaks = command.Args.Select(id => DriverUpdater.Tuning.TweakCatalog.Find(id)!).ToList();
+                return await Task.Run(() => DriverUpdater.Tuning.Tuner.ApplyEach(tweaks, command.Name == AdminCommand.TweakApply,
+                    tweak => channel.Progress(tweak.Title + "…")));
 
             case AdminCommand.InstallNvidia:
             {
                 if (await RestorePointAsync(channel) is not { } restorePoint) return new NvidiaInstallReport("", true, "", 0);
-                var (version, exitCode) = await NvidiaDrivers.InstallAsync(command.Args[0], channel.Progress);
+                var (version, exitCode) = await NvidiaDrivers.InstallAsync(command.Args[0], command.Args[1] == AdminCommand.NvidiaStudio, channel.Progress);
                 return new NvidiaInstallReport(restorePoint, false, version, exitCode);
             }
 

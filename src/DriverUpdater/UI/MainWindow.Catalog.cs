@@ -8,11 +8,11 @@ public partial class MainWindow
     List<CatalogDriver> catalogDrivers = [];
 
     async void OnSearchCatalog(object sender, RoutedEventArgs e) =>
-        await RunBusy(L.T("Recherche dans le catalogue Microsoft Update…"), async () =>
+        await RunBusy(L.T("Recherche dans le catalogue Microsoft Update…"), async stop =>
         {
             SetStatus(L.T("Inventaire des périphériques…"));
             var devices = await LoadInventory(required: true);
-            ShowCatalog(await DriverCatalog.FindAsync(devices, new Progress<string>(SetStatus)));
+            ShowCatalog(await DriverCatalog.FindAsync(devices, new Progress<string>(SetStatus), cancel: stop));
             return catalogDrivers.Count == 0
                 ? L.T("Le catalogue n'a pas de pilote plus récent que les vôtres.")
                 : L.F("{0} pilote(s) plus récent(s) dans le catalogue.", catalogDrivers.Count);
@@ -57,9 +57,33 @@ public partial class MainWindow
                 (reboot ? L.T("\n\nRedémarrez l'ordinateur pour terminer.") : ""), L.T("Résultat de l'installation"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
 
-            var done = report.Results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            await ForgetInstalled(done);
+            var done = await ForgetInstalled(report.Results);
             return L.F("{0} pilote(s) sur {1} traité(s).", done.Count, selected.Count) + (reboot ? L.T(" Redémarrage requis.") : "");
         });
+    }
+
+    async void OnHideCatalog(object sender, RoutedEventArgs e)
+    {
+        var selected = catalogDrivers.Where(d => d.Selected).ToList();
+        if (selected.Count == 0)
+        {
+            SetStatus(L.T("Cochez au moins un pilote."));
+            return;
+        }
+        // The version shown, only: a newer one, published later, is offered again.
+        var ids = selected.Select(d => d.Entry.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Settings.CatalogHidden = Settings.CatalogHidden.Union(ids, StringComparer.OrdinalIgnoreCase).ToHashSet();
+        foreach (var d in selected) Journal.Add(Journal.Drivers, L.F("{0} : {1}", $"{d.Device} {d.Entry.Version}", L.T("masqué dans les pilotes des fabricants")));
+        await ForgetInstalled(ids, rescan: false);
+        SetStatus(L.F("{0} pilote(s) masqué(s).", selected.Count));
+    }
+
+    void OnUnhideCatalog(object sender, RoutedEventArgs e)
+    {
+        int count = Settings.CatalogHidden.Count + Settings.CatalogKept.Count;
+        Settings.CatalogHidden = new HashSet<string>();
+        Settings.CatalogKept = new HashSet<string>();
+        if (count > 0) Journal.Add(Journal.Drivers, L.F("{0} pilote(s) des fabricants réaffiché(s).", count));
+        SetStatus(count == 0 ? L.T("Aucun pilote masqué.") : L.F("{0} pilote(s) réaffiché(s) : relancez la recherche pour les voir.", count));
     }
 }

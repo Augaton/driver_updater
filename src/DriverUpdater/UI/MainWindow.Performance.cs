@@ -17,7 +17,8 @@ public partial class MainWindow
             CpuDetail.Text = system.CpuPerformance is { } speed ? L.F("vitesse {0:0} %", speed) : "";
             (MemoryGauge.Value, MemoryValue.Text) = (system.MemoryPercent, $"{system.MemoryPercent:0} %");
             MemoryDetail.Text = $"{Bytes.Format(system.MemoryUsed)} / {Bytes.Format(system.MemoryTotal)}";
-            (DiskGauge.Value, DiskValue.Text, DiskDetail.Text) = (system.DiskActive, $"{system.DiskActive:0} %", L.T("occupé"));
+            (DiskGauge.Value, DiskValue.Text, DiskDetail.Text) = (system.DiskActive, $"{system.DiskActive:0} %",
+                system.Disk is { } disk ? L.F("occupé ({0})", disk) : L.T("occupé"));
             (GpuGauge.Value, GpuValue.Text) = (system.Gpu ?? 0, system.Gpu is { } gpu ? $"{gpu:0} %" : "—");
             GpuDetail.Text = system.Gpu is null ? L.T("non mesurable") : "";
             PowerValue.Text = system.PowerPlan;

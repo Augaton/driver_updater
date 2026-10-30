@@ -11,6 +11,7 @@ public partial class MainWindow
     List<(string HardwareId, DriverOffer Offer)> windowsUpdateOffers = [];
     Dictionary<string, DriverOffer> catalogOffers = [];
     Dictionary<string, DriverOffer> vendorOffers = []; // NVIDIA's site, by device instance ID
+    HashSet<string> uncheckedDevices = []; // no source answered for these, by device instance ID
     string? reportGaps; // the sources the last analysis could not reach, if any
 
     void OnTile(object sender, RoutedEventArgs e)
@@ -24,37 +25,52 @@ public partial class MainWindow
     /// alongside, without holding up the report.
     /// </summary>
     async void OnScanAll(object sender, RoutedEventArgs e) =>
-        await RunBusy(L.T("Analyse de tous les pilotes…"), async () =>
+        await RunBusy(L.T("Analyse de tous les pilotes…"), async stop =>
         {
             ScanSpinning(true);
             try
             {
-                foreach (var number in new[] { ReportTotal, ReportOk, ReportUpdates, ReportIssues }) number.Text = "…";
+                ShowFigures("…");
+                // This analysis only: what an earlier one found must not stand in for a source out of reach
+                // now. Kept aside until the report is built, so a stopped analysis leaves the last one whole.
+                List<(string HardwareId, DriverOffer Offer)> fromWindowsUpdate = [];
+                Dictionary<string, DriverOffer> fromCatalog = [], fromNvidia = [];
                 // Windows Update is the slowest source and needs no inventory: asked at once. The
                 // security tile asks it too (pending updates), only afterwards: Windows runs one
                 // search at a time, and the drivers' report must not wait behind that one.
-                var windowsUpdate = Task.Run(WindowsUpdateDrivers.Search);
+                var windowsUpdate = WindowsUpdateDrivers.SearchAsync(stop);
                 async Task SecurityAfterDrivers()
                 {
-                    await Task.WhenAny(windowsUpdate); // its own failure is reported below
-                    await CheckSecurityTile();
+                    // Its own failure is reported below. One still stuck is not asked again: the
+                    // second search would queue behind it.
+                    await Task.WhenAny(windowsUpdate);
+                    await CheckSecurityTile(askWindowsUpdate: windowsUpdate.IsCompletedSuccessfully);
                 }
                 ScanStatus.Text = L.T("Inventaire des périphériques…");
                 var devices = await LoadInventory(required: true);
                 ReportTotal.Text = devices.Count.ToString();
-                var otherChecks = Task.WhenAll(CheckSoftwareTile(), CheckStartupTile(), CheckDisksTile(), SecurityAfterDrivers());
+                // Not waited for: the report and its button need none of them, and each tile shows its own failure.
+                _ = Task.WhenAll(CheckSoftwareTile(), CheckStartupTile(), CheckDisksTile(), SecurityAfterDrivers());
 
                 ScanStatus.Text = L.T("Comparaison avec Windows Update et les fabricants : une à deux minutes…");
-                var catalog = DriverCatalog.FindAsync(devices, new Progress<string>(m => ScanStatus.Text = m));
+                var unreached = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var catalog = DriverCatalog.FindAsync(devices, new Progress<string>(m => ScanStatus.Text = m), unreached, stop);
                 var nvidia = NvidiaDrivers.LatestAsync(devices.Where(IsNvidia), Machine.HasBattery);
                 var failures = new List<string>();
+                bool windowsUpdateAnswered = false, catalogAnswered = false;
                 try
                 {
                     var found = await windowsUpdate;
                     await ShowUpdates(found);
-                    windowsUpdateOffers = found.Select(u => (u.HardwareId ?? "", OfferOf(u))).ToList();
+                    fromWindowsUpdate = found.Select(u => (u.HardwareId ?? "", OfferOf(u))).ToList();
+                    windowsUpdateAnswered = true;
                 }
-                catch (Exception ex)
+                catch (TimeoutException)
+                {
+                    failures.Add(L.F("Windows Update : pas de réponse en {0} minutes", WindowsUpdateDrivers.Limit.TotalMinutes));
+                }
+                // Not when the user stopped it; an HttpClient running out of time is a failure like any other.
+                catch (Exception ex) when (!stop.IsCancellationRequested)
                 {
                     failures.Add(L.T("Windows Update : ") + Errors.Describe(ex));
                 }
@@ -62,31 +78,48 @@ public partial class MainWindow
                 {
                     var found = await catalog;
                     ShowCatalog(found);
-                    catalogOffers = found
+                    fromCatalog = found
                         .GroupBy(c => c.HardwareId, StringComparer.OrdinalIgnoreCase)
                         .ToDictionary(g => g.Key, g => OfferOf(g.First().Entry), StringComparer.OrdinalIgnoreCase);
+                    catalogAnswered = true;
+                    if (unreached.Count > 0) failures.Add(L.F("catalogue : {0} périphérique(s) non vérifié(s)", unreached.Count));
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!stop.IsCancellationRequested)
                 {
                     failures.Add(L.T("catalogue : ") + Errors.Describe(ex));
                 }
-                nvidiaReleases = await nvidia; // an unreachable NVIDIA is simply no offer
-                vendorOffers = devices.Where(d => nvidiaReleases.ContainsKey(d.DeviceId))
-                    .ToDictionary(d => d.DeviceId, d => NvidiaModel.Offer(nvidiaReleases[d.DeviceId], d.ParsedVersion ?? new Version(32, 0, 0, 0)),
-                        StringComparer.OrdinalIgnoreCase);
-
-                report = DriverReport.Build(devices, windowsUpdateOffers, catalogOffers, vendorOffers);
+                try
+                {
+                    nvidiaReleases = await nvidia.WaitAsync(stop);
+                    fromNvidia = devices.Where(d => nvidiaReleases.ContainsKey(d.DeviceId))
+                        .ToDictionary(d => d.DeviceId, d => NvidiaModel.Offer(nvidiaReleases[d.DeviceId], d.ParsedVersion ?? new Version(32, 0, 0, 0)),
+                            StringComparer.OrdinalIgnoreCase);
+                }
+                catch (Exception ex) when (!stop.IsCancellationRequested)
+                {
+                    failures.Add(L.T("site NVIDIA : ") + Errors.Describe(ex));
+                }
+                var notChecked = DriverReport.Unchecked(devices, windowsUpdateAnswered, catalogAnswered ? unreached : null, fromNvidia.Keys);
+                (windowsUpdateOffers, catalogOffers, vendorOffers, uncheckedDevices) = (fromWindowsUpdate, fromCatalog, fromNvidia, notChecked);
+                report = DriverReport.Build(devices, windowsUpdateOffers, catalogOffers, vendorOffers, uncheckedDevices);
                 reportGaps = failures.Count == 0 ? null : L.T("Analyse incomplète, ") + string.Join(" ; ", failures);
                 ShowReport();
                 SaveLastScan(DateTime.Now);
                 ScanStatus.Text = reportGaps ?? L.F("Analyse du {0:dd/MM à HH:mm}. Tout ce qui est à mettre à jour est coché.", DateTime.Now);
-                await otherChecks;
                 // A source out of reach says nothing about the drivers it would have checked.
                 if (reportGaps is not null) return reportGaps;
                 int updates = report.Count(r => r.Offer is not null);
                 bool graphics = report.Any(r => r.Offer?.Source == DriverOffer.Nvidia);
                 return (updates == 0 ? L.T("Analyse terminée : vos pilotes sont à jour.") : L.F("Analyse terminée : {0} pilote(s) à mettre à jour.", updates))
                        + (graphics ? L.T(" Pilote NVIDIA plus récent : il s'installe depuis la page Carte graphique.") : "");
+            }
+            catch (Exception ex)
+            {
+                // Not "…" forever: the last analysis' figures come back, and the reason shows where the progress was.
+                if (Settings.LastScan is { } last) ShowFigures(last);
+                else ShowFigures("—");
+                ScanStatus.Text = stop.IsCancellationRequested ? L.T("Analyse arrêtée.") : L.T("Analyse impossible : ") + Errors.Describe(ex);
+                throw;
             }
             finally
             {
@@ -98,7 +131,7 @@ public partial class MainWindow
     {
         var version = Catalog.VersionOf("", update.Title);
         var label = version is null ? update.Title : $"{version}" + (update.Date is { } d ? $" — {d:dd/MM/yyyy}" : "");
-        return new DriverOffer(update.UpdateId, DriverOffer.WindowsUpdate, version, update.Date, label);
+        return new DriverOffer(update.UpdateId, DriverOffer.WindowsUpdate, version, update.Date, label, update.Optional);
     }
 
     static DriverOffer OfferOf(CatalogEntry entry) =>
@@ -112,6 +145,11 @@ public partial class MainWindow
         ReportPlaceholder.Text = report.Count == 0 ? L.T("Le rapport apparaîtra ici.") : reportGaps ?? L.T("Tous vos pilotes sont à jour.");
         ReportPlaceholder.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateReportButton();
+    }
+
+    void ShowFigures(string placeholder)
+    {
+        foreach (var number in new[] { ReportTotal, ReportOk, ReportUpdates, ReportIssues }) number.Text = placeholder;
     }
 
     void ShowFigures(ScanSummary figures)
@@ -173,40 +211,67 @@ public partial class MainWindow
                 (reboot ? L.T("\n\nRedémarrez l'ordinateur pour terminer.") : ""), L.T("Résultat des mises à jour"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
 
-            var done = result.Results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            await ForgetInstalled(done);
+            var done = await ForgetInstalled(result.Results);
             await LoadHistory();
             return L.F("{0} pilote(s) sur {1} mis à jour.", done.Count, offers.Count) + (reboot ? L.T(" Redémarrage requis.") : "");
         });
     }
 
     /// <summary>
-    /// Installed drivers leave every list that offered them, wherever they were installed from:
-    /// the report, the Windows Update page and the catalog's. The rest stays as found.
+    /// After installing from the catalog (with Windows Update, or alone): the drivers Windows
+    /// added without picking them are remembered, so they are not downloaded again behind a new
+    /// restore point, and the installed ones are forgotten. Returns those.
     /// </summary>
-    async Task ForgetInstalled(IReadOnlySet<string> done)
+    async Task<HashSet<string>> ForgetInstalled(IReadOnlyList<CatalogInstallResult> results)
+    {
+        var kept = results.Where(r => r.KeptCurrent).Select(r => r.UpdateId).ToList();
+        if (kept.Count > 0) Settings.CatalogKept = Settings.CatalogKept.Union(kept, StringComparer.OrdinalIgnoreCase).ToHashSet();
+        var done = results.Where(r => r.Succeeded).Select(r => r.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        await ForgetInstalled(done);
+        return done;
+    }
+
+    /// <summary>
+    /// Installed (or hidden) drivers leave every list that offered them, wherever they were
+    /// installed from: the report, the Windows Update page and the catalog's. After an install
+    /// the inventory is read again, so every page shows the new versions; the rest stays as found.
+    /// </summary>
+    /// <param name="rescan">False when nothing was installed (a driver hidden): the inventory read is still right.</param>
+    async Task ForgetInstalled(IReadOnlySet<string> done, bool rescan = true)
     {
         windowsUpdateOffers = windowsUpdateOffers.Where(w => !done.Contains(w.Offer.UpdateId)).ToList();
         catalogOffers = catalogOffers.Where(c => !done.Contains(c.Value.UpdateId)).ToDictionary(StringComparer.OrdinalIgnoreCase);
+        vendorOffers = vendorOffers.Where(v => !done.Contains(v.Value.UpdateId)).ToDictionary(StringComparer.OrdinalIgnoreCase);
+        var devices = rescan ? await LoadInventory() : inventory;
         await ShowUpdates(drivers.Where(d => !done.Contains(d.UpdateId)).ToList());
         ShowCatalog(catalogDrivers.Where(d => !done.Contains(d.Entry.UpdateId)).ToList());
         if (report.Count == 0) return; // no analysis yet
-        report = DriverReport.Build(await LoadInventory(), windowsUpdateOffers, catalogOffers, vendorOffers);
+        report = DriverReport.Build(devices, windowsUpdateOffers, catalogOffers, vendorOffers, uncheckedDevices);
         ShowReport();
         SaveLastScan(Settings.LastScan?.When ?? DateTime.Now); // same analysis, fewer updates left
     }
 
     Task CheckSoftwareTile() => Tile(TileSoftwareValue, TileSoftwareText, async () =>
     {
-        if (!WinGet.IsAvailable) return ("—", "winget absent");
+        if (!WinGet.IsAvailable) return ("—", L.T("winget absent"));
         ShowSoftware(await SoftwareUpgrades());
-        return (software.Count.ToString(), software.Count == 0 ? L.T("logiciels à jour") : L.T("logiciel(s) à mettre à jour"));
+        return SoftwareTile();
     });
+
+    // The tiles follow what is done on the other pages, not only the last analysis.
+    (string Value, string Text) SoftwareTile() =>
+        (software.Count.ToString(), software.Count == 0 ? L.T("logiciels à jour") : L.T("logiciel(s) à mettre à jour"));
+
+    (string Value, string Text) StartupTile() => (startupEntries.Count(s => s.Enabled).ToString(), L.T("programmes lancés avec Windows"));
+
+    void ShowSoftwareTile() => (TileSoftwareValue.Text, TileSoftwareText.Text) = SoftwareTile();
+
+    void ShowStartupTile() => (TileStartupValue.Text, TileStartupText.Text) = StartupTile();
 
     Task CheckStartupTile() => Tile(TileStartupValue, TileStartupText, async () =>
     {
         await LoadStartup();
-        return (startupEntries.Count(s => s.Enabled).ToString(), L.T("programmes lancés avec Windows"));
+        return StartupTile();
     });
 
     Task CheckDisksTile() => Tile(TileDisksValue, TileDisksText, async () =>

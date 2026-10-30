@@ -46,6 +46,10 @@ public sealed class WindowsRegistry : IRegistry
     }
 }
 
+/// <param name="Done">The tweaks changed, by ID: one refused does not stop the others.</param>
+/// <param name="Failures">One line per tweak Windows refused, with why.</param>
+public sealed record TweakReport(List<string> Done, List<string> Failures);
+
 /// <summary>
 /// Applies the "PC de guerre" tweaks on Windows: registry ones through <see cref="TweakEngine"/>,
 /// the power plan and hibernation through powercfg. Tweaks needing administrator rights only
@@ -57,6 +61,7 @@ public static partial class Tuner
     const string HighPerformance = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
     const string UltimateTemplate = "e9a42b02-d5df-448d-aa00-03f14749eb61";
     const string PowerBackup = TweakEngine.BackupKey + @"\" + TweakCatalog.PowerPlan;
+    const string HibernationBackup = TweakEngine.BackupKey + @"\" + TweakCatalog.Hibernation;
 
     public static TweakState State(Tweak tweak)
     {
@@ -68,8 +73,7 @@ public static partial class Tuner
             FakeBoostCatalog.CoreParking => FakeBoostFixes.ParkingOff() ? TweakState.NotApplied : TweakState.Applied,
             TweakCatalog.PowerPlan => ActivePlan() is { } plan && (plan == HighPerformance || plan == CreatedPlan())
                 ? TweakState.Applied : TweakState.NotApplied,
-            TweakCatalog.Hibernation => Registry.Get(Hive.LocalMachine, @"SYSTEM\CurrentControlSet\Control\Power", "HibernateEnabled") is 0
-                ? TweakState.Applied : TweakState.NotApplied,
+            TweakCatalog.Hibernation => Machine.HibernationOn == false ? TweakState.Applied : TweakState.NotApplied,
             _ => TweakEngine.IsApplied(tweak, Registry) ? TweakState.Applied : TweakState.NotApplied,
         };
     }
@@ -84,7 +88,7 @@ public static partial class Tuner
     {
         FakeBoostCatalog.BootTimers or FakeBoostCatalog.PageFile or FakeBoostCatalog.CoreParking => false, // Windows' default back: nothing to undo
         TweakCatalog.PowerPlan => Registry.Get(Hive.CurrentUser, PowerBackup, "previous") is string,
-        TweakCatalog.Hibernation => Registry.Get(Hive.LocalMachine, TweakEngine.BackupKey + @"\" + tweak.Id, "was-on") is 1,
+        TweakCatalog.Hibernation => Registry.Get(Hive.LocalMachine, HibernationBackup, "was-on") is 1,
         _ => TweakEngine.HasBackup(tweak, Registry),
     };
 
@@ -105,9 +109,14 @@ public static partial class Tuner
                 ApplyPowerPlan();
                 break;
             case TweakCatalog.Hibernation:
-                if (Registry.Get(Hive.LocalMachine, @"SYSTEM\CurrentControlSet\Control\Power", "HibernateEnabled") is not 0)
-                    Registry.Set(Hive.LocalMachine, TweakEngine.BackupKey + @"\" + tweak.Id, "was-on", 1);
-                PowerCfg("/hibernate", "off");
+                bool wasOn = Machine.HibernationOn != false;
+                if (wasOn) Registry.Set(Hive.LocalMachine, HibernationBackup, "was-on", 1);
+                if (PowerCfg("/hibernate", "off") is { ExitCode: not 0 } off)
+                {
+                    // Nothing changed: no "Annuler" for it.
+                    if (wasOn) Registry.Delete(Hive.LocalMachine, HibernationBackup, "was-on");
+                    throw Refused(off);
+                }
                 break;
             default:
                 TweakEngine.Apply(tweak, Registry);
@@ -116,19 +125,50 @@ public static partial class Tuner
         AfterChange(tweak);
     }
 
+    /// <summary>
+    /// Applies (or undoes) each tweak on its own: one Windows refuses does not stop the others,
+    /// and the report says exactly which changed, for the journal.
+    /// </summary>
+    public static TweakReport ApplyEach(IEnumerable<Tweak> tweaks, bool apply, Action<Tweak>? starting = null)
+    {
+        var report = new TweakReport([], []);
+        foreach (var tweak in tweaks)
+        {
+            starting?.Invoke(tweak);
+            try
+            {
+                if (apply) Apply(tweak);
+                else Undo(tweak);
+                report.Done.Add(tweak.Id);
+            }
+            catch (Exception e)
+            {
+                report.Failures.Add(L.F("{0} : {1}", tweak.Title, Errors.Describe(e)));
+            }
+        }
+        return report;
+    }
+
     public static void Undo(Tweak tweak)
     {
         switch (tweak.Id)
         {
+            // The backup only goes once Windows has taken the old setting back: a refusal keeps "Annuler".
             case TweakCatalog.PowerPlan:
-                if (Registry.Get(Hive.CurrentUser, PowerBackup, "previous") is string previous) PowerCfg("/setactive", previous);
+                // A previous plan deleted since falls back to Windows' own, Balanced.
+                if (Registry.Get(Hive.CurrentUser, PowerBackup, "previous") is string previous && PowerCfg("/setactive", previous).ExitCode != 0
+                    && PowerCfg("/setactive", Machine.Balanced.ToString()) is { ExitCode: not 0 } balanced)
+                    throw Refused(balanced);
                 if (CreatedPlan() is { } created) PowerCfg("/delete", created);
                 Registry.Delete(Hive.CurrentUser, PowerBackup, "previous");
                 Registry.Delete(Hive.CurrentUser, PowerBackup, "created");
                 break;
             case TweakCatalog.Hibernation:
-                if (Registry.Get(Hive.LocalMachine, TweakEngine.BackupKey + @"\" + tweak.Id, "was-on") is 1) PowerCfg("/hibernate", "on");
-                Registry.Delete(Hive.LocalMachine, TweakEngine.BackupKey + @"\" + tweak.Id, "was-on");
+                // Turning it back on needs room for its file, as large as part of the memory: a full disk refuses it.
+                if (Registry.Get(Hive.LocalMachine, HibernationBackup, "was-on") is 1
+                    && PowerCfg("/hibernate", "on") is { ExitCode: not 0 } on)
+                    throw Refused(on);
+                Registry.Delete(Hive.LocalMachine, HibernationBackup, "was-on");
                 break;
             default:
                 TweakEngine.Undo(tweak, Registry);
@@ -165,6 +205,9 @@ public static partial class Tuner
 
     static string? ActivePlan() =>
         PlanGuid().Match(PowerCfg("/getactivescheme").Output) is { Success: true } m ? m.Value.ToLowerInvariant() : null;
+
+    static InvalidOperationException Refused((int ExitCode, string Output) powercfg) =>
+        new(L.F("Windows a refusé le changement (powercfg, code {0}). {1}", powercfg.ExitCode, powercfg.Output.Trim()).TrimEnd());
 
     static (int ExitCode, string Output) PowerCfg(params string[] arguments)
     {

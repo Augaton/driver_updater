@@ -164,7 +164,10 @@ public partial class MainWindow
         RunBusy(tweak.NeedsAdmin ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
         {
             if (tweak.NeedsAdmin)
-                await RunAdminAsync<int>(apply ? AdminCommand.TweakApply : AdminCommand.TweakUndo, tweak.Id);
+            {
+                var report = await RunAdminAsync<TweakReport>(apply ? AdminCommand.TweakApply : AdminCommand.TweakUndo, tweak.Id);
+                if (report.Failures.Count > 0) throw new InvalidOperationException(report.Failures[0]);
+            }
             else
                 await Task.Run(() => { if (apply) Tuner.Apply(tweak); else Tuner.Undo(tweak); });
             await LoadTweaks();
@@ -195,28 +198,20 @@ public partial class MainWindow
 
         await RunBusy(L.T("Application des réglages…"), async () =>
         {
-            var failures = new List<string>();
-            var applied = new List<Tweak>();
-            foreach (var row in chosen.Where(r => !r.Tweak.NeedsAdmin))
-            {
-                try
-                {
-                    await Task.Run(() => Tuner.Apply(row.Tweak));
-                    applied.Add(row.Tweak);
-                }
-                catch (Exception ex)
-                {
-                    failures.Add(L.F("{0} : {1}", row.Tweak.Title, Errors.Describe(ex)));
-                }
-            }
+            var own = chosen.Where(r => !r.Tweak.NeedsAdmin).Select(r => r.Tweak).ToList();
+            var report = await Task.Run(() => Tuner.ApplyEach(own, apply: true));
+            var applied = own.Where(t => report.Done.Contains(t.Id)).ToList();
+            var failures = report.Failures;
             var admin = chosen.Where(r => r.Tweak.NeedsAdmin).Select(r => r.Tweak).ToList();
             if (admin.Count > 0)
             {
                 SetStatus(L.T("En attente de l'autorisation administrateur…"));
                 try
                 {
-                    await RunAdminAsync<int>(AdminCommand.TweakApply, admin.Select(t => t.Id).ToArray());
-                    applied.AddRange(admin); // under one consent: all of them, or none
+                    // Under one consent; each applied or refused on its own.
+                    var elevated = await RunAdminAsync<TweakReport>(AdminCommand.TweakApply, admin.Select(t => t.Id).ToArray());
+                    applied.AddRange(admin.Where(t => elevated.Done.Contains(t.Id)));
+                    failures.AddRange(elevated.Failures);
                 }
                 catch (Exception ex)
                 {

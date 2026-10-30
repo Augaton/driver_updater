@@ -26,7 +26,7 @@ public sealed class WingetOutputTests
     [Fact]
     public void Reads_the_french_table()
     {
-        var updates = WingetOutput.ParseUpgrades(French);
+        var updates = WingetOutput.ParseUpgrades(French).Updates;
 
         Assert.Equal(["Microsoft.Edge", "Git.Git"], updates.Select(u => u.Id));
         var git = updates[1];
@@ -39,7 +39,7 @@ public sealed class WingetOutputTests
     [Fact]
     public void Reads_the_english_table()
     {
-        var firefox = Assert.Single(WingetOutput.ParseUpgrades(English));
+        var firefox = Assert.Single(WingetOutput.ParseUpgrades(English).Updates);
 
         Assert.Equal(("Mozilla Firefox", "Mozilla.Firefox", "130.0", "131.0.2"),
             (firefox.Name, firefox.Id, firefox.Version, firefox.Available));
@@ -49,10 +49,10 @@ public sealed class WingetOutputTests
     public void Reads_windows_line_endings()
     {
         // What winget really writes to a redirected output.
-        var firefox = Assert.Single(WingetOutput.ParseUpgrades(English.Replace("\n", "\r\n")));
+        var firefox = Assert.Single(WingetOutput.ParseUpgrades(English.Replace("\n", "\r\n")).Updates);
 
         Assert.Equal(("Mozilla.Firefox", "131.0.2"), (firefox.Id, firefox.Available));
-        Assert.Equal(2, WingetOutput.ParseUpgrades(French.Replace("\n", "\r\n")).Count);
+        Assert.Equal(2, WingetOutput.ParseUpgrades(French.Replace("\n", "\r\n")).Updates.Count);
     }
 
     [Fact]
@@ -60,17 +60,42 @@ public sealed class WingetOutputTests
     {
         var onlyPinned = French[French.IndexOf("Les packages suivants", StringComparison.Ordinal)..];
 
-        Assert.Empty(WingetOutput.ParseUpgrades(onlyPinned));
-        Assert.Empty(WingetOutput.ParseUpgrades(onlyPinned.Replace("\n", "\r\n")));
+        Assert.Empty(WingetOutput.ParseUpgrades(onlyPinned).Updates);
+        Assert.Empty(WingetOutput.ParseUpgrades(onlyPinned.Replace("\n", "\r\n")).Updates);
     }
 
     [Fact]
     public void Skips_truncated_ids_and_pinned_packages()
     {
-        var ids = WingetOutput.ParseUpgrades(French).Select(u => u.Id).ToList();
+        var ids = WingetOutput.ParseUpgrades(French).Updates.Select(u => u.Id).ToList();
 
         Assert.DoesNotContain(ids, id => id.Contains('…'));
         Assert.DoesNotContain("Pinned.App", ids);
+    }
+
+    [Fact]
+    public void Counts_the_rows_it_cannot_name()
+    {
+        Assert.Equal((1, 0), (WingetOutput.ParseUpgrades(French).Unreadable, WingetOutput.ParseUpgrades(English).Unreadable));
+    }
+
+    [Fact]
+    public void Lines_columns_up_by_display_width()
+    {
+        // Under an English header, a Chinese name: winget pads it by width, two columns per character.
+        var output = English.Replace("1 upgrades available.\n",
+            "微信" + new string(' ', 15) + "Tencent.WeChat      3.9.12   4.0.0     winget\n" + "2 upgrades available.\n");
+        var chinese =
+            "名称      ID                版本      可用      源\n" +
+            "--------------------------------------------------------\n" +
+            "Git       Git.Git           2.46.0    2.47.0    winget\n";
+
+        var parsed = WingetOutput.ParseUpgrades(output);
+        var (wechat, unreadable) = (parsed.Updates[1], parsed.Unreadable);
+        var git = Assert.Single(WingetOutput.ParseUpgrades(chinese).Updates);
+
+        Assert.Equal(("微信", "Tencent.WeChat", "3.9.12", "4.0.0", 0), (wechat.Name, wechat.Id, wechat.Version, wechat.Available, unreadable));
+        Assert.Equal(("Git.Git", "2.46.0", "2.47.0", "winget"), (git.Id, git.Version, git.Available, git.Source));
     }
 
     [Fact]
@@ -78,7 +103,7 @@ public sealed class WingetOutputTests
     {
         var coloured = "\u001b[2K\u001b[0m" + English.Replace("Mozilla Firefox ", "\u001b[1mMozilla Firefox\u001b[0m ");
 
-        Assert.Equal("Mozilla.Firefox", Assert.Single(WingetOutput.ParseUpgrades(coloured)).Id);
+        Assert.Equal("Mozilla.Firefox", Assert.Single(WingetOutput.ParseUpgrades(coloured).Updates).Id);
     }
 
     [Theory]
@@ -86,5 +111,5 @@ public sealed class WingetOutputTests
     [InlineData("No installed package found matching input criteria.\n")]
     [InlineData("")]
     public void Nothing_to_upgrade_gives_an_empty_list(string output) =>
-        Assert.Empty(WingetOutput.ParseUpgrades(output));
+        Assert.Empty(WingetOutput.ParseUpgrades(output).Updates);
 }

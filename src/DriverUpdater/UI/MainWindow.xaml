@@ -77,178 +77,185 @@
                 SelectedIndex="0" SelectionChanged="OnTabChanged">
       <!-- Home: the big button scans every driver, the report says what to do -->
       <TabItem x:Name="HomeTab" Header="Accueil" Tag="&#xE80F;">
-        <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
+        <!-- The page fills the window. On a short screen (a laptop at 150 %), below 640 it scrolls rather
+             than squeeze the report to nothing. -->
+        <ScrollViewer x:Name="HomeScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <Grid MinHeight="640" Height="{Binding ActualHeight, ElementName=HomeScroll}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-          <!-- PC on the left, the big button in the middle, the verdict on the right. -->
-          <Grid Margin="0,0,0,14">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+            <!-- PC on the left, the big button in the middle, the verdict on the right. -->
+            <Grid Margin="0,0,0,14">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
 
-            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-              <TextBlock Text="TABLEAU DE BORD" Style="{StaticResource Kicker}" />
-              <TextBlock x:Name="PcTitle" Text="Votre PC" Style="{StaticResource Heading}" FontSize="26" TextWrapping="Wrap" />
-              <TextBlock x:Name="PcSummary" Style="{StaticResource Muted}" />
-            </StackPanel>
+              <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                <TextBlock Text="TABLEAU DE BORD" Style="{StaticResource Kicker}" />
+                <TextBlock x:Name="PcTitle" Text="Votre PC" Style="{StaticResource Heading}" FontSize="26" TextWrapping="Wrap" />
+                <TextBlock x:Name="PcSummary" Style="{StaticResource Muted}" />
+              </StackPanel>
 
-            <Grid Grid.Column="1" Width="250" Height="250">
-              <Ellipse x:Name="ScanRing" Width="238" Height="238" Stroke="{StaticResource NeonCyan}" StrokeThickness="2"
-                       StrokeDashArray="2 6" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
-                <Ellipse.RenderTransform>
-                  <RotateTransform x:Name="ScanRotation" />
-                </Ellipse.RenderTransform>
-              </Ellipse>
-              <Button x:Name="ScanButton" Style="{StaticResource ScanButton}" Click="OnScanAll"
-                      AutomationProperties.Name="Analyser tous les pilotes" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel>
-                  <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="30" HorizontalAlignment="Center"
-                             Foreground="{StaticResource NeonCyan}" />
-                  <TextBlock Text="ANALYSER" FontFamily="{StaticResource Display}" FontSize="28" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                  <TextBlock Text="tous les pilotes" Style="{StaticResource Muted}" HorizontalAlignment="Center" />
-                </StackPanel>
-              </Button>
+              <Grid Grid.Column="1" Width="250" Height="250">
+                <Ellipse x:Name="ScanRing" Width="238" Height="238" Stroke="{StaticResource NeonCyan}" StrokeThickness="2"
+                         StrokeDashArray="2 6" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                  <Ellipse.RenderTransform>
+                    <RotateTransform x:Name="ScanRotation" />
+                  </Ellipse.RenderTransform>
+                </Ellipse>
+                <Button x:Name="ScanButton" Style="{StaticResource ScanButton}" Click="OnScanAll"
+                        AutomationProperties.Name="Analyser tous les pilotes" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <StackPanel>
+                    <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="30" HorizontalAlignment="Center"
+                               Foreground="{StaticResource NeonCyan}" />
+                    <TextBlock Text="ANALYSER" FontFamily="{StaticResource Display}" FontSize="28" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBlock Text="tous les pilotes" Style="{StaticResource Muted}" HorizontalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="24,0,0,0">
+                <TextBlock Text="RAPPORT DES PILOTES" Style="{StaticResource Kicker}" />
+                <UniformGrid Columns="2" Margin="0,6,0,0">
+                  <StackPanel Margin="0,0,0,10">
+                    <TextBlock x:Name="ReportTotal" Text="—" FontFamily="{StaticResource Display}" FontSize="32" />
+                    <TextBlock Text="analysés" Style="{StaticResource Muted}" />
+                  </StackPanel>
+                  <StackPanel Margin="0,0,0,10">
+                    <TextBlock x:Name="ReportOk" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonGreen}" />
+                    <TextBlock Text="à jour" Style="{StaticResource Muted}" />
+                  </StackPanel>
+                  <StackPanel>
+                    <TextBlock x:Name="ReportUpdates" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonCyan}" />
+                    <TextBlock Text="à mettre à jour" Style="{StaticResource Muted}" />
+                  </StackPanel>
+                  <StackPanel>
+                    <TextBlock x:Name="ReportIssues" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonAmber}" />
+                    <TextBlock Text="sans pilote ou en erreur" Style="{StaticResource Muted}" />
+                  </StackPanel>
+                </UniformGrid>
+              </StackPanel>
             </Grid>
 
-            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="24,0,0,0">
-              <TextBlock Text="RAPPORT DES PILOTES" Style="{StaticResource Kicker}" />
-              <UniformGrid Columns="2" Margin="0,6,0,0">
-                <StackPanel Margin="0,0,0,10">
-                  <TextBlock x:Name="ReportTotal" Text="—" FontFamily="{StaticResource Display}" FontSize="32" />
-                  <TextBlock Text="analysés" Style="{StaticResource Muted}" />
-                </StackPanel>
-                <StackPanel Margin="0,0,0,10">
-                  <TextBlock x:Name="ReportOk" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonGreen}" />
-                  <TextBlock Text="à jour" Style="{StaticResource Muted}" />
-                </StackPanel>
-                <StackPanel>
-                  <TextBlock x:Name="ReportUpdates" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonCyan}" />
-                  <TextBlock Text="à mettre à jour" Style="{StaticResource Muted}" />
-                </StackPanel>
-                <StackPanel>
-                  <TextBlock x:Name="ReportIssues" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonAmber}" />
-                  <TextBlock Text="sans pilote ou en erreur" Style="{StaticResource Muted}" />
-                </StackPanel>
-              </UniformGrid>
-            </StackPanel>
-          </Grid>
+            <!-- The report itself: one line per device, updates first and ticked. -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+              <DockPanel>
+                <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,0,1">
+                  <DockPanel>
+                    <Button x:Name="UpdateAllButton" DockPanel.Dock="Right" Content="Mettre à jour la sélection"
+                            Style="{DynamicResource AccentButtonStyle}" Click="OnUpdateAll" IsEnabled="False" />
+                    <CheckBox x:Name="ShowUpToDate" DockPanel.Dock="Right" Content="Afficher aussi les pilotes à jour"
+                              Click="OnShowUpToDate" VerticalAlignment="Center" Margin="0,0,16,0" />
+                    <TextBlock x:Name="ScanStatus" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{StaticResource InkMuted}"
+                               Text="Appuyez sur ANALYSER : chaque pilote est comparé aux dernières versions de Windows Update et des fabricants." />
+                  </DockPanel>
+                </Border>
+                <Grid>
+                  <DataGrid x:Name="ReportGrid" AutomationProperties.Name="Rapport des pilotes"
+                            AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                            GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
+                    <DataGrid.Columns>
+                      <DataGridTemplateColumn Width="44">
+                        <DataGridTemplateColumn.CellTemplate>
+                          <DataTemplate>
+                            <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanInstall}"
+                                      Click="OnReportChoiceChanged" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      AutomationProperties.Name="{Binding Device.Name}" />
+                          </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                      </DataGridTemplateColumn>
+                      <DataGridTemplateColumn Header="État" Width="150" SortMemberPath="Verdict">
+                        <DataGridTemplateColumn.CellTemplate>
+                          <DataTemplate>
+                            <TextBlock x:Name="State" Text="{Binding VerdictText}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                       Foreground="{StaticResource NeonGreen}" />
+                            <DataTemplate.Triggers>
+                              <DataTrigger Binding="{Binding Verdict}" Value="Update">
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonCyan}" />
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding Verdict}" Value="NoDriver">
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonAmber}" />
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding Verdict}" Value="Problem">
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonPink}" />
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding Verdict}" Value="Disabled">
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource InkMuted}" />
+                              </DataTrigger>
+                              <DataTrigger Binding="{Binding Verdict}" Value="Unchecked">
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource InkMuted}" />
+                              </DataTrigger>
+                            </DataTemplate.Triggers>
+                          </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                      </DataGridTemplateColumn>
+                      <DataGridTextColumn Header="Périphérique" Binding="{Binding Device.Name}" Width="1.4*" MinWidth="150" />
+                      <DataGridTextColumn Header="Classe" Binding="{Binding Device.Class}" Width="90" />
+                      <DataGridTextColumn Header="Installé" Binding="{Binding Installed}" Width="*" MinWidth="120" />
+                      <DataGridTextColumn Header="Disponible" Binding="{Binding Available}" Width="*" MinWidth="120" />
+                      <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="100" />
+                    </DataGrid.Columns>
+                  </DataGrid>
+                  <TextBlock x:Name="ReportPlaceholder" Style="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             TextAlignment="Center" Margin="24" Text="Le rapport apparaîtra ici." />
+                </Grid>
+              </DockPanel>
+            </Border>
 
-          <!-- The report itself: one line per device, updates first and ticked. -->
-          <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
-            <DockPanel>
-              <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,0,1">
+            <!-- The rest of the PC, checked by the same scan. -->
+            <UniformGrid Grid.Row="2" Columns="4">
+              <Button Style="{StaticResource Tile}" Tag="SoftwareTab" Click="OnTile" AutomationProperties.Name="Logiciels à mettre à jour">
                 <DockPanel>
-                  <Button x:Name="UpdateAllButton" DockPanel.Dock="Right" Content="Mettre à jour la sélection"
-                          Style="{DynamicResource AccentButtonStyle}" Click="OnUpdateAll" IsEnabled="False" />
-                  <CheckBox x:Name="ShowUpToDate" DockPanel.Dock="Right" Content="Afficher aussi les pilotes à jour"
-                            Click="OnShowUpToDate" VerticalAlignment="Center" Margin="0,0,16,0" />
-                  <TextBlock x:Name="ScanStatus" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{StaticResource InkMuted}"
-                             Text="Appuyez sur ANALYSER : chaque pilote est comparé aux dernières versions de Windows Update et des fabricants." />
+                  <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="24"
+                             Foreground="{StaticResource NeonGreen}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="LOGICIELS" Style="{StaticResource Kicker}" />
+                    <TextBlock x:Name="TileSoftwareValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
+                    <TextBlock x:Name="TileSoftwareText" Text="à mettre à jour" Style="{StaticResource Muted}" />
+                  </StackPanel>
                 </DockPanel>
-              </Border>
-              <Grid>
-                <DataGrid x:Name="ReportGrid" AutomationProperties.Name="Rapport des pilotes"
-                          AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal" Background="Transparent" BorderThickness="0">
-                  <DataGrid.Columns>
-                    <DataGridTemplateColumn Width="44">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanInstall}"
-                                    Click="OnReportChoiceChanged" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    AutomationProperties.Name="{Binding Device.Name}" />
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="État" Width="150" SortMemberPath="Verdict">
-                      <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                          <TextBlock x:Name="State" Text="{Binding VerdictText}" FontWeight="SemiBold" VerticalAlignment="Center"
-                                     Foreground="{StaticResource NeonGreen}" />
-                          <DataTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Verdict}" Value="Update">
-                              <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonCyan}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Verdict}" Value="NoDriver">
-                              <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonAmber}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Verdict}" Value="Problem">
-                              <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonPink}" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Verdict}" Value="Disabled">
-                              <Setter TargetName="State" Property="Foreground" Value="{StaticResource InkMuted}" />
-                            </DataTrigger>
-                          </DataTemplate.Triggers>
-                        </DataTemplate>
-                      </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Périphérique" Binding="{Binding Device.Name}" Width="1.4*" MinWidth="150" />
-                    <DataGridTextColumn Header="Classe" Binding="{Binding Device.Class}" Width="90" />
-                    <DataGridTextColumn Header="Installé" Binding="{Binding Installed}" Width="*" MinWidth="120" />
-                    <DataGridTextColumn Header="Disponible" Binding="{Binding Available}" Width="*" MinWidth="120" />
-                    <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="100" />
-                  </DataGrid.Columns>
-                </DataGrid>
-                <TextBlock x:Name="ReportPlaceholder" Style="{StaticResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                           TextAlignment="Center" Margin="24" Text="Le rapport apparaîtra ici." />
-              </Grid>
-            </DockPanel>
-          </Border>
-
-          <!-- The rest of the PC, checked by the same scan. -->
-          <UniformGrid Grid.Row="2" Columns="4">
-            <Button Style="{StaticResource Tile}" Tag="SoftwareTab" Click="OnTile" AutomationProperties.Name="Logiciels à mettre à jour">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="24"
-                           Foreground="{StaticResource NeonGreen}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="LOGICIELS" Style="{StaticResource Kicker}" />
-                  <TextBlock x:Name="TileSoftwareValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                  <TextBlock x:Name="TileSoftwareText" Text="à mettre à jour" Style="{StaticResource Muted}" />
-                </StackPanel>
-              </DockPanel>
-            </Button>
-            <Button Style="{StaticResource Tile}" Tag="StartupTab" Click="OnTile" AutomationProperties.Name="Programmes au démarrage">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Text="&#xE7E8;" FontFamily="{StaticResource Icons}" FontSize="24"
-                           Foreground="{StaticResource NeonPink}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="DÉMARRAGE" Style="{StaticResource Kicker}" />
-                  <TextBlock x:Name="TileStartupValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                  <TextBlock x:Name="TileStartupText" Text="programmes lancés avec Windows" Style="{StaticResource Muted}" />
-                </StackPanel>
-              </DockPanel>
-            </Button>
-            <Button Style="{StaticResource Tile}" Tag="SecurityTab" Click="OnTile" AutomationProperties.Name="Sécurité">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="24"
-                           Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="SÉCURITÉ" Style="{StaticResource Kicker}" />
-                  <TextBlock x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                  <TextBlock x:Name="TileSecurityText" Text="antivirus, pare-feu, Windows" Style="{StaticResource Muted}" />
-                </StackPanel>
-              </DockPanel>
-            </Button>
-            <Button Style="{StaticResource Tile}" Tag="DisksTab" Click="OnTile" AutomationProperties.Name="Disques">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="24"
-                           Foreground="{StaticResource NeonCyan}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                <StackPanel VerticalAlignment="Center">
-                  <TextBlock Text="DISQUES" Style="{StaticResource Kicker}" />
-                  <TextBlock x:Name="TileDisksValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                  <TextBlock x:Name="TileDisksText" Text="état de santé" Style="{StaticResource Muted}" />
-                </StackPanel>
-              </DockPanel>
-            </Button>
-          </UniformGrid>
-        </Grid>
+              </Button>
+              <Button Style="{StaticResource Tile}" Tag="StartupTab" Click="OnTile" AutomationProperties.Name="Programmes au démarrage">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Left" Text="&#xE7E8;" FontFamily="{StaticResource Icons}" FontSize="24"
+                             Foreground="{StaticResource NeonPink}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="DÉMARRAGE" Style="{StaticResource Kicker}" />
+                    <TextBlock x:Name="TileStartupValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
+                    <TextBlock x:Name="TileStartupText" Text="programmes lancés avec Windows" Style="{StaticResource Muted}" />
+                  </StackPanel>
+                </DockPanel>
+              </Button>
+              <Button Style="{StaticResource Tile}" Tag="SecurityTab" Click="OnTile" AutomationProperties.Name="Sécurité">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="24"
+                             Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="SÉCURITÉ" Style="{StaticResource Kicker}" />
+                    <TextBlock x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
+                    <TextBlock x:Name="TileSecurityText" Text="antivirus, pare-feu, Windows" Style="{StaticResource Muted}" />
+                  </StackPanel>
+                </DockPanel>
+              </Button>
+              <Button Style="{StaticResource Tile}" Tag="DisksTab" Click="OnTile" AutomationProperties.Name="Disques">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="24"
+                             Foreground="{StaticResource NeonCyan}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="DISQUES" Style="{StaticResource Kicker}" />
+                    <TextBlock x:Name="TileDisksValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
+                    <TextBlock x:Name="TileDisksText" Text="état de santé" Style="{StaticResource Muted}" />
+                  </StackPanel>
+                </DockPanel>
+              </Button>
+            </UniformGrid>
+          </Grid>
+        </ScrollViewer>
       </TabItem>
 
       <TabItem Header="PILOTES" Style="{StaticResource Section}" />
@@ -309,10 +316,16 @@
                             Note="L'installation demande l'autorisation administrateur et crée d'abord un point de restauration.">
             <StackPanel Orientation="Horizontal">
               <Button x:Name="SearchCatalogButton" Content="Rechercher" Click="OnSearchCatalog" Margin="0,0,8,0" />
+              <Button x:Name="HideCatalogButton" Content="Masquer la sélection" Click="OnHideCatalog" Margin="0,0,8,0" IsEnabled="False" />
               <Button x:Name="InstallCatalogButton" Content="Installer la sélection" Style="{DynamicResource AccentButtonStyle}"
                       Click="OnInstallCatalog" IsEnabled="False" />
             </StackPanel>
           </local:PageHeader>
+          <WrapPanel DockPanel.Dock="Bottom" Margin="0,0,0,12">
+            <TextBlock Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,16,0"
+                       Text="Un pilote que Windows a ajouté sans le choisir, parce que l'actuel convient mieux, n'est plus proposé." />
+            <Button x:Name="UnhideCatalogButton" Content="Réafficher les pilotes masqués" Click="OnUnhideCatalog" />
+          </WrapPanel>
           <Border Style="{StaticResource Card}" Padding="0">
             <Grid>
               <DataGrid x:Name="CatalogGrid" AutomationProperties.Name="Pilotes récents"
@@ -856,8 +869,9 @@
 
           <local:PageHeader Title="Programmes au démarrage"
                             Description="Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages."
-                            Note="Les entrées « Tous les utilisateurs », et parfois la mesure, demandent l'autorisation administrateur.">
+                            Note="Les entrées « Tous les utilisateurs », et parfois la mesure, demandent l'autorisation administrateur. Les applications du Store, grisées ici, se règlent dans Paramètres.">
             <StackPanel Orientation="Horizontal">
+              <Button Content="Applications du Store" Tag="ms-settings:startupapps" Click="OnOpenSetting" Margin="0,0,8,0" />
               <Button x:Name="RefreshStartupButton" Content="Actualiser" Click="OnRefreshStartup" Margin="0,0,8,0" />
               <Button x:Name="BootReportButton" Content="Mesurer leur impact" Style="{DynamicResource AccentButtonStyle}" Click="OnBootReport" />
             </StackPanel>
@@ -871,7 +885,7 @@
                 <DataGridTemplateColumn Header="Actif" Width="56">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
-                      <CheckBox IsChecked="{Binding Enabled, Mode=OneWay}" Click="OnStartupToggle"
+                      <CheckBox IsChecked="{Binding Enabled, Mode=OneWay}" Click="OnStartupToggle" IsEnabled="{Binding CanSwitch}"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
                                 AutomationProperties.Name="{Binding Title}" />
                     </DataTemplate>
@@ -1170,6 +1184,8 @@
                       Click="OnUpgradeSoftware" IsEnabled="False" />
             </StackPanel>
           </local:PageHeader>
+          <TextBlock x:Name="SoftwareNote" DockPanel.Dock="Bottom" Style="{StaticResource Muted}" TextWrapping="Wrap"
+                     Margin="0,0,0,12" Visibility="Collapsed" />
           <Border Style="{StaticResource Card}" Padding="0">
             <Grid>
               <DataGrid x:Name="SoftwareGrid" AutomationProperties.Name="Logiciels à mettre à jour"
@@ -1382,6 +1398,7 @@
           <Button DockPanel.Dock="Right" Content="Copier le diagnostic" Click="OnCopyDiagnostics" Margin="12,0,0,0" />
           <ProgressBar x:Name="BusyBar" DockPanel.Dock="Right" Width="180" Height="4" VerticalAlignment="Center"
                        IsIndeterminate="True" Visibility="Collapsed" />
+          <Button x:Name="StopButton" DockPanel.Dock="Right" Content="Arrêter" Click="OnStopBusy" Margin="0,0,12,0" Visibility="Collapsed" />
           <TextBlock x:Name="StatusText" Text="Prêt." VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                      Foreground="{StaticResource InkMuted}" AutomationProperties.LiveSetting="Polite" />
         </DockPanel>

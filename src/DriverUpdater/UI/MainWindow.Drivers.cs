@@ -81,13 +81,17 @@ public partial class MainWindow
         }
     }
 
-    void OnWeeklyCheckClick(object sender, RoutedEventArgs e)
+    async void OnWeeklyCheckClick(object sender, RoutedEventArgs e)
     {
         bool enable = WeeklyCheckBox.IsChecked == true;
+        WeeklyCheckBox.IsEnabled = false; // Task Scheduler answers slowly: not on the window's thread, and one click at a time
         try
         {
-            if (enable) WeeklyCheck.Enable(Environment.ProcessPath!);
-            else WeeklyCheck.Disable();
+            await Task.Run(() =>
+            {
+                if (enable) WeeklyCheck.Enable(Environment.ProcessPath!);
+                else WeeklyCheck.Disable();
+            });
             SetStatus(enable
                 ? L.T("Vérification activée : chaque mercredi à midi, ou au démarrage suivant si le PC était éteint.")
                 : L.T("Vérification hebdomadaire désactivée."));
@@ -97,13 +101,14 @@ public partial class MainWindow
             WeeklyCheckBox.IsChecked = !enable;
             SetStatus(L.T("Erreur : ") + Errors.Describe(ex));
         }
+        WeeklyCheckBox.IsEnabled = true;
         WeeklyNvidiaBox.IsEnabled = WeeklySoftwareBox.IsEnabled = WeeklyCheckBox.IsChecked == true;
     }
 
     async void OnSearch(object sender, RoutedEventArgs e) =>
-        await RunBusy(L.T("Recherche sur Windows Update, cela peut prendre quelques minutes…"), async () =>
+        await RunBusy(L.T("Recherche sur Windows Update, cela peut prendre quelques minutes…"), async stop =>
         {
-            var found = await Task.Run(WindowsUpdateDrivers.Search);
+            var found = await WindowsUpdateDrivers.SearchAsync(stop);
             await ShowUpdates(found);
             return drivers.Count == 0 ? L.T("Vos pilotes sont à jour.") : L.F("{0} mise(s) à jour trouvée(s).", drivers.Count);
         });
@@ -169,7 +174,7 @@ public partial class MainWindow
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
             int hidden = await RunAdminAsync<int>(AdminCommand.Hide, selected.Select(d => d.UpdateId).ToArray());
-            await ShowUpdates(drivers.Except(selected).ToList());
+            await ForgetInstalled(selected.Select(d => d.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase), rescan: false); // out of the report too
             foreach (var d in selected) Journal.Add(Journal.Drivers, L.F("{0} : {1}", d.Title, L.T("masqué dans Windows Update")));
             return L.F("{0} pilote(s) masqué(s).", hidden);
         });

@@ -472,7 +472,7 @@ public sealed class SmokeTests
         using var http = new System.Net.Http.HttpClient();
         http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) DriverUpdater");
         var entries = Catalog.ParseSearch(await http.GetStringAsync(Catalog.SearchUrl + Uri.EscapeDataString(@"PCI\VEN_10EC&DEV_8168")));
-        var entry = Assert.Single(entries.Where(Catalog.Fits).Take(1));
+        var entry = Assert.Single(entries.Where(e => Catalog.Fits(e, Environment.OSVersion.Version.Build)).Take(1));
 
         var dialog = await http.PostAsync(Catalog.DownloadDialogUrl,
             new System.Net.Http.FormUrlEncodedContent([new("updateIDs", Catalog.DownloadRequest(entry.UpdateId))]));

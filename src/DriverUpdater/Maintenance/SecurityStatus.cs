@@ -13,24 +13,32 @@ public static class SecurityStatus
 {
     public static SecurityState Read(bool askWindowsUpdate)
     {
-        return new SecurityState(Antiviruses(), Firewall(), askWindowsUpdate ? PendingWindowsUpdates() : null);
+        var firewall = Firewall();
+        // A suite's firewall only matters when Windows' own is not on.
+        return new SecurityState(Antiviruses(), firewall, askWindowsUpdate ? PendingWindowsUpdates() : null, firewall == true ? [] : OtherFirewalls());
     }
 
-    /// <summary>An antivirus other than Microsoft Defender is registered: Defender then stays passive on purpose.</summary>
-    public static bool OtherAntivirus() =>
-        Antiviruses().Any(a => !a.Name.Contains("Defender", StringComparison.OrdinalIgnoreCase)
-                               && !a.Name.Contains("Microsoft", StringComparison.OrdinalIgnoreCase));
+    /// <summary>An active antivirus other than Microsoft Defender: Defender then stays passive on purpose.</summary>
+    public static bool OtherAntivirus() => SecurityCenter.OtherActiveAntivirus(Antiviruses());
 
-    // Security Center does not exist on Windows Server: no antivirus listed then.
-    static List<Antivirus> Antiviruses()
+    static List<Antivirus> Antiviruses() =>
+        Products("AntiVirusProduct", "Antivirus")
+            .Select(a => new Antivirus(a.Name, SecurityCenter.IsEnabled(a.State), SecurityCenter.IsUpToDate(a.State)))
+            .ToList();
+
+    // A security suite registers its firewall with Security Center, as it does its antivirus.
+    static List<string> OtherFirewalls() =>
+        Products("FirewallProduct", L.T("Pare-feu")).Where(f => SecurityCenter.IsEnabled(f.State)).Select(f => f.Name).ToList();
+
+    // Security Center does not exist on Windows Server: nothing listed then.
+    static List<(string Name, uint State)> Products(string wmiClass, string unnamed)
     {
         try
         {
-            using var searcher = new ManagementObjectSearcher(@"root\SecurityCenter2", "SELECT displayName, productState FROM AntiVirusProduct");
+            using var searcher = new ManagementObjectSearcher(@"root\SecurityCenter2", $"SELECT displayName, productState FROM {wmiClass}");
             using var results = searcher.Get();
             return results.Cast<ManagementBaseObject>()
-                .Select(a => (Name: a["displayName"] as string ?? "Antivirus", State: Convert.ToUInt32(a["productState"] ?? 0u)))
-                .Select(a => new Antivirus(a.Name, SecurityCenter.IsEnabled(a.State), SecurityCenter.IsUpToDate(a.State)))
+                .Select(p => (p["displayName"] as string ?? unnamed, Convert.ToUInt32(p["productState"] ?? 0u)))
                 .ToList();
         }
         catch (ManagementException)

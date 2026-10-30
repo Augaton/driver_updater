@@ -17,7 +17,27 @@ public sealed class CatalogTests
         Assert.Equal(new DateTime(2025, 10, 2), realtek.Date);
         Assert.Contains("Networking", realtek.Classification);
         Assert.True(realtek.Size > 0);
-        Assert.All(entries, e => Assert.True(Catalog.Fits(e), e.Title));
+        Assert.All(entries, e => Assert.True(Catalog.Fits(e, 26100), e.Title));
+    }
+
+    [Theory]
+    [InlineData("Windows 11 Client, version 24H2 and later, Servicing Drivers, Windows 11 Client, version 24H2 and later, Upgrade & Servicing Drivers", 26100)]
+    [InlineData("Windows 11 Client S, version 22H2 and later, Servicing Drivers", 22621)]
+    [InlineData("Windows 10 version 1803 and Later Servicing Drivers, Windows 10 Version 1803 and Later Upgrade & Servicing Drivers", 17134)]
+    [InlineData("Windows 10, version 1809 and later, Servicing Drivers, Windows 11 Client, version 21H2 and later, Servicing Drivers", 17763)]
+    [InlineData("Windows 10 S and Later Servicing Drivers", 10240)]
+    [InlineData("Windows 11 Client, version 27H2 and later, Servicing Drivers", 26201)] // newer than the list: only for newer than it
+    public void Reads_the_oldest_windows_build_an_entry_is_for(string products, int build) =>
+        Assert.Equal(build, Catalog.MinBuild(products));
+
+    [Fact]
+    public void Leaves_out_packages_made_for_a_newer_windows()
+    {
+        // The fixture's Realtek driver, twice: for 24H2 and later, then for 22H2 and later.
+        var entries = Catalog.ParseSearch(Fixture("catalog-search.html"));
+
+        Assert.Equal([false, true, true], entries.Select(e => Catalog.Fits(e, 22631)));  // Windows 11 23H2
+        Assert.Equal([false, false, true], entries.Select(e => Catalog.Fits(e, 19045))); // Windows 10 22H2
     }
 
     [Fact]
@@ -61,14 +81,46 @@ public sealed class CatalogTests
     public void Searches_once_when_both_ids_are_the_same() =>
         Assert.Equal(["USB\\VID_046D&PID_C52B"], Catalog.Queries(["USB\\VID_046D&PID_C52B&REV_2410"]));
 
+    static readonly DeviceDriver Nic = new()
+    {
+        DeviceId = @"PCI\VEN_10EC&DEV_8168\1", Name = "Realtek", Class = "Net", Provider = "Realtek", Version = "10.70.0.0",
+        Date = new DateTime(2024, 1, 1), Signed = true, Problem = 0, InfName = "oem1.inf", HardwareIds = [@"PCI\VEN_10EC&DEV_8168&SUBSYS_1"],
+    };
+
+    static CatalogEntry Entry(string id, string version, string products = "Windows 10 version 1803 and Later Servicing Drivers") =>
+        new(id, "Realtek " + version, products, "Drivers (Networking)", new DateTime(2025, 1, 1), new Version(version), 1);
+
+    static readonly HashSet<string> None = [];
+
+    [Fact]
+    public void Offers_each_newer_version_once_and_the_package_for_the_nearest_windows()
+    {
+        var for22H2 = Entry("a", "10.79.0.0", "Windows 11 Client, version 22H2 and later, Servicing Drivers");
+        var for24H2 = Entry("b", "10.79.0.0", "Windows 11 Client, version 24H2 and later, Servicing Drivers");
+
+        var (versions, _) = Catalog.Newer(Nic, [for22H2, for24H2, Entry("c", "10.75.0.0"), Entry("d", "10.60.0.0")], [], None, None);
+
+        Assert.Equal(["b", "c"], versions.Select(v => v.UpdateId));
+    }
+
+    [Fact]
+    public void Hidden_versions_go_and_windows_choice_also_rules_out_older_ones()
+    {
+        var found = new[] { Entry("new", "10.80.0.0"), Entry("kept", "10.79.0.0"), Entry("older", "10.75.0.0") };
+
+        Assert.Equal(["kept", "older"], Catalog.Newer(Nic, found, [], hidden: new HashSet<string> { "new" }, None).Versions.Select(v => v.UpdateId));
+        // Windows kept its own driver over 10.79: 10.75 would not win either, a newer one may.
+        Assert.Equal(["new"], Catalog.Newer(Nic, found, [], None, kept: new HashSet<string> { "kept" }).Versions.Select(v => v.UpdateId));
+    }
+
     [Fact]
     public void Leaves_out_arm_and_other_systems()
     {
         var arm = new CatalogEntry("x", "t", "Windows 11 Client ARM64, version 24H2", "Drivers (Other)", DateTime.Today, new Version(1, 0), 1);
         var old = arm with { Products = "Windows 7" };
 
-        Assert.False(Catalog.Fits(arm));
-        Assert.False(Catalog.Fits(old));
+        Assert.False(Catalog.Fits(arm, 26100));
+        Assert.False(Catalog.Fits(old, 26100));
     }
 }
 

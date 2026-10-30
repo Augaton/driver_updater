@@ -21,6 +21,12 @@ public static class Machine
     public static bool HasBattery =>
         GetPwrCapabilities(out var power) && power.SystemBatteriesPresent != 0 && power.BatteriesAreShortTerm == 0;
 
+    /// <summary>
+    /// Whether hibernation is on, as Windows itself has it (its file is there), or null if
+    /// Windows does not say. The registry's HibernateEnabled can be missing, and then means nothing.
+    /// </summary>
+    public static bool? HibernationOn => GetPwrCapabilities(out var power) ? power.HiberFilePresent != 0 : null;
+
     public static string ProcessorName()
     {
         using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
@@ -151,10 +157,11 @@ public static class Machine
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern uint PowerGetActiveScheme(IntPtr rootPowerKey, out IntPtr scheme);
 
-    // SYSTEM_POWER_CAPABILITIES (winnt.h), 76 bytes: only its battery fields are read.
+    // SYSTEM_POWER_CAPABILITIES (winnt.h), 76 bytes: only its hibernation and battery fields are read.
     [StructLayout(LayoutKind.Explicit, Size = 76)]
     struct PowerCapabilities
     {
+        [FieldOffset(8)] public byte HiberFilePresent;
         [FieldOffset(30)] public byte SystemBatteriesPresent;
         [FieldOffset(31)] public byte BatteriesAreShortTerm;
     }

@@ -163,8 +163,7 @@ public sealed record StorePackage(string PublishedName, string OriginalName, str
 public static class DriverStoreRules
 {
     public static List<StorePackage> Removable(IEnumerable<StorePackage> packages, ISet<string> inUse) =>
-        packages
-            .GroupBy(p => (p.Class.ToLowerInvariant(), p.Provider.ToLowerInvariant(), p.OriginalName.ToLowerInvariant()))
+        Families(packages)
             .SelectMany(family =>
             {
                 var newestFirst = family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date).ToList();
@@ -173,4 +172,22 @@ public static class DriverStoreRules
             })
             .OrderByDescending(p => p.Size)
             .ToList();
+
+    /// <summary>
+    /// What a backup takes: each driver's newest version, and any other a device uses. Older
+    /// versions nobody uses would only be put back in the store, close to 1 GB each for a
+    /// graphics driver.
+    /// </summary>
+    public static List<StorePackage> WorthBackingUp(IEnumerable<StorePackage> packages, ISet<string> inUse) =>
+        Families(packages)
+            .SelectMany(family =>
+            {
+                var newest = family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date).First();
+                return family.Where(p => p == newest || inUse.Contains(p.PublishedName));
+            })
+            .ToList();
+
+    // The versions of one driver: same class, maker and INF name.
+    static IEnumerable<IGrouping<(string, string, string), StorePackage>> Families(IEnumerable<StorePackage> packages) =>
+        packages.GroupBy(p => (p.Class.ToLowerInvariant(), p.Provider.ToLowerInvariant(), p.OriginalName.ToLowerInvariant()));
 }

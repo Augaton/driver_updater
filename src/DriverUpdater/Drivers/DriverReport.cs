@@ -1,12 +1,17 @@
 namespace DriverUpdater.Drivers;
 
-public enum Verdict { Update, NoDriver, Problem, Disabled, UpToDate }
+/// <summary>Unchecked: no source answered for this device, so nothing says it is up to date.</summary>
+public enum Verdict { Update, NoDriver, Problem, Disabled, Unchecked, UpToDate }
 
 /// <summary>
 /// A driver update on offer: from Windows Update or the Microsoft Update Catalog (installed
 /// here, together), or from NVIDIA's site (its own installer, from the graphics card page).
 /// </summary>
-public sealed record DriverOffer(string UpdateId, string Source, Version? Version, DateTime? Date, string Label)
+/// <param name="Optional">
+/// One of Windows Update's "optional" drivers: Microsoft only advises it for a known problem,
+/// so it is offered, never ticked.
+/// </param>
+public sealed record DriverOffer(string UpdateId, string Source, Version? Version, DateTime? Date, string Label, bool Optional = false)
 {
     public const string WindowsUpdate = "Windows Update", Catalog = "Fabricant", Nvidia = "Site NVIDIA";
 
@@ -33,10 +38,11 @@ public sealed class ReportRow
     public bool CanInstall => Offer is { InstallsHere: true };
     public string VerdictText => Verdict switch
     {
-        Verdict.Update => L.T("Mise à jour"),
+        Verdict.Update => Offer is { Optional: true } ? L.T("Mise à jour facultative") : L.T("Mise à jour"),
         Verdict.NoDriver => Offer is null ? L.T("Aucun pilote") : L.T("Aucun pilote, un trouvé"),
         Verdict.Problem => Device.Status,
         Verdict.Disabled => L.T("Désactivé"),
+        Verdict.Unchecked => L.T("Non vérifié"),
         _ => L.T("À jour"),
     };
 }
@@ -71,10 +77,15 @@ public static class DriverReport
     /// card) are searched once, and both must show the offer.
     /// </param>
     /// <param name="vendor">Offers from a maker's own site (NVIDIA), keyed by device instance ID.</param>
+    /// <param name="unchecked">
+    /// Devices no source answered for (by instance ID): without a newer offer, they are
+    /// "not checked", never "up to date".
+    /// </param>
     public static List<ReportRow> Build(IEnumerable<DeviceDriver> devices,
         IReadOnlyList<(string HardwareId, DriverOffer Offer)> windowsUpdate,
         IReadOnlyDictionary<string, DriverOffer> catalog,
-        IReadOnlyDictionary<string, DriverOffer>? vendor = null)
+        IReadOnlyDictionary<string, DriverOffer>? vendor = null,
+        IReadOnlySet<string>? @unchecked = null)
     {
         var rows = new List<ReportRow>();
         foreach (var device in devices)
@@ -98,12 +109,31 @@ public static class DriverReport
                 : best is not null ? Verdict.Update
                 : device.Problem == 22 ? Verdict.Disabled
                 : device.NeedsAttention ? Verdict.Problem
+                : @unchecked?.Contains(device.DeviceId) == true ? Verdict.Unchecked
                 : Verdict.UpToDate;
-            rows.Add(new ReportRow { Device = device, Verdict = verdict, Offer = best, Selected = best is { InstallsHere: true } });
+            rows.Add(new ReportRow { Device = device, Verdict = verdict, Offer = best, Selected = best is { InstallsHere: true, Optional: false } });
         }
         return rows
             .OrderBy(r => r.Verdict)
             .ThenBy(r => r.Device.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>
+    /// The devices no source looked at, by instance ID. Windows Update looks at every device;
+    /// without it, only those the catalog searched (its scope, minus the searches that failed)
+    /// or NVIDIA answered for were checked.
+    /// </summary>
+    /// <param name="catalogUnreached">First hardware IDs whose catalog search failed; null when the catalog did not answer at all.</param>
+    public static HashSet<string> Unchecked(IEnumerable<DeviceDriver> devices, bool windowsUpdateAnswered,
+        IReadOnlySet<string>? catalogUnreached, IEnumerable<string> vendorAnswered)
+    {
+        if (windowsUpdateAnswered) return [];
+        var vendor = vendorAnswered.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return devices
+            .Where(d => !vendor.Contains(d.DeviceId)
+                        && !(catalogUnreached is not null && CatalogScope.ShouldSearch(d) && !catalogUnreached.Contains(d.HardwareIds[0])))
+            .Select(d => d.DeviceId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }

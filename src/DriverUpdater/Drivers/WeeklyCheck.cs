@@ -126,7 +126,7 @@ public static class WeeklyCheck
             List<DriverUpdate>? drivers = null;
             try
             {
-                drivers = await Task.Run(WindowsUpdateDrivers.Search);
+                drivers = await WindowsUpdateDrivers.SearchAsync();
             }
             catch (Exception)
             {
@@ -150,14 +150,15 @@ public static class WeeklyCheck
             {
                 try
                 {
-                    software = await WinGet.ListUpgradesAsync();
+                    software = (await WinGet.ListUpgradesAsync()).Updates;
                 }
                 catch (Exception)
                 {
                 }
             }
 
-            var driverIds = (drivers ?? []).Select(u => u.UpdateId).ToHashSet();
+            // Optional drivers are only for a known problem: never worth a notification.
+            var driverIds = (drivers ?? []).Where(u => !u.Optional).Select(u => u.UpdateId).ToHashSet();
             var softwareIds = (software ?? []).Select(s => $"{s.Id}@{s.Available}").ToHashSet();
             var news = WeeklyDigest.Compute(driverIds, Notified(NotifiedValue), nvidia?.Version, NotifiedNvidia(),
                 softwareIds, Notified(NotifiedSoftwareValue));
@@ -215,6 +216,12 @@ public static class WeeklyCheck
             if (opened) return;
             opened = true;
             icon.Dispose();
+            // The window already open elsewhere comes to the front instead: it reads the same sources.
+            if (!app.ClaimWindow())
+            {
+                app.Shutdown();
+                return;
+            }
             app.ShutdownMode = ShutdownMode.OnLastWindowClose;
             var window = new MainWindow();
             window.Show();

@@ -79,6 +79,7 @@ public partial class MainWindow
         lines.Add(state.FirewallOn switch
         {
             true => L.T("✔ Pare-feu Windows : actif"),
+            _ when state.OtherFirewalls is { Count: > 0 } others => L.F("✔ Pare-feu : {0}, actif (celui de Windows lui laisse la place)", string.Join(", ", others)),
             false => L.T("✘ Pare-feu Windows : désactivé"),
             null => L.T("Pare-feu Windows : état illisible"),
         });
@@ -189,8 +190,9 @@ public partial class MainWindow
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
             var report = await RunAdminAsync<BackupReport>(AdminCommand.ExportDrivers, dialog.FolderName);
-            BackupStatus.Text = L.F("{0} pilote(s) sauvegardé(s) dans {1}", report.Count, report.Folder);
-            return L.T("Sauvegarde terminée.");
+            BackupStatus.Text = L.F("{0} pilote(s) sauvegardé(s) dans {1}", report.Count, report.Folder)
+                                + (report.Failed.Count > 0 ? L.T(". Non sauvegardé(s) : ") + string.Join(", ", report.Failed) : "");
+            return report.Failed.Count == 0 ? L.T("Sauvegarde terminée.") : L.F("Sauvegarde terminée, sauf {0} pilote(s).", report.Failed.Count);
         });
     }
 

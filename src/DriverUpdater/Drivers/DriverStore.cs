@@ -29,12 +29,25 @@ public static class DriverStore
     /// <summary>Packages that can go, biggest first (see <see cref="DriverStoreRules"/>).</summary>
     public static async Task<List<StorePackage>> RemovableAsync(Action<string> progress)
     {
-        progress(L.T("Lecture du magasin de pilotes…"));
-        var packages = await ListAsync();
-        progress(L.T("Recherche des pilotes utilisés…"));
-        var inUse = (await Task.Run(DriverInventory.Scan)).Select(d => d.InfName).Where(n => n.Length > 0)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var (packages, inUse) = await ReadAsync(progress, sizes: true);
         return DriverStoreRules.Removable(packages, inUse);
+    }
+
+    /// <summary>What a backup takes (see <see cref="DriverStoreRules.WorthBackingUp"/>).</summary>
+    public static async Task<List<StorePackage>> WorthBackingUpAsync(Action<string> progress)
+    {
+        var (packages, inUse) = await ReadAsync(progress, sizes: false);
+        return DriverStoreRules.WorthBackingUp(packages, inUse);
+    }
+
+    // The store and the devices are read side by side: two slow, independent reads.
+    static async Task<(List<StorePackage> Packages, HashSet<string> InUse)> ReadAsync(Action<string> progress, bool sizes)
+    {
+        progress(L.T("Lecture du magasin de pilotes…"));
+        var packages = ListAsync(sizes);
+        var devices = Task.Run(DriverInventory.Scan);
+        var inUse = (await devices).Select(d => d.InfName).Where(n => n.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return (await packages, inUse);
     }
 
     /// <summary>
@@ -59,7 +72,8 @@ public static class DriverStore
         return results;
     }
 
-    static async Task<List<StorePackage>> ListAsync()
+    /// <param name="sizes">Each package's size on disk: every file of the store is walked for it.</param>
+    static async Task<List<StorePackage>> ListAsync(bool sizes)
     {
         var powershell = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
         var start = new ProcessStartInfo(powershell)
@@ -81,7 +95,7 @@ public static class DriverStore
             Version.TryParse(p.Version, out var version) ? version : null,
             DateTime.TryParseExact(p.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null,
             p.BootCritical,
-            FolderSize(Path.GetDirectoryName(p.OriginalFileName)))).ToList();
+            sizes ? FolderSize(Path.GetDirectoryName(p.OriginalFileName)) : 0)).ToList();
     }
 
     static long FolderSize(string? folder)

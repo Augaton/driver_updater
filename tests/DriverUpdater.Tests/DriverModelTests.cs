@@ -70,6 +70,20 @@ public sealed class DriverStoreRulesTests
     }
 
     [Fact]
+    public void A_backup_takes_each_driver_s_newest_and_what_devices_use()
+    {
+        var packages = new[]
+        {
+            Package("oem5.inf", "30.0.0.1"), Package("oem10.inf", "31.0.15.1"), Package("oem20.inf", "32.0.15.6094"),
+            Package("oem7.inf", "1.0", original: "audio.inf"),
+        };
+
+        var backup = DriverStoreRules.WorthBackingUp(packages, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "oem10.inf" });
+
+        Assert.Equal(["oem10.inf", "oem20.inf", "oem7.inf"], backup.Select(p => p.PublishedName).Order());
+    }
+
+    [Fact]
     public void Compares_versions_only_within_the_same_driver()
     {
         var packages = new[] { Package("oem1.inf", "1.0", original: "audio.inf"), Package("oem2.inf", "9.0", original: "video.inf") };

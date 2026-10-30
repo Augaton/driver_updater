@@ -42,7 +42,8 @@ public sealed class CatalogDriver : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-public sealed record CatalogInstallResult(string UpdateId, bool Succeeded, bool RebootRequired, string Outcome);
+/// <param name="KeptCurrent">Added to the driver store, but Windows kept the current driver, a better fit for the device.</param>
+public sealed record CatalogInstallResult(string UpdateId, bool Succeeded, bool RebootRequired, string Outcome, bool KeptCurrent = false);
 public sealed record CatalogInstallReport(string RestorePoint, bool Cancelled, List<CatalogInstallResult> Results);
 
 /// <summary>
@@ -66,24 +67,31 @@ public static class DriverCatalog
     static readonly HttpClient SearchClient = NewClient(TimeSpan.FromSeconds(60));
 
     /// <summary>Newer catalog drivers for the devices <see cref="CatalogScope"/> keeps.</summary>
-    public static async Task<List<CatalogDriver>> FindAsync(IEnumerable<DeviceDriver> devices, IProgress<string> progress)
+    /// <param name="unreached">
+    /// Filled with the first hardware ID of each device whose search failed: the catalog says
+    /// nothing about those.
+    /// </param>
+    public static async Task<List<CatalogDriver>> FindAsync(IEnumerable<DeviceDriver> devices, IProgress<string> progress,
+        ISet<string>? unreached = null, CancellationToken cancel = default)
     {
         var selected = CatalogScope.Select(devices);
         var http = SearchClient;
         using var gate = new SemaphoreSlim(3); // a few requests at a time: the catalog is a shared public site
         int answered = 0;
         Exception? failure = null;
+        var failed = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         async Task<List<CatalogEntry>> SearchOnce(string query)
         {
             try
             {
-                var entries = await SearchAsync(http, gate, query);
+                var entries = await SearchAsync(http, gate, query, cancel);
                 Interlocked.Increment(ref answered);
                 return entries;
             }
-            catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException && !cancel.IsCancellationRequested)
             {
                 failure = e;
+                failed[query] = true;
                 return []; // one failed search must not sink the others
             }
         }
@@ -92,28 +100,32 @@ public static class DriverCatalog
         Task<List<CatalogEntry>> Search(string query) =>
             searches.GetOrAdd(query, q => new Lazy<Task<List<CatalogEntry>>>(() => SearchOnce(q))).Value;
 
+        var (hidden, kept) = (Settings.CatalogHidden, Settings.CatalogKept);
         int done = 0;
         var found = await Task.WhenAll(selected.Select(async device =>
         {
-            var driver = await NewerFor(device, Search);
+            var driver = await NewerFor(device, Search, hidden, kept);
             progress.Report(L.F("Catalogue Microsoft : {0} périphérique(s) sur {1}…", Interlocked.Increment(ref done), selected.Count));
             return driver;
         }));
         // Not one answer (offline, the site down): that says nothing about the drivers being up to date.
         if (answered == 0 && failure is not null) ExceptionDispatchInfo.Throw(failure);
+        if (unreached is not null)
+            foreach (var device in selected.Where(d => Catalog.Queries(d.HardwareIds).Any(failed.ContainsKey)))
+                unreached.Add(device.HardwareIds[0]);
         return found.OfType<CatalogDriver>()
             .OrderByDescending(d => d.NoDriver)
             .ThenBy(d => d.Device, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
     }
 
-    static async Task<List<CatalogEntry>> SearchAsync(HttpClient http, SemaphoreSlim gate, string query)
+    static async Task<List<CatalogEntry>> SearchAsync(HttpClient http, SemaphoreSlim gate, string query, CancellationToken cancel)
     {
-        await gate.WaitAsync();
+        await gate.WaitAsync(cancel);
         try
         {
-            return Catalog.ParseSearch(await http.GetStringAsync(Catalog.SearchUrl + Uri.EscapeDataString(query)).ConfigureAwait(false))
-                .Where(Catalog.Fits).ToList();
+            return Catalog.ParseSearch(await http.GetStringAsync(Catalog.SearchUrl + Uri.EscapeDataString(query), cancel).ConfigureAwait(false))
+                .Where(e => Catalog.Fits(e, Environment.OSVersion.Version.Build)).ToList();
         }
         finally
         {
@@ -121,23 +133,13 @@ public static class DriverCatalog
         }
     }
 
-    static async Task<CatalogDriver?> NewerFor(DeviceDriver device, Func<string, Task<List<CatalogEntry>>> search)
+    static async Task<CatalogDriver?> NewerFor(DeviceDriver device, Func<string, Task<List<CatalogEntry>>> search,
+        IReadOnlySet<string> hidden, IReadOnlySet<string> kept)
     {
         var queries = Catalog.Queries(device.HardwareIds);
         var specific = await search(queries[0]);
         var generic = queries.Count > 1 ? await search(queries[1]) : [];
-        var genericOnly = generic.Select(e => e.UpdateId).Except(specific.Select(e => e.UpdateId)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var installed = device.HasDriver ? device.ParsedVersion : null;
-
-        var versions = specific.Concat(generic)
-            // Over Windows' generic driver, only one made for this PC: one for a cousin of the
-            // chip would not even be picked by Windows.
-            .Where(e => genericOnly.Contains(e.UpdateId) ? installed is null || e.Version > installed : device.WouldUpdate(e.Version, e.Date))
-            // One entry per version: the one made for this PC if there is one, else the newest.
-            .GroupBy(e => e.Version)
-            .Select(g => g.OrderBy(e => genericOnly.Contains(e.UpdateId)).ThenByDescending(e => e.Date).First())
-            .OrderByDescending(e => e.Version)
-            .ToList();
+        var (versions, genericOnly) = Catalog.Newer(device, specific, generic, hidden, kept);
         if (versions.Count == 0) return null;
         return new CatalogDriver
         {
@@ -195,7 +197,7 @@ public static class DriverCatalog
             {
                 0 => new(updateId, true, false, L.T("installé")),
                 3010 => new(updateId, true, true, L.T("installé, redémarrage nécessaire")),
-                259 => new(updateId, true, false, L.T("ajouté, mais Windows garde le pilote actuel, plus adapté à votre PC")),
+                259 => new(updateId, true, false, L.T("ajouté, mais Windows garde le pilote actuel, plus adapté à votre PC"), KeptCurrent: true),
                 _ => new(updateId, false, false, L.F("refusé par Windows (pnputil, code {0})", code)),
             };
         }

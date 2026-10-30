@@ -21,7 +21,17 @@ public static class NativeFiles
     internal const uint FlagOpenReparsePoint = 0x00200000, FlagBackupSemantics = 0x02000000;
 
     internal static SafeFileHandle Open(string path, uint access, uint flags, FileShare share = FileShare.ReadWrite | FileShare.Delete) =>
-        CreateFileW(path, access, share, IntPtr.Zero, FileMode.Open, flags, IntPtr.Zero);
+        CreateFileW(Long(path), access, share, IntPtr.Zero, FileMode.Open, flags, IntPtr.Zero);
+
+    // Windows opens a path of 260 characters or more (a deep node_modules in %TEMP%) only
+    // written "\\?\C:\…": the app is not "long path aware". That form skips Windows' own
+    // clean-up of the path, so it gets the full, clean one.
+    const int MaxPath = 260;
+
+    static string Long(string path) =>
+        path.Length >= MaxPath && Path.IsPathFullyQualified(path) && !path.StartsWith(@"\\", StringComparison.Ordinal)
+            ? @"\\?\" + Path.GetFullPath(path)
+            : path;
 
     internal static string? FinalPath(SafeFileHandle handle)
     {

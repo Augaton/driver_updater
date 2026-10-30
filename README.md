@@ -12,11 +12,16 @@ replier et déplier).
 **Accueil.** Le gros bouton compare chaque périphérique à trois sources : Windows Update,
 le catalogue Microsoft Update (les pilotes des fabricants) et, pour une carte NVIDIA, le
 site de NVIDIA. Le rapport donne pour chacun la version installée, la version disponible,
-sa source et un verdict (à jour, mise à jour, aucun pilote, erreur). Ce qui est à mettre à
-jour arrive coché et s'installe en une fois, sous une seule autorisation administrateur,
-après un point de restauration. Le même passage vérifie logiciels, démarrage, sécurité et
-disques. D'un lancement à l'autre, l'accueil rappelle la dernière analyse et sa date ;
-démarrage, antivirus, pare-feu et disques se lisent dès l'ouverture.
+sa source et un verdict (à jour, mise à jour, aucun pilote, erreur, non vérifié). Ce qui est
+à mettre à jour arrive coché, sauf les pilotes « facultatifs » de Windows Update, et
+s'installe en une fois, sous une seule autorisation administrateur, après un point de
+restauration. Une source injoignable ne fait jamais passer un pilote pour « à jour » :
+l'analyse se dit incomplète, et un périphérique qu'aucune source n'a pu vérifier est « non
+vérifié ». « Arrêter », dans la barre d'état, interrompt l'analyse ; une recherche Windows
+Update sans réponse au bout de 10 minutes est abandonnée. Le même passage vérifie logiciels,
+démarrage, sécurité et disques, sans retenir le rapport. D'un lancement à l'autre, l'accueil
+rappelle la dernière analyse et sa date ; démarrage, antivirus, pare-feu et disques se lisent
+dès l'ouverture, et les tuiles suivent ce qui est fait sur les autres pages.
 
 ### Pilotes
 
@@ -25,8 +30,11 @@ démarrage, antivirus, pare-feu et disques se lisent dès l'ouverture.
   pour un problème précis). Un pilote refusé peut être masqué.
 - **Fabricants.** Pour chaque périphérique, une version plus récente dans le catalogue
   Microsoft Update, signée par Microsoft, téléchargée depuis ses serveurs et vérifiée.
-  Windows garde le pilote actuel s'il est plus adapté au PC. On peut choisir la version (la
-  précédente, si la dernière pose problème). Les pilotes de stockage ne sont jamais
+  Seuls les paquets publiés pour la version de Windows du PC, ou une plus ancienne, sont
+  proposés (un paquet pour 24H2 ne l'est pas sur une 23H2). Windows garde le pilote actuel
+  s'il est plus adapté au PC ; ce pilote-là, et les versions plus anciennes, ne sont alors
+  plus proposés. On peut choisir la version (la précédente, si la dernière pose problème),
+  ou masquer celle qu'on ne veut pas. Les pilotes de stockage ne sont jamais
   installés ainsi, même s'ils sont dans le même paquet : un mauvais pilote à cet endroit
   empêche Windows de démarrer.
 - **Carte graphique.** Le pilote qui compte le plus en jeu. Pour NVIDIA, le dernier Game
@@ -44,8 +52,10 @@ démarrage, antivirus, pare-feu et disques se lisent dès l'ouverture.
 - **Anciennes versions.** Windows garde chaque version installée (près de 1 Go par pilote
   graphique). Celles qu'aucun périphérique n'utilise peuvent partir ; la précédente de
   chaque pilote est gardée, pour pouvoir y revenir.
-- **Sauvegarde.** Tous les pilotes des fabricants copiés dans un dossier, et réinstallés
-  en une fois après une réinstallation de Windows.
+- **Sauvegarde.** Les pilotes des fabricants copiés dans un dossier, et réinstallés en une
+  fois après une réinstallation de Windows : la dernière version de chacun et celle qu'un
+  périphérique utilise, pas les anciennes que Windows garde (près de 1 Go chacune pour un
+  pilote graphique).
 - **Historique.** Ce que Windows Update a installé, quand, et avec quel résultat.
 
 ### Jeux
@@ -86,11 +96,13 @@ démarrage, antivirus, pare-feu et disques se lisent dès l'ouverture.
 ### Système
 
 - **Performances.** Dix secondes d'observation, les applications classées par processeur,
-  mémoire, disque et carte graphique, et un verdict en clair.
+  mémoire, disque et carte graphique, et un verdict en clair. Avec plusieurs disques, c'est
+  le plus occupé qui compte, nommé.
 - **Démarrage.** Les programmes lancés avec Windows, activés ou désactivés comme dans le
   Gestionnaire des tâches, avec le temps que chacun fait perdre d'après les mesures de
   Windows, le graphique des 30 derniers démarrages et, après vos changements, le temps
-  gagné d'après les démarrages suivants.
+  gagné d'après les démarrages suivants. Les applications du Store (le nouveau Teams,
+  WhatsApp…) sont listées aussi ; elles se règlent dans Paramètres, que la page ouvre.
 - **Confidentialité.** Les réglages les plus suivis (dont ceux de WinUtil de Chris Titus) :
   identifiant publicitaire, expériences personnalisées, applications suggérées, Bing dans
   la recherche, historique des activités, télémétrie. Ils ne rendent pas le PC plus
@@ -98,14 +110,16 @@ démarrage, antivirus, pare-feu et disques se lisent dès l'ouverture.
 - **Faux boosts.** Ce que les « optimiseurs » et les guides laissent sur un PC et qui le
   ralentit ou l'expose : minuterie forcée au démarrage, fichier d'échange supprimé,
   parcage des cœurs coupé (indispensable aux Ryzen X3D), protections Spectre et Meltdown
-  désactivées, UAC coupé, Windows Update ou Defender bloqués par stratégie, services
-  utiles désactivés, IPv6 coupé… Chaque point s'appuie sur la documentation de Microsoft
+  désactivées, UAC coupé, Windows Update ou Defender bloqués par stratégie, Windows Update
+  envoyé vers un faux serveur d'entreprise (ce PC lui-même), services utiles désactivés,
+  IPv6 coupé… Chaque point s'appuie sur la documentation de Microsoft
   ou sur des mesures publiées. « Rétablir » remet la valeur de Windows et garde l'ancienne
   pour revenir en arrière. Ce qui n'est qu'un choix défendable (ou sans effet prouvé) est
   seulement signalé, et sur un PC géré par une entreprise, c'est l'affaire de son service
   informatique.
-- **Sécurité.** Antivirus actif et à jour, pare-feu actif, mises à jour de Windows en
-  attente, avec un lien vers l'endroit où agir. Pas de « score ».
+- **Sécurité.** Antivirus actif et à jour, pare-feu actif (celui de Windows, ou celui d'une
+  suite de sécurité à sa place), mises à jour de Windows en attente, avec un lien vers
+  l'endroit où agir. Pas de « score ».
 - **Points de restauration.** La liste, en créer un, ouvrir la restauration du système.
 - **Disques et batterie.** État, usure et température des disques, santé de la batterie.
 - **Nettoyage.** Fichiers temporaires de plus de 2 jours, anciennes versions des composants
@@ -114,10 +128,13 @@ démarrage, antivirus, pare-feu et disques se lisent dès l'ouverture.
 
 ### Logiciels
 
-- **Mises à jour.** Les logiciels installés, mis à jour via winget.
+- **Mises à jour.** Les logiciels installés, mis à jour via winget. Un logiciel dont winget
+  coupe le nom ne peut pas être désigné d'ici : la page le dit plutôt que de le taire.
+  « Arrêter » laisse finir le logiciel en cours.
 - **Désinstaller.** Le désinstalleur du programme, puis les dossiers laissés derrière lui,
-  mis à la corbeille. Un dossier qu'un autre programme installé utilise encore n'est
-  jamais proposé.
+  mis à la corbeille, y compris pour un programme installé pour un seul utilisateur
+  (`%LocalAppData%\Programs`). Un dossier qu'un autre programme installé utilise encore
+  n'est jamais proposé.
 
 **Journal.** Ce que l'application a changé sur le PC, du plus récent au plus ancien :
 pilotes installés ou masqués, réglages, programmes au démarrage, nettoyages, logiciels.
@@ -132,8 +149,12 @@ de logiciels ; une notification seulement s'il y a du nouveau, une seule fois po
 nouveauté. Les pilotes NVIDIA Game Ready ou Studio. La langue : français, anglais, ou
 celle de Windows (par défaut), appliquée d'un clic sur « Redémarrer maintenant ».
 
-**Et aussi.** « Copier le diagnostic » prépare un rapport texte pour signaler un bug. Un
-bandeau prévient quand une nouvelle version est publiée sur GitHub et l'installe d'un clic.
+**Et aussi.** « Copier le diagnostic » prépare un rapport texte pour signaler un bug, avec
+le détail des erreurs inattendues ; un plantage laisse ce détail dans
+`%LOCALAPPDATA%\Driver Updater\crash.txt` pour le diagnostic suivant. Un bandeau prévient
+quand une nouvelle version est publiée sur GitHub et l'installe d'un clic. Une seule fenêtre
+à la fois : relancer l'application ramène celle qui est ouverte. La fenêtre rouvre là où elle
+était laissée, sans jamais dépasser l'écran, et suit le contraste élevé de Windows.
 
 ## Installer
 
@@ -210,7 +231,9 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
   l'ancien revient au bout de 15 secondes, et il n'est enregistré qu'une fois gardé.
 - **Pilotes NVIDIA.** Demandés au service qu'utilise l'application de NVIDIA ; une réponse
   qui ne ressemble pas à ce qui est attendu est ignorée. La fenêtre ne transmet que le
-  numéro de la carte : le module administrateur redemande lui-même la version à NVIDIA, la
+  numéro de la carte et le choix Game Ready ou Studio (le module administrateur peut tourner
+  sous un autre compte, dont les réglages ne sont pas les vôtres) : il redemande lui-même la
+  version à NVIDIA, la
   télécharge depuis les serveurs de NVIDIA seulement (HTTPS, révocation des certificats
   vérifiée, aucune redirection suivie, abandon si le serveur cesse d'envoyer) dans un
   dossier où seuls les administrateurs peuvent écrire (rien ne peut être déposé à côté de
@@ -218,8 +241,9 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
   il n'est lancé que si le signataire est NVIDIA.
 - **Sauvegarde des pilotes.** Le dossier de sauvegarde est créé neuf (jamais un lien posé à
   sa place), réservé aux administrateurs pendant que `pnputil` le remplit, puis il reprend
-  les droits du dossier qui le contient.
-- **Restes de désinstallation.** Seulement dans Program Files, ProgramData et AppData,
+  les droits du dossier qui le contient, même si la sauvegarde échoue en cours de route.
+- **Restes de désinstallation.** Seulement dans Program Files, ProgramData et AppData
+  (dont `%LocalAppData%\Programs`, jamais ce dossier lui-même),
   jamais un dossier partagé par plusieurs programmes (Microsoft, Common Files…) ou encore
   utilisé par un programme installé, jamais un lien, jamais le dossier de l'application. Le
   module administrateur ne s'occupe que de Program Files et ProgramData : il revérifie
@@ -271,8 +295,8 @@ les paquets.
 committez, puis poussez un tag du même numéro :
 
 ```sh
-git tag v0.10.0
-git push origin v0.10.0
+git tag v0.11.1
+git push origin v0.11.1
 ```
 
 Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`

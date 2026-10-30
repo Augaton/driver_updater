@@ -98,6 +98,38 @@ public static partial class Catalog
         $$"""[{"size":0,"languages":"","uidInfo":"{{updateId}}","updateID":"{{updateId}}"}]""";
 
     /// <summary>
+    /// The catalog versions worth offering for a device, newest first, one entry per version;
+    /// and which of them only the generic search found.
+    /// </summary>
+    /// <param name="hidden">Updates the user hid: never offered again.</param>
+    /// <param name="kept">
+    /// Updates Windows added, then kept the device's own driver over: neither they nor older
+    /// versions would win, so offering them again only costs a download and a restore point.
+    /// </param>
+    public static (List<CatalogEntry> Versions, IReadOnlySet<string> GenericOnly) Newer(DeviceDriver device,
+        IReadOnlyList<CatalogEntry> specific, IReadOnlyList<CatalogEntry> generic, IReadOnlySet<string> hidden, IReadOnlySet<string> kept)
+    {
+        var genericOnly = generic.Select(e => e.UpdateId).Except(specific.Select(e => e.UpdateId)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var installed = device.HasDriver ? device.ParsedVersion : null;
+        var found = specific.Concat(generic).ToList();
+        var keptUpTo = found.Where(e => kept.Contains(e.UpdateId)).Max(e => e.Version);
+
+        var versions = found
+            .Where(e => !hidden.Contains(e.UpdateId) && (keptUpTo is null || e.Version > keptUpTo))
+            // Over Windows' generic driver, only one made for this PC: one for a cousin of the
+            // chip would not even be picked by Windows.
+            .Where(e => genericOnly.Contains(e.UpdateId) ? installed is null || e.Version > installed : device.WouldUpdate(e.Version, e.Date))
+            // One entry per version: the one made for this PC if there is one, then the one
+            // published for the nearest Windows version (24H2 over 22H2 on a 24H2 PC), then the newest.
+            .GroupBy(e => e.Version)
+            .Select(g => g.OrderBy(e => genericOnly.Contains(e.UpdateId)).ThenByDescending(e => MinBuild(e.Products))
+                .ThenByDescending(e => e.Date).First())
+            .OrderByDescending(e => e.Version)
+            .ToList();
+        return (versions, genericOnly);
+    }
+
+    /// <summary>
     /// What to search for a device: its most specific hardware ID (minus the revision, which
     /// drivers almost never target), then the bare vendor/device ID, which finds the maker's
     /// generic drivers. Windows ranks the two kinds at install time, not this app.
@@ -110,17 +142,55 @@ public static partial class Catalog
         return specific.Equals(generic, StringComparison.OrdinalIgnoreCase) ? [specific] : [specific, generic];
     }
 
-    /// <summary>Drivers for 64-bit Windows 10 or 11, not ARM ones or other systems.</summary>
-    public static bool Fits(CatalogEntry entry) =>
+    /// <summary>
+    /// Drivers for 64-bit Windows 10 or 11, not ARM ones or other systems, published for this
+    /// Windows build or an older one: a package for 24H2 is not for a PC on 23H2.
+    /// </summary>
+    public static bool Fits(CatalogEntry entry, int windowsBuild) =>
         entry.Classification.Contains("Driver", StringComparison.OrdinalIgnoreCase)
         && (entry.Products.Contains("Windows 10", StringComparison.OrdinalIgnoreCase) || entry.Products.Contains("Windows 11", StringComparison.OrdinalIgnoreCase))
         && !entry.Products.Contains("ARM64", StringComparison.OrdinalIgnoreCase)
-        && entry.Version is not null;
+        && entry.Version is not null
+        && MinBuild(entry.Products) <= windowsBuild;
+
+    // Windows' own numbering of each version: what "version 22H2 and later" means in builds.
+    static readonly Dictionary<string, int> Windows10Builds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["1507"] = 10240, ["1511"] = 10586, ["1607"] = 14393, ["1703"] = 15063, ["1709"] = 16299, ["1803"] = 17134,
+        ["1809"] = 17763, ["1903"] = 18362, ["1909"] = 18363, ["2004"] = 19041, ["20H2"] = 19042, ["21H1"] = 19043,
+        ["21H2"] = 19044, ["22H2"] = 19045,
+    };
+    static readonly Dictionary<string, int> Windows11Builds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["21H2"] = 22000, ["22H2"] = 22621, ["23H2"] = 22631, ["24H2"] = 26100, ["25H2"] = 26200,
+    };
+
+    /// <summary>
+    /// The oldest Windows build an entry is published for: catalog drivers are "for this
+    /// version and later", and an entry may list several. "Windows 11 Client, version 24H2 and
+    /// later" is 26100; a Windows 11 version newer than this list, a build newer than all of it.
+    /// </summary>
+    public static int MinBuild(string products)
+    {
+        int? lowest = null;
+        foreach (Match product in Product().Matches(products))
+        {
+            var version = product.Groups[2].Value;
+            int build = product.Groups[1].Value == "10"
+                ? Windows10Builds.GetValueOrDefault(version, 10240)
+                : version.Length == 0 ? 22000 : Windows11Builds.GetValueOrDefault(version, Windows11Builds.Values.Max() + 1);
+            lowest = Math.Min(lowest ?? build, build);
+        }
+        return lowest ?? 0;
+    }
 
     static string Without(string id, params string[] prefixes) =>
         string.Join('&', id.Split('&').Where((part, i) => i == 0 || !prefixes.Any(p => part.StartsWith(p, StringComparison.OrdinalIgnoreCase))));
 
     static string Text(string html) => WebUtility.HtmlDecode(Spaces().Replace(Tags().Replace(html, " "), " ")).Trim();
+
+    [GeneratedRegex(@"Windows\s+(10|11)\b(?:\s+Client)?(?:\s+S)?(?:,?\s+version\s+(\d{4}|\d{2}H\d))?", RegexOptions.IgnoreCase)]
+    private static partial Regex Product();
 
     [GeneratedRegex(@"<tr id=""([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})_R\d+""(.*?)</tr>", RegexOptions.Singleline)]
     private static partial Regex Row();

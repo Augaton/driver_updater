@@ -18,7 +18,7 @@ public static partial class PerfAnalyzer
     sealed record ProcessSample(string Name, CounterSample Cpu, long Memory, CounterSample Io);
 
     /// <summary>Everything read at one instant; two of them, some seconds apart, give the rates.</summary>
-    sealed record Snapshot(CounterSample Cpu, CounterSample? CpuUtility, CounterSample DiskIdle, CounterSample? CpuSpeed,
+    sealed record Snapshot(CounterSample Cpu, CounterSample? CpuUtility, Dictionary<string, CounterSample>? DiskIdle, CounterSample? CpuSpeed,
         Dictionary<int, ProcessSample> Processes, Dictionary<string, CounterSample>? Gpu);
 
     public static async Task<PerfReport> MeasureAsync(TimeSpan duration, IProgress<double> progress)
@@ -40,9 +40,8 @@ public static partial class PerfAnalyzer
         using var cpu = new PerformanceCounter("Processor", "% Processor Time", "_Total");
         // What Task Manager shows: time weighted by the actual frequency, so turbo counts.
         using var utility = Counter("Processor Information", "% Processor Utility", "_Total");
-        using var disk = new PerformanceCounter("PhysicalDisk", "% Idle Time", "_Total");
         using var speed = Counter("Processor Information", "% Processor Performance", "_Total");
-        return new Snapshot(cpu.NextSample(), utility?.NextSample(), disk.NextSample(), speed?.NextSample(), Processes(), GpuEngines());
+        return new Snapshot(cpu.NextSample(), utility?.NextSample(), DiskIdle(), speed?.NextSample(), Processes(), GpuEngines());
     }
 
     static PerfReport Report(Snapshot before, Snapshot after)
@@ -80,17 +79,25 @@ public static partial class PerfAnalyzer
         var memory = new Microsoft.VisualBasic.Devices.ComputerInfo();
         long total = (long)memory.TotalPhysicalMemory;
         var (plan, powerSaver) = PowerPlan();
+        var disks = (after.DiskIdle ?? []).Where(d => before.DiskIdle?.ContainsKey(d.Key) == true)
+            .ToDictionary(d => d.Key, d => 100.0 - CounterSample.Calculate(before.DiskIdle![d.Key], d.Value));
+        var busiest = PerfVerdict.BusiestDisk(disks);
         var system = new SystemUsage(
             Math.Clamp(utility ?? time, 0, 100),
             total - (long)memory.AvailablePhysicalMemory,
             total,
-            Math.Clamp(100 - CounterSample.Calculate(before.DiskIdle, after.DiskIdle), 0, 100),
+            busiest?.Active ?? 0,
             before.Gpu is null || after.Gpu is null ? null : Math.Min(100, GpuTotal(before.Gpu, after.Gpu)),
             before.CpuSpeed is { } s0 && after.CpuSpeed is { } s1 ? CounterSample.Calculate(s0, s1) : null,
             plan,
-            powerSaver);
+            powerSaver,
+            disks.Count > 1 ? busiest?.Name : null);
         return new PerfReport(system, apps, PerfVerdict.Findings(system, apps));
     }
+
+    /// <summary>Each physical disk's idle time, by counter instance ("0 C:", "1 D:"): their total would hide a saturated one.</summary>
+    static Dictionary<string, CounterSample>? DiskIdle() =>
+        Instances("PhysicalDisk", "% Idle Time")?.Where(d => d.Key != "_Total").ToDictionary();
 
     /// <summary>All processes at once, keyed by process ID: instance names ("chrome#3") shift as processes come and go.</summary>
     static Dictionary<int, ProcessSample> Processes()
@@ -111,11 +118,14 @@ public static partial class PerfAnalyzer
     }
 
     /// <summary>GPU engines ("pid_1234_…_engtype_3D"), or null where Windows has no GPU counters.</summary>
-    static Dictionary<string, CounterSample>? GpuEngines()
+    static Dictionary<string, CounterSample>? GpuEngines() => Instances("GPU Engine", "Utilization Percentage");
+
+    /// <summary>Every instance of one counter, read at once; null where Windows does not have it.</summary>
+    static Dictionary<string, CounterSample>? Instances(string category, string counter)
     {
         try
         {
-            return new PerformanceCounterCategory("GPU Engine").ReadCategory()["Utilization Percentage"]
+            return new PerformanceCounterCategory(category).ReadCategory()[counter]
                 .Values.Cast<InstanceData>().ToDictionary(d => d.InstanceName, d => d.Sample);
         }
         catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)

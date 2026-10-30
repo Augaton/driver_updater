@@ -13,10 +13,18 @@ public static class DriverBackup
 {
     const int Success = 0, NothingToInstall = 259, RebootRequired = 3010;
 
-    /// <summary>Exports every third-party driver into a new dated folder inside <paramref name="parent"/>.</summary>
-    public static async Task<(string Folder, int Count)> ExportAsync(string parent)
+    /// <summary>
+    /// Exports the third-party drivers worth putting back after reinstalling Windows
+    /// (<see cref="DriverStoreRules.WorthBackingUp"/>) into a new dated folder inside
+    /// <paramref name="parent"/>, one subfolder each. Returns how many went, and the ones
+    /// pnputil refused.
+    /// </summary>
+    public static async Task<(string Folder, int Count, List<string> Failed)> ExportAsync(string parent, Action<string> progress)
     {
         var folder = Path.Combine(Path.GetFullPath(parent), L.F("Pilotes {0:yyyy-MM-dd HH'h'mm'm'ss}", DateTime.Now));
+        var packages = await DriverStore.WorthBackingUpAsync(progress);
+        if (packages.Count == 0) throw new InvalidOperationException(L.T("Aucun pilote de fabricant à sauvegarder."));
+        var failed = new List<string>();
         // The user chose the parent, so any program of theirs can write there: the folder must
         // be truly new (not a link planted under the expected name), and the folders above it
         // stay pinned while pnputil, running as administrator, writes into it.
@@ -28,16 +36,43 @@ public static class DriverBackup
             using (NativeFiles.Pin(folder))
             {
                 if (NativeFiles.GenuineFolder(folder) is null) throw new InvalidOperationException(L.F("Dossier de sauvegarde refusé : {0}", folder));
-                int code = await PnpUtilAsync("/export-driver", "*", folder);
-                if (code != Success) throw new InvalidOperationException(L.F("La sauvegarde a échoué (pnputil, code {0}).", code));
+                try
+                {
+                    for (int i = 0; i < packages.Count; i++)
+                    {
+                        var package = packages[i];
+                        progress(L.F("Sauvegarde du pilote {0} sur {1} : {2}…", i + 1, packages.Count, package.OriginalName));
+                        // Made inside the folder only administrators can write to: nothing can be planted there.
+                        var target = Directory.CreateDirectory(Path.Combine(folder, Path.GetFileName(package.PublishedName))).FullName;
+                        int code = await PnpUtilAsync("/export-driver", package.PublishedName, target);
+                        if (code != Success) failed.Add(L.F("{0} ({1}, code {2})", package.OriginalName, package.Provider, code));
+                    }
+                }
+                finally
+                {
+                    // Done or not, the backup takes the rights of the folder it is in, the user's own:
+                    // one cut short (a full USB stick) can still be opened or deleted. Set while the
+                    // folder is still pinned, so these rights cannot land on another one.
+                    if (KeepsRights(folder))
+                    {
+                        var inherit = new DirectorySecurity();
+                        inherit.SetAccessRuleProtection(isProtected: false, preserveInheritance: false);
+                        new DirectoryInfo(folder).SetAccessControl(inherit);
+                    }
+                }
             }
-            // Done: the backup takes the rights of the folder it is in, the user's own.
-            var inherit = new DirectorySecurity();
-            inherit.SetAccessRuleProtection(isProtected: false, preserveInheritance: false);
-            new DirectoryInfo(folder).SetAccessControl(inherit);
         }
-        // pnputil writes one subfolder per driver package.
-        return (folder, Directory.GetDirectories(folder).Length);
+        int count = packages.Count - failed.Count;
+        if (count == 0) throw new InvalidOperationException(L.F("La sauvegarde a échoué : {0}.", string.Join(", ", failed)));
+        return (folder, count, failed);
+    }
+
+    // FAT and exFAT (most USB sticks) keep no rights at all: nothing to give back there, and
+    // no links either, which the rights guarded against.
+    static bool KeepsRights(string folder)
+    {
+        var format = new DriveInfo(Path.GetPathRoot(folder)!).DriveFormat;
+        return format.Equals("NTFS", StringComparison.OrdinalIgnoreCase) || format.Equals("ReFS", StringComparison.OrdinalIgnoreCase);
     }
 
     static DirectorySecurity AdministratorsOnly()

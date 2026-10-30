@@ -62,6 +62,17 @@ public sealed class PerfVerdictTests
     }
 
     [Fact]
+    public void Watches_the_busiest_disk_not_their_average()
+    {
+        // An SSD idle, a hard disk saturated: their average (50 %) would hide it.
+        var busiest = PerfVerdict.BusiestDisk(new Dictionary<string, double> { ["0 C:"] = 0, ["1 D: E:"] = 100.4, ["2"] = 3 });
+
+        Assert.Equal(("D: E:", 100.0), busiest);
+        Assert.Equal("n° 2", PerfVerdict.BusiestDisk(new Dictionary<string, double> { ["2"] = 3 })?.Name);
+        Assert.Contains(PerfVerdict.Findings(Calm with { DiskActive = 100, Disk = "D:" }, Apps), f => f.StartsWith("Disque D: occupé en permanence"));
+    }
+
+    [Fact]
     public void Points_at_power_saving_and_throttling()
     {
         Assert.Contains(PerfVerdict.Findings(Calm with { PowerSaver = true, PowerPlan = "Économie d'énergie" }, Apps),
@@ -116,6 +127,18 @@ public sealed class SecurityCenterTests
 
         Assert.Empty(fine.Problems);
         Assert.Equal(3, bad.Problems.Count);
+        // A suite's firewall in place of Windows' own is no problem.
+        Assert.Empty((fine with { FirewallOn = false, OtherFirewalls = ["Norton Firewall"] }).Problems);
+    }
+
+    [Fact]
+    public void Only_an_active_antivirus_of_another_maker_keeps_defender_off()
+    {
+        Antivirus defender = new("Windows Defender", true, true), mcafee = new("McAfee LiveSafe", true, true);
+
+        Assert.True(SecurityCenter.OtherActiveAntivirus([defender, mcafee]));
+        Assert.False(SecurityCenter.OtherActiveAntivirus([defender, mcafee with { Enabled = false }])); // the expired trial of a new PC
+        Assert.False(SecurityCenter.OtherActiveAntivirus([defender]));
     }
 }
 

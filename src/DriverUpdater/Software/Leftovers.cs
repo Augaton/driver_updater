@@ -13,9 +13,16 @@ public sealed record LeftoverRoots(string ProgramFiles, string ProgramFilesX86, 
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
 
+    /// <summary>
+    /// Where programs install for one user only (VS Code's user setup, Discord, most Electron
+    /// apps): a root of its own, so its subfolders count as one program's each.
+    /// </summary>
+    public string LocalPrograms => LocalAppData.Length > 0 ? Path.Combine(LocalAppData, "Programs") : "";
+
     /// <summary>Only administrators can write there.</summary>
     public IEnumerable<string> Machine => new[] { ProgramFiles, ProgramFilesX86, ProgramData }.Where(r => r.Length > 0);
-    public IEnumerable<string> All => Machine.Concat(new[] { AppData, LocalAppData }.Where(r => r.Length > 0));
+    // LocalPrograms before LocalAppData, which holds it: a folder is placed under its nearest root.
+    public IEnumerable<string> All => Machine.Concat(new[] { AppData, LocalPrograms, LocalAppData }.Where(r => r.Length > 0));
 }
 
 public sealed class Leftover
@@ -41,6 +48,7 @@ public static partial class Leftovers
         "Packages", "Programs", "Temp", "Package Cache", "Installer", "Microsoft.NET", "dotnet", "Intel", "NVIDIA",
         "NVIDIA Corporation", "AMD", "Realtek", "Google", "Mozilla", "Adobe", "Apple", "Oracle", "Java", "Steam",
         "Epic Games", "Ubisoft", "Electronic Arts", "Origin", "Riot Games", "JetBrains", "Python",
+        "Common", // %LocalAppData%\Programs\Common: the per-user Common Files
     };
 
     /// <param name="inUse">

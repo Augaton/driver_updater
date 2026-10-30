@@ -35,7 +35,9 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
     public const string TweakUndo = "tweak-undo";
     public const string RestorePoints = "restore-points";
     public const string CreateRestorePoint = "create-restore-point";
+    /// <summary>"install-nvidia &lt;card&gt; &lt;game-ready|studio&gt;".</summary>
     public const string InstallNvidia = "install-nvidia";
+    public const string NvidiaGameReady = "game-ready", NvidiaStudio = "studio";
 
     /// <summary>Pipe names the app creates: anything else (such as \\server\pipe) is refused.</summary>
     public static bool IsPipeName(string name) => PipeNamePattern().IsMatch(name);
@@ -89,10 +91,11 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                     throw new ArgumentException(L.T("Identifiant de périphérique invalide."));
                 return new(name, rest);
             case InstallNvidia:
-                // A PCI device ID, four hex digits: the helper asks NVIDIA itself what to install.
-                if (rest.Count != 1 || rest[0].Length != 4 || !rest[0].All(Uri.IsHexDigit))
+                // A PCI device ID, four hex digits, and the kind of driver: the helper asks NVIDIA
+                // itself what to install.
+                if (rest.Count != 2 || rest[0].Length != 4 || !rest[0].All(Uri.IsHexDigit) || rest[1] is not (NvidiaGameReady or NvidiaStudio))
                     throw new ArgumentException(L.T("Identifiant de carte graphique invalide."));
-                return new(name, [rest[0].ToUpperInvariant()]);
+                return new(name, [rest[0].ToUpperInvariant(), rest[1]]);
             case TweakApply or TweakUndo:
                 // Only tweaks of the catalog that need these rights: never a registry key from outside.
                 // A retired one may still be undone, never applied.

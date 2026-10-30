@@ -48,6 +48,36 @@ public sealed class FakeBoostTests
         Assert.Equal(-1, registry.Get(Hive.LocalMachine, Ipv6, "DisabledComponents"));
     }
 
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    [InlineData("http://127.0.0.1:8530", true)]
+    [InlineData("http://localhost", true)]
+    [InlineData("0.0.0.0", true)]
+    [InlineData("http://wsus.contoso.local:8530", false)]
+    [InlineData("wsus:8530", false)]
+    public void A_company_update_server_has_a_real_address(string? address, bool fake) =>
+        Assert.Equal(fake, FakeBoostCatalog.FakeUpdateServer(address));
+
+    [Fact]
+    public void Flags_windows_update_sent_to_this_pc_and_its_settings_page_taken_away()
+    {
+        const string Policy = @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate";
+        var registry = new FakeRegistry();
+        registry.Set(Hive.LocalMachine, Policy + @"\AU", "UseWUServer", 1);
+        registry.Set(Hive.LocalMachine, Policy, "WUServer", "http://wsus.contoso.local:8530");
+        Assert.False(Boost("windows-update-no-server").IsFound(registry)); // a company's server
+
+        registry.Set(Hive.LocalMachine, Policy, "WUServer", "http://127.0.0.1");
+        Assert.True(Boost("windows-update-no-server").IsFound(registry));
+        TweakEngine.Apply(Boost("windows-update-no-server").Tweak, registry);
+        Assert.Null(registry.Get(Hive.LocalMachine, Policy + @"\AU", "UseWUServer"));
+
+        Assert.False(Boost("windows-update-policy").IsFound(registry));
+        registry.Set(Hive.LocalMachine, Policy, "SetDisableUXWUAccess", 1);
+        Assert.True(Boost("windows-update-policy").IsFound(registry));
+    }
+
     [Fact]
     public void Each_pc_gets_its_own_verdict()
     {

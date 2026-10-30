@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        RestorePlacement();
         Translator.Translate(this); // before the menu copies the pages' titles
         VersionText.Text = $"version {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}";
         BuildNav();
@@ -149,6 +150,39 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
     }
 
+    /// <summary>
+    /// Where the window was left, if that is still on a screen; otherwise centred, and never
+    /// larger than the screen: a laptop at 150 % has fewer than 700 units of height.
+    /// </summary>
+    void RestorePlacement()
+    {
+        var area = SystemParameters.WorkArea;
+        MinWidth = Math.Min(MinWidth, area.Width);
+        MinHeight = Math.Min(MinHeight, area.Height);
+        var screens = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+            SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
+        // Its title bar must be on a screen, or it could not be moved: a screen unplugged since, for one.
+        if (Settings.Window is { } saved && screens.Contains(new Point(saved.Left + 60, saved.Top + 16)))
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            (Left, Top) = (saved.Left, saved.Top);
+            Width = Math.Clamp(saved.Width, MinWidth, Math.Max(MinWidth, screens.Width));
+            Height = Math.Clamp(saved.Height, MinHeight, Math.Max(MinHeight, screens.Height));
+            if (saved.Maximized) WindowState = WindowState.Maximized;
+        }
+        else
+        {
+            Width = Math.Min(Width, area.Width);
+            Height = Math.Min(Height, area.Height);
+        }
+    }
+
+    void SavePlacement()
+    {
+        var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, ActualWidth, ActualHeight) : RestoreBounds;
+        if (!bounds.IsEmpty) Settings.Window = new(bounds.Left, bounds.Top, bounds.Width, bounds.Height, WindowState == WindowState.Maximized);
+    }
+
     protected override void OnClosing(CancelEventArgs e)
     {
         // The administrator helper reports here: closing now would cut it off mid-task. It may
@@ -156,6 +190,12 @@ public partial class MainWindow : Window
         if (adminRuns > 0 && Ask(L.T("Une opération administrateur est en cours. Fermer quand même ?\n\n") +
                                  L.T("Elle sera interrompue là où elle en est."), MessageBoxImage.Warning) != MessageBoxResult.Yes)
             e.Cancel = true;
+        // The others too: an update winget is still running would finish without reaching the journal.
+        else if (adminRuns == 0 && busy && Ask(L.T("Une opération est en cours. Fermer quand même ?\n\n") +
+                                               L.T("Ce qui est déjà fait le reste ; la suite n'aura pas lieu, ou pas dans le journal."),
+                     MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            e.Cancel = true;
+        if (!e.Cancel) SavePlacement();
         base.OnClosing(e);
     }
 
@@ -174,7 +214,14 @@ public partial class MainWindow : Window
         }
     }
 
-    async Task RunBusy(string message, Func<Task<string>> work)
+    CancellationTokenSource? stopping; // the running operation's, when it can be stopped
+
+    Task RunBusy(string message, Func<Task<string>> work) => RunBusy(message, _ => work(), canStop: false);
+
+    /// <summary>The same, with "Arrêter" in the status bar: <paramref name="work"/> stops where its token says.</summary>
+    Task RunBusy(string message, Func<CancellationToken, Task<string>> work) => RunBusy(message, work, canStop: true);
+
+    async Task RunBusy(string message, Func<CancellationToken, Task<string>> work, bool canStop)
     {
         // One action at a time: a second one would turn every button back on when it ends,
         // while the first is still running.
@@ -184,28 +231,42 @@ public partial class MainWindow : Window
             return;
         }
         busy = true;
+        using var stop = new CancellationTokenSource();
+        stopping = canStop ? stop : null;
+        StopButton.IsEnabled = true;
+        StopButton.Visibility = canStop ? Visibility.Visible : Visibility.Collapsed;
         UpdateButtons();
         BusyBar.Visibility = Visibility.Visible;
         SetStatus(message);
         try
         {
-            SetStatus(await work());
+            SetStatus(await work(stop.Token));
         }
         catch (OperationCanceledException e)
         {
-            SetStatus(e.Message);
+            SetStatus(stop.IsCancellationRequested ? L.T("Arrêté.") : e.Message);
         }
         catch (Exception e)
         {
+            Diagnostics.Remember(e); // where it came from, for a bug report
             SetStatus(L.T("Erreur : ") + Errors.Describe(e));
         }
         finally
         {
             busy = false;
+            stopping = null;
+            StopButton.Visibility = Visibility.Collapsed;
             BusyBar.Visibility = Visibility.Collapsed;
             BusyBar.IsIndeterminate = true;
             UpdateButtons();
         }
+    }
+
+    void OnStopBusy(object sender, RoutedEventArgs e)
+    {
+        stopping?.Cancel();
+        StopButton.IsEnabled = false;
+        SetStatus(L.T("Arrêt demandé…"));
     }
 
     void UpdateButtons()
@@ -214,7 +275,7 @@ public partial class MainWindow : Window
                  {
                      SearchButton, UnhideButton, SearchSoftwareButton, HealthDetailsButton, ScanTempButton,
                      CleanWindowsTempButton, SfcButton, DismRestoreButton, DismCleanupButton, BackupButton, RestoreBackupButton,
-                     SearchCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
+                     SearchCatalogButton, UnhideCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
                      BootReportButton, MeasureButton, ScanButton, RefreshInventoryButton, StoreScanButton, DeviceBannerButton,
                      GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton, PrivacyAllButton, FakeBoostsScanButton, FakeBoostsAllButton,
                      RestorePointsButton, CreateRestorePointButton, UpdateInstallButton,
@@ -224,7 +285,7 @@ public partial class MainWindow : Window
         UpdateAllButton.IsEnabled = !busy && report.Any(r => r.Selected && r.CanInstall);
         GpuInstallButton.IsEnabled = !busy && gpuRows.Any(r => r.Newer is not null);
         ComponentsInstallButton.IsEnabled = !busy && componentRows.Any(r => r.CanInstall);
-        InstallCatalogButton.IsEnabled = !busy && catalogDrivers.Count > 0;
+        InstallCatalogButton.IsEnabled = HideCatalogButton.IsEnabled = !busy && catalogDrivers.Count > 0;
         InstallButton.IsEnabled = HideButton.IsEnabled = !busy && drivers.Count > 0;
         UpgradeSoftwareButton.IsEnabled = !busy && software.Count > 0;
         CleanTempButton.IsEnabled = !busy && tempScan is { Files.Count: > 0 };
@@ -233,6 +294,7 @@ public partial class MainWindow : Window
     void SetStatus(string text)
     {
         StatusText.Text = text;
+        StatusText.ToolTip = text; // one line in the bar: a long error is read whole here
         log.Add($"{DateTime.Now:HH:mm:ss} {text}");
         if (log.Count > 200) log.RemoveAt(0);
         UIElementAutomationPeer.CreatePeerForElement(StatusText)

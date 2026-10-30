@@ -52,7 +52,14 @@ public partial class MainWindow
             // NVIDIA answers in a second: no need to wait for a click.
             if (displays.Any(IsNvidia))
             {
-                nvidiaReleases = await NvidiaDrivers.LatestAsync(displays.Where(IsNvidia), Machine.HasBattery);
+                try
+                {
+                    nvidiaReleases = await NvidiaDrivers.LatestAsync(displays.Where(IsNvidia), Machine.HasBattery);
+                }
+                catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or TaskCanceledException)
+                {
+                    SetStatus(L.T("Site de NVIDIA injoignable : ") + Errors.Describe(ex));
+                }
                 ShowGpus(displays, tools, newer: null);
             }
         }
@@ -102,10 +109,10 @@ public partial class MainWindow
     }
 
     async void OnGpuCheck(object sender, RoutedEventArgs e) =>
-        await RunBusy(L.T("Recherche du dernier pilote graphique dans le catalogue Microsoft…"), async () =>
+        await RunBusy(L.T("Recherche du dernier pilote graphique dans le catalogue Microsoft…"), async stop =>
         {
             var displays = gpuRows.Select(r => r.Device).ToList();
-            var newer = await DriverCatalog.FindAsync(displays, new Progress<string>(SetStatus));
+            var newer = await DriverCatalog.FindAsync(displays, new Progress<string>(SetStatus), cancel: stop);
             ShowGpus(displays, await Task.Run(SystemInfo.Gpus), newer);
             return newer.Count == 0 ? L.T("Votre pilote graphique est le plus récent du catalogue.") : L.T("Pilote graphique plus récent trouvé.");
         });
@@ -126,7 +133,8 @@ public partial class MainWindow
             bool reboot = result.Results.Any(r => r.RebootRequired);
             foreach (var r in result.Results.Where(r => r.Succeeded))
                 Journal.Add(Journal.Drivers, L.F("{0} : {1}", newer.FirstOrDefault(n => n.Entry.UpdateId.Equals(r.UpdateId, StringComparison.OrdinalIgnoreCase)) is { } n ? $"{n.Device} {n.Entry.Version}" : r.UpdateId, r.Outcome));
-            await LoadInventory();
+            // Out of the home page's report too, or "Mettre à jour" there would install it again.
+            await ForgetInstalled(result.Results);
             ShowGpus(inventory.Where(d => d.Class.Equals("Display", StringComparison.OrdinalIgnoreCase)), await Task.Run(SystemInfo.Gpus), newer: null);
             return string.Join(" ; ", result.Results.Select(r => r.Outcome)) + (reboot ? L.T(". Redémarrez l'ordinateur.") : ".");
         });
@@ -143,9 +151,10 @@ public partial class MainWindow
 
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
-            var report = await RunAdminAsync<NvidiaInstallReport>(AdminCommand.InstallNvidia, card);
+            var report = await RunAdminAsync<NvidiaInstallReport>(AdminCommand.InstallNvidia, card,
+                Settings.NvidiaStudio ? AdminCommand.NvidiaStudio : AdminCommand.NvidiaGameReady);
             if (report.Cancelled) return L.T("Installation annulée.");
-            await LoadInventory();
+            await ForgetInstalled(report.ExitCode == 0 ? new HashSet<string> { NvidiaModel.OfferId(report.Version) } : []);
             await LoadGpus();
             if (report.ExitCode == 0) Journal.Add(Journal.Drivers, L.F("Pilote NVIDIA {0} : installateur terminé.", report.Version));
             return report.ExitCode == 0
@@ -160,7 +169,7 @@ public partial class MainWindow
         {
             var names = (await Task.Run(InstalledPrograms.List)).Select(p => p.Name).ToList();
             var outdated = WinGet.IsAvailable
-                ? (await SoftwareUpgrades()).Select(u => u.Id).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                ? (await SoftwareUpgrades()).Updates.Select(u => u.Id).ToHashSet(StringComparer.OrdinalIgnoreCase)
                 : [];
             // DirectX 9's extras leave no entry in "Apps installées": look for one of their files.
             bool directX = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.SystemX86), "d3dx9_43.dll"));
@@ -208,12 +217,14 @@ public partial class MainWindow
             SetStatus(L.T("winget est introuvable : installez « Programme d'installation d'application » depuis le Microsoft Store."));
             return;
         }
-        await RunBusy(L.T("Installation des composants de jeu…"), async () =>
+        await RunBusy(L.T("Installation des composants de jeu…"), async stop =>
         {
             BusyBar.IsIndeterminate = false;
             BusyBar.Maximum = chosen.Count;
             var failed = new List<string>();
-            for (int i = 0; i < chosen.Count; i++)
+            int i = 0;
+            // "Arrêter" lets the current installer finish: one cut short can leave a component broken.
+            for (; i < chosen.Count && !stop.IsCancellationRequested; i++)
             {
                 var row = chosen[i];
                 SetStatus(L.F("Composant {0} sur {1} : {2} (Windows peut demander une autorisation)…", i + 1, chosen.Count, row.Component.Name));
@@ -224,9 +235,10 @@ public partial class MainWindow
             }
             upgrades = null; // just updated: ask winget again
             await CheckComponents();
-            return failed.Count == 0
-                ? L.F("{0} composant(s) installé(s).", chosen.Count)
-                : L.F("{0} sur {1} installé(s). Échec : {2}.", chosen.Count - failed.Count, chosen.Count, string.Join(", ", failed));
+            return (failed.Count == 0
+                    ? L.F("{0} composant(s) installé(s).", i)
+                    : L.F("{0} sur {1} installé(s). Échec : {2}.", i - failed.Count, chosen.Count, string.Join(", ", failed)))
+                   + (i < chosen.Count ? L.F(" Arrêté avant les {0} autre(s).", chosen.Count - i) : "");
         });
     }
 }

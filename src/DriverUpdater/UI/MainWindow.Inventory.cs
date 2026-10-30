@@ -229,9 +229,9 @@ public partial class MainWindow
         DeviceBanner.Visibility = Visibility.Collapsed;
         Tabs.SelectedItem = CatalogTab;
         var devices = newDevicesWithoutDriver;
-        await RunBusy(L.T("Recherche d'un pilote pour le nouveau périphérique…"), async () =>
+        await RunBusy(L.T("Recherche d'un pilote pour le nouveau périphérique…"), async stop =>
         {
-            ShowCatalog(await DriverCatalog.FindAsync(devices, new Progress<string>(SetStatus)));
+            ShowCatalog(await DriverCatalog.FindAsync(devices, new Progress<string>(SetStatus), cancel: stop));
             return catalogDrivers.Count == 0
                 ? L.T("Le catalogue Microsoft n'a pas de pilote pour ce périphérique : essayez la page Windows Update ou le site du fabricant.")
                 : L.T("Pilote trouvé : cochez-le puis installez-le.");

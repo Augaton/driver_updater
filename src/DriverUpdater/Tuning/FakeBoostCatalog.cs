@@ -74,6 +74,25 @@ public static class FakeBoostCatalog
 
     static bool Disabled(IRegistry r, string service) => Is(r, Services + service, "Start", 4);
 
+    /// <summary>
+    /// An update server that is none: missing, or this PC itself. Tools that block Windows
+    /// Update point it there; a company's own server has a real address.
+    /// </summary>
+    public static bool FakeUpdateServer(object? address)
+    {
+        if (address is not string { Length: > 0 } text) return true;
+        text = text.Trim();
+        if (!Uri.TryCreate(text.Contains("://", StringComparison.Ordinal) ? text : "http://" + text, UriKind.Absolute, out var uri)) return true;
+        return uri.IsLoopback || uri.Host is "0.0.0.0" or "";
+    }
+
+    /// <summary>Windows Update told to use a company's update server, a real one: the PC is managed.</summary>
+    public static bool CompanyUpdateServer(IRegistry r) => UsesUpdateServer(r) && !FakeUpdateServer(r.Get(Hive.LocalMachine, UpdatePolicy, "WUServer"));
+
+    static bool PointedAtNoServer(IRegistry r) => UsesUpdateServer(r) && !CompanyUpdateServer(r);
+
+    static bool UsesUpdateServer(IRegistry r) => Is(r, UpdatePolicy + @"\AU", "UseWUServer", 1);
+
     public static readonly IReadOnlyList<FakeBoost> All =
     [
         new(Fix(BootTimers, L.T("Minuterie forcée au démarrage (HPET)"),
@@ -100,13 +119,24 @@ public static class FakeBoostCatalog
         new(Fix("windows-update-policy", L.T("Mises à jour de Windows bloquées par une stratégie"),
             L.T("Windows ne cherche plus ses correctifs de sécurité : chaque faille publiée reste ouverte. Sur un PC personnel, rien ne le justifie ; « Suspendre » dans Windows Update existe pour quelques semaines."),
             admin: true, [Machine(UpdatePolicy + @"\AU", "NoAutoUpdate", Removed), Machine(UpdatePolicy + @"\AU", "AUOptions", Removed),
-                          Machine(UpdatePolicy, "DoNotConnectToWindowsUpdateInternetLocations", Removed)]),
+                          Machine(UpdatePolicy, "DoNotConnectToWindowsUpdateInternetLocations", Removed),
+                          Machine(UpdatePolicy, "DisableWindowsUpdateAccess", Removed), Machine(UpdatePolicy, "SetDisableUXWUAccess", Removed)]),
             FakeBoostWhen.Unmanaged,
             Found: r => Is(r, UpdatePolicy + @"\AU", "NoAutoUpdate", 1) || Is(r, UpdatePolicy + @"\AU", "AUOptions", 1)
-                        || Is(r, UpdatePolicy, "DoNotConnectToWindowsUpdateInternetLocations", 1) && r.Get(Hive.LocalMachine, UpdatePolicy, "WUServer") is null),
+                        || Is(r, UpdatePolicy, "DoNotConnectToWindowsUpdateInternetLocations", 1) && r.Get(Hive.LocalMachine, UpdatePolicy, "WUServer") is null
+                        || Is(r, UpdatePolicy, "DisableWindowsUpdateAccess", 1) || Is(r, UpdatePolicy, "SetDisableUXWUAccess", 1)),
+        new(Fix("windows-update-no-server", L.T("Windows Update envoyé vers un serveur qui n'existe pas"),
+            L.T("Un outil a dit à Windows de chercher ses mises à jour sur un serveur d'entreprise qui est en fait ce PC lui-même : il n'en trouve donc jamais. Une vraie entreprise donne l'adresse de son serveur."),
+            admin: true, [Machine(UpdatePolicy + @"\AU", "UseWUServer", Removed), Machine(UpdatePolicy, "WUServer", Removed),
+                          Machine(UpdatePolicy, "WUStatusServer", Removed)]),
+            Found: PointedAtNoServer),
         new(Fix("service-wuauserv", L.T("Service Windows Update désactivé"),
             L.T("Plus aucune mise à jour de Windows, ni de pilote par Windows Update."), admin: true, [Start("wuauserv", 3)]),
             FakeBoostWhen.Unmanaged, Found: r => Disabled(r, "wuauserv")),
+        new(Fix("service-usosvc", L.T("Service d'orchestration des mises à jour désactivé"),
+            L.T("C'est lui qui lance la recherche et l'installation des mises à jour : sans lui, Windows Update ne fait plus rien de lui-même."),
+            admin: true, [Start("UsoSvc", 2)]),
+            FakeBoostWhen.Unmanaged, Found: r => Disabled(r, "UsoSvc")),
         new(Fix("service-bits", L.T("Service de transfert en arrière-plan (BITS) désactivé"),
             L.T("Windows Update et le Microsoft Store ne peuvent plus rien télécharger."), admin: true, [Start("BITS", 3)]),
             FakeBoostWhen.Unmanaged, Found: r => Disabled(r, "BITS")),
@@ -166,6 +196,10 @@ public static class FakeBoostCatalog
             L.T("L'arrêt peut prendre plusieurs minutes (Microsoft). C'est aussi une stratégie de sécurité légitime : à garder si c'est voulu."),
             admin: true, []), InfoOnly: true,
             Found: r => Is(r, MemoryManagement, "ClearPageFileAtShutdown", 1)),
+        new(Fix("service-waasmedic", L.T("Service de réparation de Windows Update désactivé"),
+            L.T("Il remet en marche Windows Update quand un outil l'a cassé. Windows protège ce service : seul l'outil qui l'a coupé, ou une réinstallation de Windows Update, peut le rétablir."),
+            admin: true, []), InfoOnly: true,
+            Found: r => Disabled(r, "WaaSMedicSvc")),
         new(Fix("search-off", L.T("Recherche Windows désactivée"),
             L.T("La recherche du menu Démarrer, de l'Explorateur et d'Outlook ne trouve plus rien. Son gain en jeu n'a pas été mesuré : depuis 2020, elle se met d'elle-même en retrait pendant une partie."),
             admin: true, []), InfoOnly: true,

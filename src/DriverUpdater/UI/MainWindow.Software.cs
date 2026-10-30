@@ -13,15 +13,17 @@ public partial class MainWindow
     InstalledProgram? uninstalled; // the last program uninstalled here, whose leftovers we look for
 
     async void OnSearchSoftware(object sender, RoutedEventArgs e) =>
-        await RunBusy(L.T("Recherche des mises à jour de logiciels…"), async () =>
+        await RunBusy(L.T("Recherche des mises à jour de logiciels…"), async stop =>
         {
             if (!WinGet.IsAvailable)
                 return L.T("winget est introuvable : installez « Programme d'installation d'application » depuis le Microsoft Store.");
-            ShowSoftware(await SoftwareUpgrades(fresh: true));
-            return software.Count == 0 ? L.T("Vos logiciels sont à jour.") : L.F("{0} logiciel(s) à mettre à jour.", software.Count);
+            var found = await SoftwareUpgrades(fresh: true, stop);
+            ShowSoftware(found);
+            return (software.Count == 0 ? L.T("Vos logiciels sont à jour.") : L.F("{0} logiciel(s) à mettre à jour.", software.Count))
+                   + (found.Unreadable > 0 ? " " + SoftwareNote.Text : "");
         });
 
-    Task<List<SoftwareUpdate>>? upgrades;
+    Task<UpgradeList>? upgrades;
     DateTime upgradesAt;
 
     /// <summary>
@@ -29,19 +31,27 @@ public partial class MainWindow
     /// components ask for the same list: one run serves both for two minutes. A search the
     /// user asks for, or an update just done, always asks again.
     /// </summary>
-    Task<List<SoftwareUpdate>> SoftwareUpgrades(bool fresh = false)
+    Task<UpgradeList> SoftwareUpgrades(bool fresh = false, CancellationToken stop = default)
     {
         if (fresh || upgrades is null || upgrades.IsFaulted || upgrades.IsCanceled || DateTime.UtcNow - upgradesAt > TimeSpan.FromMinutes(2))
         {
-            upgrades = WinGet.ListUpgradesAsync();
+            upgrades = WinGet.ListUpgradesAsync(stop);
             upgradesAt = DateTime.UtcNow;
         }
         return upgrades;
     }
 
+    void ShowSoftware(UpgradeList found)
+    {
+        SoftwareNote.Text = L.F("winget a coupé le nom de {0} autre(s) logiciel(s) à mettre à jour : ils ne peuvent pas être désignés d'ici. « winget upgrade », dans un terminal assez large, les montre en entier.", found.Unreadable);
+        SoftwareNote.Visibility = found.Unreadable > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ShowSoftware(found.Updates);
+    }
+
     void ShowSoftware(List<SoftwareUpdate> list)
     {
         software = list;
+        ShowSoftwareTile();
         SoftwareGrid.ItemsSource = software;
         SoftwarePlaceholder.Text = L.T("Aucun logiciel à mettre à jour.");
         SoftwarePlaceholder.Visibility = software.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -57,13 +67,15 @@ public partial class MainWindow
             return;
         }
 
-        await RunBusy(L.T("Mise à jour des logiciels…"), async () =>
+        await RunBusy(L.T("Mise à jour des logiciels…"), async stop =>
         {
             BusyBar.IsIndeterminate = false;
             BusyBar.Maximum = selected.Count;
             var done = new List<SoftwareUpdate>();
             var failed = new List<string>();
-            for (int i = 0; i < selected.Count; i++)
+            int i = 0;
+            // "Arrêter" lets the current installer finish: one cut short can leave the program broken.
+            for (; i < selected.Count && !stop.IsCancellationRequested; i++)
             {
                 var app = selected[i];
                 SetStatus(L.F("Logiciel {0} sur {1} : {2}…", i + 1, selected.Count, app.Name));
@@ -81,9 +93,10 @@ public partial class MainWindow
             }
             ShowSoftware(software.Except(done).ToList());
             upgrades = null; // the next look asks winget again
-            return failed.Count == 0
-                ? L.F("{0} logiciel(s) mis à jour.", done.Count)
-                : L.F("{0} sur {1} mis à jour. Échec : {2}.", done.Count, selected.Count, string.Join(", ", failed));
+            return (failed.Count == 0
+                    ? L.F("{0} logiciel(s) mis à jour.", done.Count)
+                    : L.F("{0} sur {1} mis à jour. Échec : {2}.", done.Count, selected.Count, string.Join(", ", failed)))
+                   + (i < selected.Count ? L.F(" Arrêté avant les {0} autre(s).", selected.Count - i) : "");
         });
     }
 

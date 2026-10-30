@@ -34,6 +34,54 @@ public sealed class DriverReportTests
     }
 
     [Fact]
+    public void Offers_an_optional_driver_without_ticking_it()
+    {
+        var pad = Device(@"ACPI\SYNA1234", "1.0.0.0");
+        var optional = Offer(DriverOffer.WindowsUpdate, "2.0.0.0") with { Optional = true };
+
+        var row = Assert.Single(DriverReport.Build([pad], [(@"ACPI\SYNA1234", optional)], new Dictionary<string, DriverOffer>()));
+
+        Assert.Equal((Verdict.Update, true, false), (row.Verdict, row.CanInstall, row.Selected));
+        Assert.Equal("Mise à jour facultative", row.VerdictText);
+    }
+
+    [Fact]
+    public void A_device_no_source_answered_for_is_not_up_to_date()
+    {
+        var nic = Device(@"PCI\VEN_10EC&DEV_8168", "10.0.0.0");
+        var gpu = Device(@"PCI\VEN_10DE&DEV_2504", "31.0.0.1");
+        var broken = Device(@"PCI\VEN_8086&DEV_0001", "1.0", problem: 43);
+        var rows = DriverReport.Build([nic, gpu, broken], [],
+            new Dictionary<string, DriverOffer> { [gpu.HardwareIds[0]] = Offer(DriverOffer.Catalog, "32.0.0.1") },
+            @unchecked: new HashSet<string> { nic.DeviceId, gpu.DeviceId, broken.DeviceId });
+
+        Assert.Equal(Verdict.Unchecked, rows.Single(r => r.Device == nic).Verdict);
+        Assert.Equal(Verdict.Update, rows.Single(r => r.Device == gpu).Verdict);     // an offer found is still an offer
+        Assert.Equal(Verdict.Problem, rows.Single(r => r.Device == broken).Verdict); // the device's own state needs no source
+        Assert.Equal(0, ScanSummary.Of(rows).UpToDate);
+    }
+
+    [Fact]
+    public void Only_windows_update_the_catalog_or_nvidia_answering_counts_as_checked()
+    {
+        var nic = Device(@"PCI\VEN_10EC&DEV_8168", "10.0.0.0");
+        var gpu = Device(@"PCI\VEN_10DE&DEV_2504", "31.0.0.1");
+        var cpu = new DeviceDriver // a processor: never searched in the catalog
+        {
+            DeviceId = @"ACPI\GenuineIntel\0", Name = "CPU", Class = "Processor", Provider = "Intel", Version = "10.0.0.0", Date = null,
+            Signed = true, Problem = 0, InfName = "cpu.inf", HardwareIds = [@"ACPI\GenuineIntel"],
+        };
+        DeviceDriver[] devices = [nic, gpu, cpu];
+        string Id(DeviceDriver d) => d.DeviceId;
+
+        Assert.Empty(DriverReport.Unchecked(devices, windowsUpdateAnswered: true, catalogUnreached: null, []));
+        // Windows Update out of reach: the catalog answered for the card, not for the network card it could not reach.
+        Assert.Equal([Id(cpu), Id(nic)], DriverReport.Unchecked(devices, false, new HashSet<string> { nic.HardwareIds[0] }, []).Order(StringComparer.Ordinal));
+        // The catalog out of reach too: only NVIDIA's answer stands.
+        Assert.Equal([Id(cpu), Id(nic)], DriverReport.Unchecked(devices, false, catalogUnreached: null, [Id(gpu)]).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
     public void Ignores_offers_not_newer_than_what_is_installed()
     {
         var nic = Device(@"PCI\VEN_10EC&DEV_8168", "10.79.0.0");

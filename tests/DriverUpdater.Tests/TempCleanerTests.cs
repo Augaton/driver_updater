@@ -101,6 +101,19 @@ public sealed class TempCleanerTests : IDisposable
         Assert.Empty(TempCleaner.Find([TempDir()], Cutoff).Files);
     }
 
+    // A deep node_modules left in %TEMP%: past 260 characters, a plain path does not open.
+    [WindowsFact]
+    public void Deletes_a_file_with_a_path_longer_than_windows_old_limit()
+    {
+        var deep = MakeFile(Path.Combine(["temp", .. Enumerable.Repeat("node_modules_long_folder_name", 12), "index.js"]), Old);
+        Assert.True(deep.Length > 300);
+
+        var result = TempCleaner.Delete(TempCleaner.Find([TempDir()], Cutoff).Files, Cutoff);
+
+        Assert.Equal((1, 0), (result.Deleted, result.Skipped));
+        Assert.False(File.Exists(deep));
+    }
+
     [Fact]
     public void Delete_keeps_a_file_modified_since_the_scan()
     {

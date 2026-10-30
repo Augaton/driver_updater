@@ -4,7 +4,9 @@
              xmlns:ui="clr-namespace:DriverUpdater.UI"
              DispatcherUnhandledException="OnUnhandledException">
   <Application.Resources>
-    <!-- Palette: near-black blues, neon accents. Contrast of Ink and InkMuted on Panel stays above 4.5:1. -->
+    <!-- Palette: near-black blues, neon accents. Contrast of Ink and InkMuted on Panel stays above 4.5:1.
+         The styles below read it as DynamicResource: with high contrast on, App.ApplyTheme swaps it for
+         Windows' own colors after this file is loaded. -->
     <SolidColorBrush x:Key="Void" Color="#07090F" />
     <SolidColorBrush x:Key="Panel" Color="#0F1420" />
     <SolidColorBrush x:Key="PanelRaised" Color="#121927" />
@@ -42,8 +44,8 @@
     <SolidColorBrush x:Key="DataGridRowSelectedForegroundThemeBrush" Color="#E8EEF7" />
 
     <Style x:Key="Card" TargetType="Border">
-      <Setter Property="Background" Value="{StaticResource Panel}" />
-      <Setter Property="BorderBrush" Value="{StaticResource Edge}" />
+      <Setter Property="Background" Value="{DynamicResource Panel}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Edge}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="12" />
       <Setter Property="Padding" Value="18" />
@@ -53,7 +55,7 @@
     <Style x:Key="Heading" TargetType="TextBlock">
       <Setter Property="FontFamily" Value="{StaticResource Display}" />
       <Setter Property="FontSize" Value="20" />
-      <Setter Property="Foreground" Value="{StaticResource Ink}" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
       <Setter Property="Margin" Value="0,0,0,4" />
     </Style>
 
@@ -61,12 +63,12 @@
     <Style x:Key="Kicker" TargetType="TextBlock">
       <Setter Property="FontFamily" Value="{StaticResource Display}" />
       <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{StaticResource NeonCyan}" />
+      <Setter Property="Foreground" Value="{DynamicResource NeonCyan}" />
       <Setter Property="Margin" Value="0,0,0,2" />
     </Style>
 
     <Style x:Key="Muted" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="{StaticResource InkMuted}" />
+      <Setter Property="Foreground" Value="{DynamicResource InkMuted}" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
@@ -88,7 +90,7 @@
 
     <!-- A page inherits its TabItem's Foreground: the text color, not the classic theme's black. -->
     <Style x:Key="Page" TargetType="TabItem">
-      <Setter Property="Foreground" Value="{StaticResource Ink}" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
     </Style>
 
     <!-- A group title ("Pilotes"…) between pages: a branch of the menu, never a page. -->
@@ -115,7 +117,7 @@
               <ToggleButton x:Name="Toggle" ClickMode="Press" Focusable="False" Cursor="Hand" HorizontalAlignment="Stretch"
                             AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}"
                             HorizontalContentAlignment="Stretch"
-                            Foreground="{StaticResource InkMuted}" BorderBrush="Transparent"
+                            Foreground="{DynamicResource InkMuted}" BorderBrush="Transparent"
                             IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
                 <ToggleButton.Template>
                   <ControlTemplate TargetType="ToggleButton">
@@ -133,7 +135,7 @@
                       </Trigger>
                       <Trigger Property="IsMouseOver" Value="True">
                         <Setter TargetName="Bd" Property="Background" Value="#0DFFFFFF" />
-                        <Setter Property="Foreground" Value="{StaticResource Ink}" />
+                        <Setter Property="Foreground" Value="{DynamicResource Ink}" />
                       </Trigger>
                     </ControlTemplate.Triggers>
                   </ControlTemplate>
@@ -147,8 +149,8 @@
                 <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed" />
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Toggle" Property="BorderBrush" Value="{StaticResource NeonCyan}" />
-                <Setter TargetName="Toggle" Property="Foreground" Value="{StaticResource Ink}" />
+                <Setter TargetName="Toggle" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
+                <Setter TargetName="Toggle" Property="Foreground" Value="{DynamicResource Ink}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -163,7 +165,7 @@
     <Style x:Key="NavPage" TargetType="TreeViewItem">
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-      <Setter Property="Foreground" Value="{StaticResource InkMuted}" />
+      <Setter Property="Foreground" Value="{DynamicResource InkMuted}" />
       <Setter Property="FontSize" Value="14" />
       <Setter Property="Template">
         <Setter.Value>
@@ -172,22 +174,22 @@
                     CornerRadius="8" Margin="12,1" Padding="13,7">
               <Grid>
                 <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-13,1,0,1"
-                        Background="{StaticResource NeonCyan}" Effect="{StaticResource Glow}" Visibility="Hidden" />
+                        Background="{DynamicResource NeonCyan}" Effect="{DynamicResource Glow}" Visibility="Hidden" />
                 <ContentPresenter ContentSource="Header" />
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger SourceName="Bd" Property="IsMouseOver" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#12FFFFFF" />
-                <Setter Property="Foreground" Value="{StaticResource Ink}" />
+                <Setter Property="Foreground" Value="{DynamicResource Ink}" />
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#1A00E5FF" />
                 <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
-                <Setter Property="Foreground" Value="{StaticResource NeonCyan}" />
+                <Setter Property="Foreground" Value="{DynamicResource NeonCyan}" />
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource NeonCyan}" />
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -224,22 +226,22 @@
     <!-- Dashboard tile: a card that lights up under the mouse and opens its section. -->
     <Style x:Key="Tile" TargetType="Button">
       <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="Foreground" Value="{StaticResource Ink}" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="1"
+            <Border x:Name="Bd" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Edge}" BorderThickness="1"
                     CornerRadius="14" Padding="20,18" Margin="0,0,14,14">
               <ContentPresenter />
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource NeonCyan}" />
-                <Setter TargetName="Bd" Property="Effect" Value="{StaticResource Glow}" />
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
+                <Setter TargetName="Bd" Property="Effect" Value="{DynamicResource Glow}" />
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource NeonCyan}" />
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -250,13 +252,13 @@
     <!-- The big round "scan" button of the dashboard. -->
     <Style x:Key="ScanButton" TargetType="Button">
       <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="Foreground" Value="{StaticResource Ink}" />
+      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Grid Width="210" Height="210">
-              <Ellipse Stroke="{StaticResource NeonGradient}" StrokeThickness="3" Effect="{StaticResource Glow}" />
-              <Ellipse x:Name="Face" Margin="14" Fill="{StaticResource Panel}" Stroke="{StaticResource Edge}" StrokeThickness="1" />
+              <Ellipse Stroke="{DynamicResource NeonGradient}" StrokeThickness="3" Effect="{DynamicResource Glow}" />
+              <Ellipse x:Name="Face" Margin="14" Fill="{DynamicResource Panel}" Stroke="{DynamicResource Edge}" StrokeThickness="1" />
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>
             <ControlTemplate.Triggers>

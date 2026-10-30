@@ -49,6 +49,32 @@ public static class WindowsUpdateDrivers
 
     public static List<DriverUpdate> Search() => Find("IsInstalled=0 and Type='Driver' and IsHidden=0");
 
+    /// <summary>A search still stuck is left to finish on its own after this long.</summary>
+    public static readonly TimeSpan Limit = TimeSpan.FromMinutes(10);
+
+    static readonly Lock searching = new();
+    static Task<List<DriverUpdate>>? search;
+
+    /// <summary>
+    /// <see cref="Search"/> off the caller's thread, given up after <see cref="Limit"/> or when
+    /// <paramref name="cancel"/> asks. The search itself cannot be stopped, and Windows runs one
+    /// at a time: while one is still going, callers wait for it rather than queue a second.
+    /// </summary>
+    public static async Task<List<DriverUpdate>> SearchAsync(CancellationToken cancel = default)
+    {
+        Task<List<DriverUpdate>> running;
+        lock (searching)
+            running = search is { IsCompleted: false } ? search : search = Task.Run(Search);
+        try
+        {
+            return await running.WaitAsync(Limit, cancel);
+        }
+        catch (TimeoutException)
+        {
+            throw new TimeoutException(L.F("Windows Update n'a pas répondu en {0} minutes.", Limit.TotalMinutes));
+        }
+    }
+
     /// <summary>
     /// The updates with these IDs, as the administrator helper finds them again: COM objects
     /// cannot cross from the window's process. IDs must come from <see cref="AdminCommand"/>,

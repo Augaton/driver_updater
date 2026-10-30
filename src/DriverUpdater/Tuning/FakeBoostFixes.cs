@@ -27,7 +27,8 @@ public static class FakeBoostFixes
 
     /// <summary>
     /// Managed by a company: joined to a domain or to Entra ID, enrolled in a device manager, or
-    /// told to use a company update server. Its settings may be what its IT wants.
+    /// told to use a company update server. Its settings may be what its IT wants. A "server"
+    /// that is this PC itself is no company's: that is a tool blocking Windows Update.
     /// </summary>
     static bool Managed()
     {
@@ -46,7 +47,7 @@ public static class FakeBoostFixes
             NetFreeAadJoinInformation(join);
             if (type == 1) return true;
         }
-        if (Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "UseWUServer", null) is 1) return true;
+        if (FakeBoostCatalog.CompanyUpdateServer(new WindowsRegistry())) return true;
         using var enrollments = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Enrollments");
         foreach (var name in enrollments?.GetSubKeyNames() ?? [])
         {

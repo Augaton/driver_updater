@@ -27,6 +27,18 @@ public sealed class NvidiaTests
     }
 
     [Theory]
+    [InlineData("null")]
+    [InlineData("[]")]
+    [InlineData("42")]
+    [InlineData("""{"criteria": null}""")]
+    [InlineData("""{"criteria": {"IsSupported": null}}""")]
+    [InlineData("""{"criteria": {"IsSupported": [1]}}""")]
+    [InlineData("""{"criteria": {"IsSupported": {"state": "true"}}, "DriverAttributes": null}""")]
+    [InlineData("""{"criteria": {"IsSupported": {"state": "true"}}, "DriverAttributes": "617.42"}""")]
+    public void An_answer_of_another_shape_is_ignored_not_thrown(string json) =>
+        Assert.Null(NvidiaModel.Parse(json));
+
+    [Theory]
     [InlineData("https://us.download.nvidia.com/Windows/617.42/617.42-desktop.exe", true)]
     [InlineData("https://international.download.nvidia.com/Windows/617.42/x.exe", true)]
     [InlineData("http://us.download.nvidia.com/Windows/617.42/x.exe", false)]      // not HTTPS

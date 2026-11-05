@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Management" Version="10.0.13" />
+    <PackageReference Include="System.Management" Version="10.0.14" />
     <!-- EventLog and PerformanceCounter come with the Windows Desktop framework (WPF): a
          package reference would be redundant, and the Windows build rejects it (NU1510). -->
   </ItemGroup>

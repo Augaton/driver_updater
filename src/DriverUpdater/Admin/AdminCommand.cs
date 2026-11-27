@@ -20,6 +20,7 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
     public const string Health = "health";
     public const string Sfc = "sfc";
     public const string RepairWindows = "repair-windows";
+    public const string RestoreEnable = "restore-enable";
     public const string DismCleanup = "dism-cleanup";
     public const string StartupSet = "startup-set";
     public const string Recycle = "recycle";
@@ -116,7 +117,7 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                     || rest[0] == "task" && (!rest[1].StartsWith('\\') || DriverUpdater.Maintenance.StartupTasks.IsWindowsOwn(rest[1])))
                     throw new ArgumentException(L.T("Entrée de démarrage invalide."));
                 return new(name, rest);
-            case Version or Unhide or CleanWindowsTemp or Health or Sfc or RepairWindows or DismCleanup or BootReport or DriverStore or RestorePoints or CreateRestorePoint:
+            case Version or Unhide or CleanWindowsTemp or Health or Sfc or RepairWindows or DismCleanup or BootReport or DriverStore or RestorePoints or CreateRestorePoint or RestoreEnable:
                 if (rest.Count != 0) throw new ArgumentException(L.F("« {0} » ne prend pas d'argument.", name));
                 return new(name, rest);
             default:

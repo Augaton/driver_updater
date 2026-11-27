@@ -119,7 +119,8 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
 - **Faux boosts.** Ce que les « optimiseurs » et les guides laissent sur un PC et qui le
   ralentit ou l'expose : minuterie forcée au démarrage, fichier d'échange supprimé,
   parcage des cœurs coupé (indispensable aux Ryzen X3D), protections Spectre et Meltdown
-  désactivées, UAC coupé, Windows Update ou Defender bloqués par stratégie, Windows Update
+  désactivées, UAC coupé, Windows Update, Defender ou la restauration du système bloqués par
+  stratégie, Windows Update
   envoyé vers un faux serveur d'entreprise (ce PC lui-même), services utiles désactivés,
   IPv6 coupé… Chaque point s'appuie sur la documentation de Microsoft
   ou sur des mesures publiées. « Rétablir » remet la valeur de Windows et garde l'ancienne
@@ -129,7 +130,11 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
 - **Sécurité.** Antivirus actif et à jour, pare-feu actif (celui de Windows, ou celui d'une
   suite de sécurité à sa place), mises à jour de Windows en attente, redémarrage attendu pour
   les finir, chacun avec un lien vers l'endroit où agir. Pas de « score ».
-- **Points de restauration.** La liste, en créer un, ouvrir la restauration du système.
+- **Points de restauration.** La liste, en créer un, ouvrir la restauration du système. Si
+  la protection du système est coupée (fréquent sur un Windows neuf), la page le dit et
+  l'active ; avant une installation de pilotes, l'application le propose aussi plutôt que de
+  continuer sans point. Le point est créé juste avant les pilotes, même si un autre a moins
+  de 24 heures.
 - **Disques et batterie.** État, usure et température des disques, santé de la batterie.
 - **Nettoyage.** Fichiers temporaires de plus de 2 jours, anciennes versions des composants
   de Windows (DISM), mise en veille prolongée. Pas de « nettoyage du registre ».

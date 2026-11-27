@@ -1,3 +1,4 @@
+using System.IO;
 using System.Management;
 
 namespace DriverUpdater.Maintenance;
@@ -27,6 +28,9 @@ public sealed record Disk(string Name, string Type, string Size, DiskHealth Stat
 }
 public sealed record Battery(string Name, string Designed, string FullCharge, string Health, string Cycles);
 public sealed record RestorePointResult(bool Ok, string Message);
+
+/// <summary>System protection, which restore points need: on, off, off by a policy, or not said.</summary>
+public enum RestoreProtection { On, Off, OffByPolicy, Unknown }
 public sealed record RestorePointInfo(DateTime Created, string Description, int Number);
 
 /// <summary>A piece of hardware, with the maker's own update tool when there is one.</summary>
@@ -229,18 +233,20 @@ public static class SystemInfo
 
     static int? ToInt(object? value) => value is null ? null : Convert.ToInt32(value);
 
-    /// <summary>Creates a restore point, or reports a usable one from the last 24 hours.</summary>
+    /// <summary>Creates a restore point just before installing drivers.</summary>
     public static RestorePointResult CreateRestorePoint() => CreateRestorePoint(onDemand: false);
 
-    /// <param name="onDemand">
-    /// Asked for by the user: Windows' one-point-a-day limit is lifted for this one point (as
-    /// Windows' own control panel does), then put back as it was.
-    /// </param>
+    /// <summary>
+    /// Windows' one-point-a-day limit is lifted for this one point (as Windows' own control panel
+    /// does), then put back as it was: a point from this morning would not hold the PC as it is now,
+    /// just before the drivers.
+    /// </summary>
+    /// <param name="onDemand">Asked for by the user, rather than before installing drivers.</param>
     public static RestorePointResult CreateRestorePoint(bool onDemand)
     {
         const string Settings = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore";
         const string Frequency = "SystemRestorePointCreationFrequency";
-        using var key = onDemand ? Microsoft.Win32.Registry.LocalMachine.OpenSubKey(Settings, writable: true) : null;
+        using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(Settings, writable: true);
         var previous = key?.GetValue(Frequency);
         key?.SetValue(Frequency, 0, Microsoft.Win32.RegistryValueKind.DWord);
         try
@@ -260,6 +266,44 @@ public static class SystemInfo
     }
 
     const uint DeviceDriverInstall = 10, ModifySettings = 12; // RestorePointType
+
+    /// <summary>
+    /// Whether system protection is on, as any user may read it: RPSessionInterval is 0 when it is
+    /// off, and on only while the system drive is protected. A policy can turn it off for good.
+    /// </summary>
+    public static RestoreProtection ReadRestoreProtection()
+    {
+        using var policy = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore");
+        if (policy?.GetValue("DisableSR") is int off && off == 1) return RestoreProtection.OffByPolicy;
+        using var settings = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore");
+        return settings?.GetValue("RPSessionInterval") is int interval
+            ? interval == 0 ? RestoreProtection.Off : RestoreProtection.On
+            : RestoreProtection.Unknown;
+    }
+
+    /// <summary>
+    /// Turns system protection on for the system drive (administrator side), with the disk space
+    /// Windows gives it by default, a few percent of the drive.
+    /// </summary>
+    public static RestorePointResult EnableRestoreProtection()
+    {
+        var drive = Path.GetPathRoot(Environment.SystemDirectory)!;
+        try
+        {
+            using var restore = new ManagementClass(new ManagementScope(@"\\.\root\default"), new ManagementPath("SystemRestore"), null);
+            using var args = restore.GetMethodParameters("Enable");
+            args["Drive"] = drive;
+            using var result = restore.InvokeMethod("Enable", args, null);
+            uint code = Convert.ToUInt32(result["ReturnValue"]);
+            return code == 0
+                ? new(true, L.F("Protection du système activée sur {0}.", drive))
+                : new(false, L.F("Windows n'a pas activé la protection du système (code {0}).", code));
+        }
+        catch (Exception e) when (e is ManagementException or System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
+        {
+            return new(false, L.T("Protection du système indisponible : ") + e.Message);
+        }
+    }
 
     static RestorePointResult CreatePoint(string description, uint type)
     {

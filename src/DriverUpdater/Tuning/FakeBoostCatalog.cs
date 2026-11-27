@@ -60,6 +60,7 @@ public static class FakeBoostCatalog
     const string MemoryManagement = @"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management";
     const string UpdatePolicy = @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate";
     const string RealTime = @"SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection";
+    const string RestorePolicy = @"SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore";
     static readonly object Removed = RegistryValue.Removed;
 
     static Tweak Fix(string id, string title, string why, bool admin, IReadOnlyList<RegistryValue> values, bool restart = true, bool oneClick = true) =>
@@ -125,6 +126,11 @@ public static class FakeBoostCatalog
             Found: r => Is(r, UpdatePolicy + @"\AU", "NoAutoUpdate", 1) || Is(r, UpdatePolicy + @"\AU", "AUOptions", 1)
                         || Is(r, UpdatePolicy, "DoNotConnectToWindowsUpdateInternetLocations", 1) && r.Get(Hive.LocalMachine, UpdatePolicy, "WUServer") is null
                         || Is(r, UpdatePolicy, "DisableWindowsUpdateAccess", 1) || Is(r, UpdatePolicy, "SetDisableUXWUAccess", 1)),
+        new(Fix("restore-policy", L.T("Restauration du système coupée par une stratégie"),
+            L.T("Plus aucun point de restauration, pas même avant l'installation d'un pilote : une mise à jour ratée ne se défait plus. Un « optimiseur » la coupe pour quelques % du disque. Une fois la stratégie retirée, la page Points de restauration rallume la protection."),
+            admin: true, [Machine(RestorePolicy, "DisableSR", Removed), Machine(RestorePolicy, "DisableConfig", Removed)], restart: false),
+            FakeBoostWhen.Unmanaged,
+            Found: r => Is(r, RestorePolicy, "DisableSR", 1) || Is(r, RestorePolicy, "DisableConfig", 1)),
         new(Fix("windows-update-no-server", L.T("Windows Update envoyé vers un serveur qui n'existe pas"),
             L.T("Un outil a dit à Windows de chercher ses mises à jour sur un serveur d'entreprise qui est en fait ce PC lui-même : il n'en trouve donc jamais. Une vraie entreprise donne l'adresse de son serveur."),
             admin: true, [Machine(UpdatePolicy + @"\AU", "UseWUServer", Removed), Machine(UpdatePolicy, "WUServer", Removed),

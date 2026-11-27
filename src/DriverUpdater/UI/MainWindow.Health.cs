@@ -137,6 +137,30 @@ public partial class MainWindow
         SecurityList.ItemsSource = rows;
     }
 
+    /// <summary>Whether restore points can be made at all, read without administrator rights, and the way to turn them on.</summary>
+    void ShowRestoreProtection()
+    {
+        var state = SystemInfo.ReadRestoreProtection();
+        RestoreProtectionText.Text = state switch
+        {
+            RestoreProtection.On => L.T("Protection du système activée : Windows peut créer des points de restauration."),
+            RestoreProtection.Off => L.T("Protection du système désactivée : aucun point de restauration ne peut être créé, pas même avant l'installation d'un pilote."),
+            RestoreProtection.OffByPolicy => L.T("Protection du système coupée par une stratégie : si elle ne vient pas de votre entreprise, la page Faux boosts la retire."),
+            _ => "",
+        };
+        RestoreProtectionText.Visibility = state == RestoreProtection.Unknown ? Visibility.Collapsed : Visibility.Visible;
+        EnableRestoreButton.Visibility = state == RestoreProtection.Off ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    async void OnEnableRestore(object sender, RoutedEventArgs e) =>
+        await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
+        {
+            var result = await RunAdminAsync<RestorePointResult>(AdminCommand.RestoreEnable);
+            ShowRestoreProtection();
+            if (result.Ok) Journal.Add(Journal.Maintenance, result.Message);
+            return result.Message;
+        });
+
     async void OnRestorePoints(object sender, RoutedEventArgs e) =>
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {

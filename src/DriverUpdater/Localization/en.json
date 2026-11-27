@@ -980,5 +980,15 @@
  "Windows attend un redémarrage pour finir d'installer des mises à jour : elles ne protègent qu'après.": "Windows waits for a restart to finish installing updates: they only protect after it.",
  "aucune puce TPM active": "no active TPM",
  "la puce TPM est en version 1.2": "the TPM is version 1.2",
- "le PC démarre en mode BIOS ancien (CSM), sans Secure Boot possible": "the PC starts in legacy BIOS mode (CSM), where Secure Boot cannot be"
+ "le PC démarre en mode BIOS ancien (CSM), sans Secure Boot possible": "the PC starts in legacy BIOS mode (CSM), where Secure Boot cannot be",
+ "Activer la protection": "Turn protection on",
+ "La protection du système est désactivée : Windows ne peut créer aucun point de restauration.\n\nL'activer maintenant ? Windows lui réserve quelques % du disque système.": "System protection is off: Windows cannot make any restore point.\n\nTurn it on now? Windows sets aside a few % of the system disk for it.",
+ "Plus aucun point de restauration, pas même avant l'installation d'un pilote : une mise à jour ratée ne se défait plus. Un « optimiseur » la coupe pour quelques % du disque. Une fois la stratégie retirée, la page Points de restauration rallume la protection.": "No restore point any more, not even before installing a driver: a failed update can no longer be undone. An “optimizer” turns it off for a few % of the disk. Once the policy is gone, the Restore points page turns protection back on.",
+ "Protection du système activée : Windows peut créer des points de restauration.": "System protection on: Windows can make restore points.",
+ "Protection du système activée sur {0}.": "System protection turned on for {0}.",
+ "Protection du système coupée par une stratégie : si elle ne vient pas de votre entreprise, la page Faux boosts la retire.": "System protection turned off by a policy: if it does not come from your company, the Fake boosts page removes it.",
+ "Protection du système désactivée : aucun point de restauration ne peut être créé, pas même avant l'installation d'un pilote.": "System protection off: no restore point can be made, not even before installing a driver.",
+ "Protection du système indisponible : ": "System protection unavailable: ",
+ "Restauration du système coupée par une stratégie": "System Restore turned off by a policy",
+ "Windows n'a pas activé la protection du système (code {0}).": "Windows did not turn system protection on (code {0})."
 }

@@ -65,6 +65,7 @@ public partial class MainWindow : Window
         if (e.OriginalSource != Tabs || Tabs.SelectedItem is not TabItem tab) return;
         ShowInNav(tab);
         if (tab == JournalTab) await ShowJournal(); // changes come from every page: read again each time
+        if (tab == RestoreTab) ShowRestoreProtection(); // the "Faux boosts" page can change it
         if (!openedTabs.Add(tab)) return;
         if (tab == DisksTab) await Task.WhenAll(LoadDisks(), LoadBatteries());
         else if (tab == SecurityTab) await (fullSecurity ??= LoadSecurity(askWindowsUpdate: true));

@@ -135,6 +135,9 @@ public static class AdminHelper
             case AdminCommand.RestorePoints:
                 return await Task.Run(SystemInfo.RestorePoints);
 
+            case AdminCommand.RestoreEnable:
+                return await Task.Run(SystemInfo.EnableRestoreProtection);
+
             case AdminCommand.CreateRestorePoint:
                 channel.Progress(L.T("Création du point de restauration, cela peut prendre une minute…"));
                 return await Task.Run(() => SystemInfo.CreateRestorePoint(onDemand: true));
@@ -257,6 +260,14 @@ public static class AdminHelper
         channel.Progress(L.T("Création d'un point de restauration, cela peut prendre une minute…"));
         var point = await Task.Run(SystemInfo.CreateRestorePoint);
         if (point.Ok) return point.Message;
+        // Off on many new PCs: offered here, where the safety net is needed, before "continue without".
+        if (SystemInfo.ReadRestoreProtection() == RestoreProtection.Off
+            && await channel.AskAsync(L.T("La protection du système est désactivée : Windows ne peut créer aucun point de restauration.\n\nL'activer maintenant ? Windows lui réserve quelques % du disque système.")))
+        {
+            var enabled = await Task.Run(SystemInfo.EnableRestoreProtection);
+            point = enabled.Ok ? await Task.Run(SystemInfo.CreateRestorePoint) : enabled;
+            if (point.Ok) return point.Message;
+        }
         return await channel.AskAsync(point.Message + L.T("\n\nContinuer sans point de restauration ?")) ? point.Message : null;
     }
 }

@@ -1037,6 +1037,12 @@
                 <Button Content="Restaurer le système" Tag="rstrui.exe" Click="OnOpenSetting" />
               </StackPanel>
             </local:PageHeader>
+            <!-- Whether points can be made at all (MainWindow.Health.cs, ShowRestoreProtection). -->
+            <DockPanel Margin="0,0,0,12">
+              <Button x:Name="EnableRestoreButton" DockPanel.Dock="Right" Content="Activer la protection" Style="{DynamicResource AccentButtonStyle}"
+                      Click="OnEnableRestore" Visibility="Collapsed" Margin="12,0,0,0" />
+              <TextBlock x:Name="RestoreProtectionText" Style="{StaticResource Muted}" VerticalAlignment="Center" Visibility="Collapsed" />
+            </DockPanel>
             <Border Style="{StaticResource Card}">
               <StackPanel>
                 <TextBlock x:Name="RestorePointsHint" Style="{StaticResource Muted}" Text="« Afficher » lit la liste des points que Windows garde." />

@@ -191,3 +191,20 @@ public static class DriverStoreRules
     static IEnumerable<IGrouping<(string, string, string), StorePackage>> Families(IEnumerable<StorePackage> packages) =>
         packages.GroupBy(p => (p.Class.ToLowerInvariant(), p.Provider.ToLowerInvariant(), p.OriginalName.ToLowerInvariant()));
 }
+
+/// <summary>
+/// Windows Update's history mixes every kind of update, Defender's several a day among them: it is
+/// read a page at a time, newest first, until enough of what is wanted is found or what is worth
+/// reading ends. A page gives null for what it skips.
+/// </summary>
+public static class HistoryPages
+{
+    public static List<T> Collect<T>(int total, int pageSize, int max, Func<int, int, IEnumerable<T?>> readPage) where T : class
+    {
+        var found = new List<T>();
+        for (int start = 0; start < total && found.Count < max; start += pageSize)
+            foreach (var item in readPage(start, Math.Min(pageSize, total - start)))
+                if (item is not null && found.Count < max) found.Add(item);
+        return found;
+    }
+}

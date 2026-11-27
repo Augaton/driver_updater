@@ -172,36 +172,46 @@ public static class WindowsUpdateDrivers
     const string DriversClassification = "ebfc1fc5-71a4-4f7b-9aca-3b9a503104a0";
     const string ClientName = "Driver Updater";
 
-    /// <summary>Driver installs Windows Update remembers, newest first, whoever started them.</summary>
+    /// <summary>
+    /// Driver installs Windows Update remembers, newest first, whoever started them: up to
+    /// <paramref name="max"/>. The history holds every kind of update, so it is read page by page
+    /// until that many drivers are found; within its last 5,000 entries, a few years of it.
+    /// </summary>
     public static List<HistoryEntry> History(int max = 300)
     {
-        dynamic searcher = Session.Value.CreateUpdateSearcher();
-        int total = searcher.GetTotalHistoryCount();
-        var list = new List<HistoryEntry>();
-        if (total == 0) return list;
-        dynamic entries = searcher.QueryHistory(0, Math.Min(total, max));
-        int count = entries.Count;
-        for (int i = 0; i < count; i++)
-        {
-            dynamic entry = entries[i];
-            const int OperationInstall = 1;
-            if ((int)entry.Operation != OperationInstall) continue;
-            bool ours = (entry.ClientApplicationID as string) == ClientName;
-            if (!ours && !IsDriver(entry)) continue;
-            int code = entry.ResultCode;
-            list.Add(new HistoryEntry(
-                ((DateTime)entry.Date).ToLocalTime(),
-                (string)entry.Title,
-                code switch
-                {
-                    ResultSucceeded => L.T("Réussi"),
-                    ResultSucceededWithErrors => L.T("Réussi avec erreurs"),
-                    5 => L.T("Annulé"),
-                    _ => L.F("Échec (0x{0:X8})", (int)entry.HResult),
-                },
-                ours ? ClientName : "Windows Update"));
-        }
-        return list;
+        object searcher = Session.Value.CreateUpdateSearcher();
+        int total = Math.Min((int)((dynamic)searcher).GetTotalHistoryCount(), 5000);
+        return HistoryPages.Collect(total, 250, max, (start, count) => HistoryPage(searcher, start, count));
+    }
+
+    static List<HistoryEntry?> HistoryPage(dynamic searcher, int start, int count)
+    {
+        dynamic entries = searcher.QueryHistory(start, count);
+        var page = new List<HistoryEntry?>();
+        int read = entries.Count;
+        for (int i = 0; i < read; i++) page.Add(DriverInstall((object)entries[i]));
+        return page;
+    }
+
+    /// <summary>A driver install as the history page shows it; null for anything else.</summary>
+    static HistoryEntry? DriverInstall(dynamic entry)
+    {
+        const int OperationInstall = 1;
+        if ((int)entry.Operation != OperationInstall) return null;
+        bool ours = (entry.ClientApplicationID as string) == ClientName;
+        if (!ours && !IsDriver(entry)) return null;
+        int code = entry.ResultCode;
+        return new HistoryEntry(
+            ((DateTime)entry.Date).ToLocalTime(),
+            (string)entry.Title,
+            code switch
+            {
+                ResultSucceeded => L.T("Réussi"),
+                ResultSucceededWithErrors => L.T("Réussi avec erreurs"),
+                5 => L.T("Annulé"),
+                _ => L.F("Échec (0x{0:X8})", (int)entry.HResult),
+            },
+            ours ? ClientName : "Windows Update");
     }
 
     static bool IsDriver(dynamic entry)

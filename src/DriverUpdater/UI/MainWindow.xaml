@@ -9,7 +9,7 @@
     <BooleanToVisibilityConverter x:Key="VisibleIf" />
     <!-- One hardware check of "PC de guerre": what needs doing, and what is fine (folded away). -->
     <DataTemplate x:Key="CheckRowTemplate">
-      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+      <Border Style="{StaticResource CardRow}">
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding Action}" Click="OnCheckAction"
                   VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
@@ -27,7 +27,7 @@
       </Border>
     </DataTemplate>
     <DataTemplate x:Key="TweakRowTemplate">
-      <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+      <Border Style="{StaticResource CardRow}">
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding}" Click="OnTweakAction" IsEnabled="{Binding CanAct}"
                   VerticalAlignment="Center" MinWidth="120" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
@@ -60,12 +60,9 @@
     </Grid.ColumnDefinitions>
 
     <!-- The menu: a tree built from the pages below, one branch per group (MainWindow.Nav.cs). -->
-    <Border Background="{StaticResource PanelRaised}" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,1,0">
+    <Border Background="{StaticResource Chrome}" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,1,0">
       <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Margin="24,22,18,10">
-          <TextBlock Text="DRIVER" FontFamily="{StaticResource Display}" FontSize="28" Foreground="{StaticResource NeonGradient}" />
-          <TextBlock Text="UPDATER" FontFamily="{StaticResource Display}" FontSize="28" Foreground="{StaticResource Ink}" Margin="0,-10,0,0" />
-        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Driver Updater" FontFamily="{StaticResource Display}" FontSize="18" Margin="25,20,18,8" />
         <TextBlock x:Name="VersionText" DockPanel.Dock="Bottom" Foreground="{StaticResource InkMuted}" FontSize="11" Margin="25,6,0,14" />
         <TreeView x:Name="Nav" Style="{StaticResource NavTree}" SelectedItemChanged="OnNavSelected"
                   AutomationProperties.Name="Sections de l'application" />
@@ -83,68 +80,52 @@
           <Grid MinHeight="640" Height="{Binding ActualHeight, ElementName=HomeScroll}">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
               <RowDefinition Height="*" />
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- PC on the left, the big button in the middle, the verdict on the right. -->
-            <Grid Margin="0,0,0,14">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-
-              <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                <TextBlock Text="TABLEAU DE BORD" Style="{StaticResource Kicker}" />
-                <TextBlock x:Name="PcTitle" Text="Votre PC" Style="{StaticResource Heading}" FontSize="26" TextWrapping="Wrap" />
+            <!-- The PC, and the one action of the page. -->
+            <DockPanel Margin="0,0,0,18">
+              <Button x:Name="ScanButton" DockPanel.Dock="Right" Style="{DynamicResource AccentButtonStyle}" Click="OnScanAll"
+                      AutomationProperties.Name="Analyser les pilotes" VerticalAlignment="Center" Padding="20,9" Margin="24,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0" />
+                  <TextBlock Text="Analyser les pilotes" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="PcTitle" Text="Votre PC" Style="{StaticResource Heading}" FontSize="24" TextWrapping="Wrap" />
                 <TextBlock x:Name="PcSummary" Style="{StaticResource Muted}" />
               </StackPanel>
+            </DockPanel>
 
-              <Grid Grid.Column="1" Width="250" Height="250">
-                <Ellipse x:Name="ScanRing" Width="238" Height="238" Stroke="{StaticResource NeonCyan}" StrokeThickness="2"
-                         StrokeDashArray="2 6" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
-                  <Ellipse.RenderTransform>
-                    <RotateTransform x:Name="ScanRotation" />
-                  </Ellipse.RenderTransform>
-                </Ellipse>
-                <Button x:Name="ScanButton" Style="{StaticResource ScanButton}" Click="OnScanAll"
-                        AutomationProperties.Name="Analyser tous les pilotes" HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <StackPanel>
-                    <TextBlock Text="&#xE721;" FontFamily="{StaticResource Icons}" FontSize="30" HorizontalAlignment="Center"
-                               Foreground="{StaticResource NeonCyan}" />
-                    <TextBlock Text="ANALYSER" FontFamily="{StaticResource Display}" FontSize="28" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                    <TextBlock Text="tous les pilotes" Style="{StaticResource Muted}" HorizontalAlignment="Center" />
-                  </StackPanel>
-                </Button>
-              </Grid>
-
-              <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="24,0,0,0">
-                <TextBlock Text="RAPPORT DES PILOTES" Style="{StaticResource Kicker}" />
-                <UniformGrid Columns="2" Margin="0,6,0,0">
-                  <StackPanel Margin="0,0,0,10">
-                    <TextBlock x:Name="ReportTotal" Text="—" FontFamily="{StaticResource Display}" FontSize="32" />
-                    <TextBlock Text="analysés" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                  <StackPanel Margin="0,0,0,10">
-                    <TextBlock x:Name="ReportOk" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonGreen}" />
-                    <TextBlock Text="à jour" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                  <StackPanel>
-                    <TextBlock x:Name="ReportUpdates" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonCyan}" />
-                    <TextBlock Text="à mettre à jour" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                  <StackPanel>
-                    <TextBlock x:Name="ReportIssues" Text="—" FontFamily="{StaticResource Display}" FontSize="32" Foreground="{StaticResource NeonAmber}" />
-                    <TextBlock Text="sans pilote ou en erreur" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                </UniformGrid>
+            <!-- The report in figures. The states keep their colors in the table below. -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,14">
+              <StackPanel Margin="0,0,40,0">
+                <TextBlock x:Name="ReportTotal" Text="—" FontFamily="{StaticResource Display}" FontSize="26" />
+                <TextBlock Text="analysés" Style="{StaticResource Muted}" />
               </StackPanel>
-            </Grid>
+              <StackPanel Margin="0,0,40,0">
+                <TextBlock x:Name="ReportOk" Text="—" FontFamily="{StaticResource Display}" FontSize="26" />
+                <TextBlock Text="à jour" Style="{StaticResource Muted}" />
+              </StackPanel>
+              <StackPanel Margin="0,0,40,0">
+                <TextBlock x:Name="ReportUpdates" Text="—" FontFamily="{StaticResource Display}" FontSize="26" />
+                <TextBlock Text="à mettre à jour" Style="{StaticResource Muted}" />
+              </StackPanel>
+              <StackPanel>
+                <TextBlock x:Name="ReportIssues" Text="—" FontFamily="{StaticResource Display}" FontSize="26" />
+                <TextBlock Text="sans pilote ou en erreur" Style="{StaticResource Muted}" />
+              </StackPanel>
+            </StackPanel>
 
             <!-- The report itself: one line per device, updates first and ticked. -->
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
               <DockPanel>
+                <!-- While the scan runs, along the top of the report. -->
+                <ProgressBar x:Name="ScanProgress" DockPanel.Dock="Top" Height="3" IsIndeterminate="True" Visibility="Collapsed"
+                             Margin="8,0" />
                 <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,0,1">
                   <DockPanel>
                     <Button x:Name="UpdateAllButton" DockPanel.Dock="Right" Content="Mettre à jour la sélection"
@@ -152,7 +133,7 @@
                     <CheckBox x:Name="ShowUpToDate" DockPanel.Dock="Right" Content="Afficher aussi les pilotes à jour"
                               Click="OnShowUpToDate" VerticalAlignment="Center" Margin="0,0,16,0" />
                     <TextBlock x:Name="ScanStatus" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{StaticResource InkMuted}"
-                               Text="Appuyez sur ANALYSER : chaque pilote est comparé aux dernières versions de Windows Update et des fabricants." />
+                               Text="« Analyser les pilotes » compare chaque pilote aux dernières versions de Windows Update et des fabricants." />
                   </DockPanel>
                 </Border>
                 <Grid>
@@ -173,16 +154,16 @@
                         <DataGridTemplateColumn.CellTemplate>
                           <DataTemplate>
                             <TextBlock x:Name="State" Text="{Binding VerdictText}" FontWeight="SemiBold" VerticalAlignment="Center"
-                                       Foreground="{StaticResource NeonGreen}" />
+                                       Foreground="{StaticResource Success}" />
                             <DataTemplate.Triggers>
                               <DataTrigger Binding="{Binding Verdict}" Value="Update">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonCyan}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource Accent}" />
                               </DataTrigger>
                               <DataTrigger Binding="{Binding Verdict}" Value="NoDriver">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonAmber}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource Caution}" />
                               </DataTrigger>
                               <DataTrigger Binding="{Binding Verdict}" Value="Problem">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource NeonPink}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource Critical}" />
                               </DataTrigger>
                               <DataTrigger Binding="{Binding Verdict}" Value="Disabled">
                                 <Setter TargetName="State" Property="Foreground" Value="{StaticResource InkMuted}" />
@@ -207,53 +188,67 @@
               </DockPanel>
             </Border>
 
-            <!-- The rest of the PC, checked by the same scan. -->
-            <UniformGrid Grid.Row="2" Columns="4">
-              <Button Style="{StaticResource Tile}" Tag="SoftwareTab" Click="OnTile" AutomationProperties.Name="Logiciels à mettre à jour">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="24"
-                             Foreground="{StaticResource NeonGreen}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                  <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="LOGICIELS" Style="{StaticResource Kicker}" />
-                    <TextBlock x:Name="TileSoftwareValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                    <TextBlock x:Name="TileSoftwareText" Text="à mettre à jour" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                </DockPanel>
-              </Button>
-              <Button Style="{StaticResource Tile}" Tag="StartupTab" Click="OnTile" AutomationProperties.Name="Programmes au démarrage">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Text="&#xE7E8;" FontFamily="{StaticResource Icons}" FontSize="24"
-                             Foreground="{StaticResource NeonPink}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                  <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="DÉMARRAGE" Style="{StaticResource Kicker}" />
-                    <TextBlock x:Name="TileStartupValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                    <TextBlock x:Name="TileStartupText" Text="programmes lancés avec Windows" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                </DockPanel>
-              </Button>
-              <Button Style="{StaticResource Tile}" Tag="SecurityTab" Click="OnTile" AutomationProperties.Name="Sécurité">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="24"
-                             Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                  <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="SÉCURITÉ" Style="{StaticResource Kicker}" />
-                    <TextBlock x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                    <TextBlock x:Name="TileSecurityText" Text="antivirus, pare-feu, Windows" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                </DockPanel>
-              </Button>
-              <Button Style="{StaticResource Tile}" Tag="DisksTab" Click="OnTile" AutomationProperties.Name="Disques">
-                <DockPanel>
-                  <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="24"
-                             Foreground="{StaticResource NeonCyan}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                  <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="DISQUES" Style="{StaticResource Kicker}" />
-                    <TextBlock x:Name="TileDisksValue" Text="—" FontFamily="{StaticResource Display}" FontSize="26" Margin="0,2,0,0" />
-                    <TextBlock x:Name="TileDisksText" Text="état de santé" Style="{StaticResource Muted}" />
-                  </StackPanel>
-                </DockPanel>
-              </Button>
-            </UniformGrid>
+            <!-- The rest of the PC, checked by the same scan: one strip, a cell per page. -->
+            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="4">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Style="{StaticResource StatusCell}" Tag="SoftwareTab" Click="OnTile" AutomationProperties.Name="Logiciels à mettre à jour">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="20"
+                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                    <StackPanel>
+                      <TextBlock Text="Logiciels" Style="{StaticResource Caption}" />
+                      <TextBlock x:Name="TileSoftwareValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
+                      <TextBlock x:Name="TileSoftwareText" Text="à mettre à jour" Style="{StaticResource Muted}" />
+                    </StackPanel>
+                  </DockPanel>
+                </Button>
+                <Rectangle Grid.Column="1" Width="1" Fill="{StaticResource Edge}" Margin="0,12" />
+                <Button Grid.Column="2" Style="{StaticResource StatusCell}" Tag="StartupTab" Click="OnTile" AutomationProperties.Name="Programmes au démarrage">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="&#xE7E8;" FontFamily="{StaticResource Icons}" FontSize="20"
+                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                    <StackPanel>
+                      <TextBlock Text="Démarrage" Style="{StaticResource Caption}" />
+                      <TextBlock x:Name="TileStartupValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
+                      <TextBlock x:Name="TileStartupText" Text="programmes lancés avec Windows" Style="{StaticResource Muted}" />
+                    </StackPanel>
+                  </DockPanel>
+                </Button>
+                <Rectangle Grid.Column="3" Width="1" Fill="{StaticResource Edge}" Margin="0,12" />
+                <Button Grid.Column="4" Style="{StaticResource StatusCell}" Tag="SecurityTab" Click="OnTile" AutomationProperties.Name="Sécurité">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="20"
+                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                    <StackPanel>
+                      <TextBlock Text="Sécurité" Style="{StaticResource Caption}" />
+                      <TextBlock x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
+                      <TextBlock x:Name="TileSecurityText" Text="antivirus, pare-feu, Windows" Style="{StaticResource Muted}" />
+                    </StackPanel>
+                  </DockPanel>
+                </Button>
+                <Rectangle Grid.Column="5" Width="1" Fill="{StaticResource Edge}" Margin="0,12" />
+                <Button Grid.Column="6" Style="{StaticResource StatusCell}" Tag="DisksTab" Click="OnTile" AutomationProperties.Name="Disques">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="20"
+                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                    <StackPanel>
+                      <TextBlock Text="Disques" Style="{StaticResource Caption}" />
+                      <TextBlock x:Name="TileDisksValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
+                      <TextBlock x:Name="TileDisksText" Text="état de santé" Style="{StaticResource Muted}" />
+                    </StackPanel>
+                  </DockPanel>
+                </Button>
+              </Grid>
+            </Border>
           </Grid>
         </ScrollViewer>
       </TabItem>
@@ -366,7 +361,7 @@
 
       <!-- The graphics driver: the one driver that changes frame rates -->
       <TabItem x:Name="GpuTab" Header="Carte graphique" Tag="&#xE7F4;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Pilote de la carte graphique"
                               Description="Le pilote qui compte le plus en jeu. Pour une carte NVIDIA, le dernier Game Ready est demandé à NVIDIA directement : le catalogue Microsoft a souvent plusieurs semaines de retard et saute des versions. Pour AMD et Intel, l'outil du fabricant donne la toute dernière version ; le catalogue, celles validées par Microsoft.">
@@ -379,7 +374,7 @@
             <ItemsControl x:Name="GpuDriverList" Margin="0,10,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+                  <Border Style="{StaticResource ListCard}">
                     <DockPanel>
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                         <Button Content="{local:Translate 'Notes de version'}" Tag="{Binding NotesUrl}" Click="OnOpenLink" Margin="0,0,8,0"
@@ -389,13 +384,13 @@
                         <Button Content="{Binding Tool}" ContentStringFormat="{local:Translate 'Ouvrir {0}'}" Tag="{Binding Url}" Click="OnOpenLink"
                                 Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
                       </StackPanel>
-                      <TextBlock DockPanel.Dock="Left" Text="&#xE7F4;" FontFamily="{StaticResource Icons}" FontSize="26"
-                                 Foreground="{StaticResource NeonViolet}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                      <TextBlock DockPanel.Dock="Left" Text="&#xE7F4;" FontFamily="{StaticResource Icons}" FontSize="24"
+                                 Foreground="{StaticResource InkMuted}" VerticalAlignment="Center" Margin="0,0,16,0" />
                       <StackPanel>
                         <TextBlock Text="{Binding Name}" FontFamily="{StaticResource Display}" FontSize="16" TextWrapping="Wrap" />
                         <TextBlock Style="{StaticResource Muted}">
                           <Run Text="{local:Translate 'Installé :'}" /> <Run Text="{Binding Installed, Mode=OneWay}" Foreground="{StaticResource Ink}" />
-                          <Run Text="{local:Translate '   Dernier publié :'}" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{StaticResource NeonCyan}" />
+                          <Run Text="{local:Translate '   Dernier publié :'}" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{StaticResource Accent}" />
                         </TextBlock>
                       </StackPanel>
                     </DockPanel>
@@ -409,7 +404,7 @@
 
       <!-- BIOS and motherboard: only the maker updates them -->
       <TabItem x:Name="BoardTab" Header="Carte mère" Tag="&#xE950;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="BIOS et carte mère"
                               Description="Windows Update livre les BIOS avec des mois de retard, ou pas du tout : l'outil ou le site du fabricant est la bonne source. Un BIOS à jour corrige des failles de sécurité et la stabilité de la mémoire ; mettez-le à jour depuis l'outil du fabricant, branché sur secteur." />
@@ -472,7 +467,7 @@
                 <Style x:Key="AttentionText" TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding NeedsAttention}" Value="True">
-                      <Setter Property="Foreground" Value="{StaticResource NeonAmber}" />
+                      <Setter Property="Foreground" Value="{StaticResource Caution}" />
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
@@ -493,7 +488,7 @@
 
       <!-- Devices Windows reports in error, with what the code means -->
       <TabItem x:Name="ProblemsTab" Header="Périphériques en erreur" Tag="&#xE7BA;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Périphériques en erreur"
                               Description="Ce que le Gestionnaire de périphériques signale, avec le sens de chaque code d'erreur. Le plus souvent, un pilote manquant (pages Fabricants ou Windows Update) ou un périphérique désactivé.">
@@ -564,7 +559,7 @@
 
       <!-- Backup and restore of the makers' drivers -->
       <TabItem x:Name="BackupTab" Header="Sauvegarde" Tag="&#xE74E;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Sauvegarde des pilotes"
                               Description="Copie dans un dossier tous les pilotes installés par les fabricants, ceux que Windows ne fournit pas lui-même. Après une réinstallation de Windows, « Restaurer » les remet en une fois."
@@ -613,33 +608,23 @@
 
       <!-- "PC de guerre": the gaming settings worth changing, applied and undone exactly -->
       <TabItem x:Name="TuningTab" Header="PC de guerre" Tag="&#xE945;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
-            <Grid Margin="0,0,0,16">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <Grid Width="160" Height="160" Margin="0,0,28,0">
-                <local:Gauge x:Name="TuningGauge" Thickness="11" />
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                  <TextBlock x:Name="TuningScore" Text="—" FontFamily="{StaticResource Display}" FontSize="34" HorizontalAlignment="Center" />
-                  <TextBlock Text="OPTIMISÉS" Style="{StaticResource Kicker}" HorizontalAlignment="Center" />
-                </StackPanel>
-              </Grid>
-              <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <TextBlock Text="PC DE GUERRE" Style="{StaticResource Kicker}" />
-                <TextBlock Text="Tout ce qui se règle pour mieux jouer" Style="{StaticResource Heading}" FontSize="26" TextWrapping="Wrap" />
-                <TextBlock Style="{StaticResource Muted}"
-                           Text="Chaque réglage a un effet vérifiable et s'annule exactement : la valeur d'origine est gardée. Les « boosts » sans effet mesuré (réseau TCP, HPET, minuterie, services coupés, plan « Performances optimales ») n'y sont pas." />
-                <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
-                  <Button x:Name="TuneAllButton" Content="Tout optimiser" Style="{DynamicResource AccentButtonStyle}" Click="OnTuneAll" Margin="0,0,8,0" />
-                  <Button x:Name="TuningRefreshButton" Content="Actualiser" Click="OnTuningRefresh" />
-                </StackPanel>
-                <TextBlock Style="{StaticResource AdminNote}"
-                           Text="« Tout optimiser » applique les réglages de performances ; une seule autorisation administrateur pour ceux qui en ont besoin." />
+            <local:PageHeader Title="Tout ce qui se règle pour mieux jouer"
+                              Description="Chaque réglage a un effet vérifiable et s'annule exactement : la valeur d'origine est gardée. Les « boosts » sans effet mesuré (réseau TCP, HPET, minuterie, services coupés, plan « Performances optimales ») n'y sont pas."
+                              Note="« Tout optimiser » applique les réglages de performances ; une seule autorisation administrateur pour ceux qui en ont besoin.">
+              <StackPanel Orientation="Horizontal">
+                <Button x:Name="TuningRefreshButton" Content="Actualiser" Click="OnTuningRefresh" Margin="0,0,8,0" />
+                <Button x:Name="TuneAllButton" Content="Tout optimiser" Style="{DynamicResource AccentButtonStyle}" Click="OnTuneAll" />
               </StackPanel>
-            </Grid>
+            </local:PageHeader>
+
+            <!-- How many of the performance settings are on: the count, and the same as a bar. -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+              <TextBlock x:Name="TuningScore" Text="—" FontFamily="{StaticResource Display}" FontSize="20" VerticalAlignment="Center" />
+              <TextBlock Text="réglages de performances appliqués" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,16,0" />
+              <ProgressBar x:Name="TuningGauge" Width="200" Height="4" Maximum="100" VerticalAlignment="Center" />
+            </StackPanel>
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
@@ -721,7 +706,7 @@
 
       <!-- Community-recommended settings for the Steam games installed here -->
       <TabItem x:Name="GameTipsTab" Header="Conseils par jeu" Tag="&#xEA80;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Conseils par jeu"
                               Description="Les réglages que les communautés recommandent, pour les jeux Steam installés sur ce PC. Le cfg ajouté se retire d'un clic, vos propres lignes restent." />
@@ -729,7 +714,7 @@
             <ItemsControl x:Name="GameTipList" Margin="0,8,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Border Background="{StaticResource PanelRaised}" CornerRadius="10" Padding="14,12" Margin="0,0,0,8">
+                  <Border Style="{StaticResource ListCard}">
                     <StackPanel>
                       <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -738,7 +723,7 @@
                           <Button Content="{Binding Game.Tip.LinkText}" ContentStringFormat="{local:Translate 'Ouvrir {0}'}" Tag="{Binding Game.Tip.Link}" Click="OnOpenLink"
                                   Visibility="{Binding Game.HasLink, Converter={StaticResource VisibleIf}}" />
                         </StackPanel>
-                        <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{StaticResource NeonViolet}"
+                        <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{StaticResource InkMuted}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
                         <TextBlock Text="{Binding Game.Tip.Game}" FontFamily="{StaticResource Display}" FontSize="16" VerticalAlignment="Center" />
                       </DockPanel>
@@ -784,7 +769,7 @@
                 <local:Gauge x:Name="CpuGauge" Thickness="10" />
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                   <TextBlock x:Name="CpuValue" Text="—" FontFamily="{StaticResource Display}" FontSize="30" HorizontalAlignment="Center" />
-                  <TextBlock Text="PROCESSEUR" Style="{StaticResource Kicker}" HorizontalAlignment="Center" />
+                  <TextBlock Text="Processeur" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                   <TextBlock x:Name="CpuDetail" Style="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
                 </StackPanel>
               </Grid>
@@ -794,7 +779,7 @@
                 <local:Gauge x:Name="MemoryGauge" Thickness="10" />
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                   <TextBlock x:Name="MemoryValue" Text="—" FontFamily="{StaticResource Display}" FontSize="30" HorizontalAlignment="Center" />
-                  <TextBlock Text="MÉMOIRE" Style="{StaticResource Kicker}" HorizontalAlignment="Center" />
+                  <TextBlock Text="Mémoire" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                   <TextBlock x:Name="MemoryDetail" Style="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
                 </StackPanel>
               </Grid>
@@ -804,7 +789,7 @@
                 <local:Gauge x:Name="DiskGauge" Thickness="10" />
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                   <TextBlock x:Name="DiskValue" Text="—" FontFamily="{StaticResource Display}" FontSize="30" HorizontalAlignment="Center" />
-                  <TextBlock Text="DISQUE" Style="{StaticResource Kicker}" HorizontalAlignment="Center" />
+                  <TextBlock Text="Disque" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                   <TextBlock x:Name="DiskDetail" Style="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
                 </StackPanel>
               </Grid>
@@ -814,15 +799,15 @@
                 <local:Gauge x:Name="GpuGauge" Thickness="10" />
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                   <TextBlock x:Name="GpuValue" Text="—" FontFamily="{StaticResource Display}" FontSize="30" HorizontalAlignment="Center" />
-                  <TextBlock Text="CARTE GRAPHIQUE" Style="{StaticResource Kicker}" HorizontalAlignment="Center" />
+                  <TextBlock Text="Carte graphique" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                   <TextBlock x:Name="GpuDetail" Style="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
                 </StackPanel>
               </Grid>
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,14" Width="200">
               <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="&#xE945;" FontFamily="{StaticResource Icons}" FontSize="26" Foreground="{StaticResource NeonCyan}" />
-                <TextBlock Text="ALIMENTATION" Style="{StaticResource Kicker}" Margin="0,10,0,2" />
+                <TextBlock Text="&#xE945;" FontFamily="{StaticResource Icons}" FontSize="24" Foreground="{StaticResource InkMuted}" />
+                <TextBlock Text="Alimentation" Style="{StaticResource Caption}" Margin="0,10,0,2" />
                 <TextBlock x:Name="PowerValue" Style="{StaticResource Heading}" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
@@ -931,7 +916,7 @@
                       <Grid Height="130" Margin="1,0" Background="Transparent" ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
                         <StackPanel VerticalAlignment="Bottom">
                           <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,3" />
-                          <Border Width="16" Height="{Binding Height}" CornerRadius="4,4,0,0" Background="{StaticResource ChartCyan}" />
+                          <Border Width="16" Height="{Binding Height}" CornerRadius="2,2,0,0" Background="{StaticResource Chart}" />
                         </StackPanel>
                       </Grid>
                     </DataTemplate>
@@ -967,7 +952,7 @@
 
       <!-- Privacy settings, reversible -->
       <TabItem x:Name="PrivacyTab" Header="Confidentialité" Tag="&#xE72E;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Windows plus discret"
                               Description="Les réglages de confidentialité les plus suivis (ceux de WinUtil de Chris Titus, entre autres), sans ceux qui cassent quelque chose. Ils ne rendent pas le PC plus rapide : ils limitent ce que Windows collecte, suggère et affiche. Chacun s'annule exactement.">
@@ -985,7 +970,7 @@
 
       <!-- "Défaire les faux boosts": what optimizer tools left behind that hurts -->
       <TabItem x:Name="FakeBoostsTab" Header="Faux boosts" Tag="&#xE7A7;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Défaire les faux boosts"
                               Description="Ce que des « optimiseurs » et des guides ont pu laisser sur ce PC, et qui le ralentit ou l'expose. Chaque point s'appuie sur la documentation de Microsoft ou sur des mesures publiées ; « Rétablir » remet la valeur de Windows et garde l'ancienne, pour revenir en arrière."
@@ -1003,7 +988,7 @@
 
       <!-- Antivirus, firewall, pending Windows updates -->
       <TabItem x:Name="SecurityTab" Header="Sécurité" Tag="&#xEA18;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Sécurité"
                               Description="Ce que Sécurité Windows surveille déjà : antivirus actif et à jour, pare-feu actif, mises à jour de Windows en attente. Pas de « score » : des faits, et où agir.">
@@ -1021,7 +1006,7 @@
 
       <!-- System restore points -->
       <TabItem x:Name="RestoreTab" Header="Points de restauration" Tag="&#xE777;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Points de restauration"
                               Description="L'application en crée un avant chaque installation de pilote. Créez-en un vous-même avant de tester un réglage risqué ; « Restaurer le système » remet Windows à la date choisie, sans toucher à vos documents."
@@ -1054,7 +1039,7 @@
 
       <!-- Disk health, SSD wear and temperature, laptop battery -->
       <TabItem x:Name="DisksTab" Header="Disques et batterie" Tag="&#xEDA2;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Disques et batterie"
                               Description="État rapporté par Windows. « Avertissement » ou « Défaillant », ou une usure proche de 100 % : sauvegardez vos données sans attendre. L'usure, la température et la batterie demandent l'autorisation administrateur.">
@@ -1105,7 +1090,7 @@
 
       <!-- What really frees disk space, without breaking anything -->
       <TabItem x:Name="CleanupTab" Header="Nettoyage" Tag="&#xEA99;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Nettoyage"
                               Description="Ce qui libère vraiment de la place, sans rien casser : fichiers temporaires, anciennes versions des composants de Windows, fichier de mise en veille prolongée. Pas de « nettoyage du registre » : il ne fait rien gagner et c'est la première cause de casse.">
@@ -1154,7 +1139,7 @@
 
       <!-- SFC and DISM, Microsoft's own repair tools -->
       <TabItem x:Name="RepairTab" Header="Réparer Windows" Tag="&#xE90F;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Réparer Windows"
                               Description="Les outils de Microsoft. SFC vérifie et répare les fichiers système ; DISM répare l'image de Windows dont SFC se sert : lancez-le d'abord si SFC n'y arrive pas. Comptez 10 à 30 minutes."
@@ -1312,7 +1297,7 @@
 
       <!-- The user's choices -->
       <TabItem x:Name="SettingsTab" Header="Paramètres" Tag="&#xE713;">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Paramètres" Description="Vos choix, gardés d'une fois sur l'autre." />
 
@@ -1374,17 +1359,17 @@
     </TabControl>
 
     <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
-      <Border x:Name="DeviceBanner" Background="#1A00E5FF" BorderBrush="{StaticResource NeonCyan}" BorderThickness="0,1,0,0"
+      <Border x:Name="DeviceBanner" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0"
               Padding="20,10" Visibility="Collapsed">
         <DockPanel>
           <Button x:Name="DeviceBannerButton" DockPanel.Dock="Right" Content="Chercher un pilote" Style="{DynamicResource AccentButtonStyle}"
                   Click="OnDeviceBanner" />
           <TextBlock DockPanel.Dock="Left" Text="&#xE772;" FontFamily="{StaticResource Icons}" FontSize="18"
-                     Foreground="{StaticResource NeonCyan}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                     Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,12,0" />
           <TextBlock x:Name="DeviceBannerText" VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>
-      <Border x:Name="UpdateBanner" Background="#1AB44DFF" BorderBrush="{StaticResource NeonViolet}" BorderThickness="0,1,0,0"
+      <Border x:Name="UpdateBanner" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0"
               Padding="20,10" Visibility="Collapsed">
         <DockPanel>
           <Button x:Name="UpdateBannerButton" DockPanel.Dock="Right" Content="Voir les nouveautés" Click="OnOpenLink" />
@@ -1393,7 +1378,7 @@
           <TextBlock x:Name="UpdateBannerText" VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>
-      <Border Background="{StaticResource PanelRaised}" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0" Padding="20,8">
+      <Border Background="{StaticResource Chrome}" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0" Padding="20,8">
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="Copier le diagnostic" Click="OnCopyDiagnostics" Margin="12,0,0,0" />
           <ProgressBar x:Name="BusyBar" DockPanel.Dock="Right" Width="180" Height="4" VerticalAlignment="Center"

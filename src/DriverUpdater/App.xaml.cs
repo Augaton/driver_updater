@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace DriverUpdater;
@@ -129,32 +130,43 @@ public partial class App : Application
     public static void UseLanguage(string language) => L.Use(language);
 
     /// <summary>
-    /// Windows 11 controls in their dark variant, under the app's neon palette. Set here rather than in App.xaml so it
-    /// merges into the resources App.xaml has already loaded instead of racing them. With high contrast on, Windows'
-    /// own colors instead: the user chose them to be able to read at all.
+    /// Windows 11 controls in their dark variant, with the accent color chosen in Windows. Set here rather than in
+    /// App.xaml so it merges into the resources App.xaml has already loaded instead of racing them. With high contrast
+    /// on, Windows' own colors instead: the user chose them to be able to read at all.
     /// </summary>
     public void ApplyTheme()
     {
         if (!SystemParameters.HighContrast)
         {
             ThemeMode = ThemeMode.Dark;
-            return;
+            // The light variants of the accent: the ones Windows 11 itself draws on a dark surface. Light2 is the
+            // theme's accent button, so the menu mark and the states match the buttons.
+            Resources["Accent"] = Frozen(SystemColors.AccentColorLight2);
+            Resources["Chart"] = Frozen(SystemColors.AccentColorLight1);
         }
-        ThemeMode = ThemeMode.System; // the Fluent controls in their high contrast variant
-        // The palette, before any window reads it: each page's text, surfaces and states.
-        foreach (var key in new[] { "Void", "Panel", "PanelRaised" }) Resources[key] = SystemColors.WindowBrush;
-        foreach (var key in new[] { "Ink", "InkMuted", "Edge" }) Resources[key] = SystemColors.WindowTextBrush;
-        foreach (var key in new[] { "NeonCyan", "NeonViolet", "NeonGreen", "NeonAmber", "NeonPink", "ChartCyan", "NeonGradient" })
-            Resources[key] = SystemColors.HotTrackBrush;
-        Resources["Glow"] = new System.Windows.Media.Effects.DropShadowEffect { Opacity = 0 };
-        // The Fluent theme's own high contrast colors, rather than the neon repaint of them.
-        foreach (var key in new[]
-                 {
-                     "AccentFillColorDefaultBrush", "AccentFillColorSecondaryBrush", "AccentFillColorTertiaryBrush",
-                     "TextOnAccentFillColorPrimaryBrush", "CardBackgroundFillColorDefaultBrush", "CardStrokeColorDefaultBrush",
-                     "TextFillColorSecondaryBrush", "DataGridRowSelectedBackgroundThemeBrush", "DataGridRowSelectedForegroundThemeBrush",
-                 })
-            Resources.Remove(key);
+        else
+        {
+            ThemeMode = ThemeMode.System; // the Fluent controls in their high contrast variant
+            // The palette, before any window reads it: each page's text, surfaces and states.
+            foreach (var key in new[] { "Void", "Chrome", "Panel" }) Resources[key] = SystemColors.WindowBrush;
+            foreach (var key in new[] { "Ink", "InkMuted", "Edge" }) Resources[key] = SystemColors.WindowTextBrush;
+            foreach (var key in new[] { "Accent", "Chart", "Success", "Caution", "Critical" })
+                Resources[key] = SystemColors.HotTrackBrush;
+            // The Fluent theme's own high contrast colors, rather than the dark palette's.
+            foreach (var key in new[]
+                     {
+                         "CardBackgroundFillColorDefaultBrush", "CardStrokeColorDefaultBrush", "TextFillColorSecondaryBrush",
+                         "DataGridRowSelectedBackgroundThemeBrush", "DataGridRowSelectedForegroundThemeBrush",
+                     })
+                Resources.Remove(key);
+        }
+    }
+
+    static SolidColorBrush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

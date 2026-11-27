@@ -9,7 +9,7 @@ Une page par fonction, rangées dans une barre latérale en quatre branches repl
 plus les pages Journal et Paramètres (au clavier aussi : flèches haut et bas, gauche et droite pour
 replier et déplier).
 
-**Accueil.** Le gros bouton compare chaque périphérique à trois sources : Windows Update,
+**Accueil.** « Analyser les pilotes » compare chaque périphérique à trois sources : Windows Update,
 le catalogue Microsoft Update (les pilotes des fabricants) et, pour une carte NVIDIA, le
 site de NVIDIA. Le rapport donne pour chacun la version installée, la version disponible,
 sa source et un verdict (à jour, mise à jour, aucun pilote, erreur, non vérifié). Ce qui est
@@ -21,7 +21,7 @@ vérifié ». « Arrêter », dans la barre d'état, interrompt l'analyse ; une 
 Update sans réponse au bout de 10 minutes est abandonnée. Le même passage vérifie logiciels,
 démarrage, sécurité et disques, sans retenir le rapport. D'un lancement à l'autre, l'accueil
 rappelle la dernière analyse et sa date ; démarrage, antivirus, pare-feu et disques se lisent
-dès l'ouverture, et les tuiles suivent ce qui est fait sur les autres pages.
+dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages.
 
 ### Pilotes
 
@@ -60,7 +60,7 @@ dès l'ouverture, et les tuiles suivent ce qui est fait sur les autres pages.
 
 ### Jeux
 
-- **PC de guerre.** Une jauge et tous les réglages qui font gagner en jeu, chacun avec ce
+- **PC de guerre.** Le compte des réglages appliqués et tous les réglages qui font gagner en jeu, chacun avec ce
   qui le justifie : Mode jeu (activé par défaut, indispensable aux Ryzen X3D),
   enregistrement en arrière-plan coupé (jusqu'à 7 % d'images), optimisations des jeux
   fenêtrés (recommandées par Microsoft), planification GPU (nécessaire au DLSS Frame
@@ -286,7 +286,7 @@ semaine (correctifs .NET, nouvelles vulnérabilités). Il restaure en mode verro
 compile, lance tous les tests (y compris ceux qui interrogent le vrai Windows et un
 aller-retour réel avec le module administrateur), publie, construit l'installateur, puis
 l'installe et le désinstalle pour de vrai. Le test de la fenêtre la parcourt comme un
-utilisateur (menu, branches, tuiles), vérifie que chaque contrôle a un nom pour les lecteurs
+utilisateur (menu, branches, bandeau de l'accueil), vérifie que chaque contrôle a un nom pour les lecteurs
 d'écran, et garde une capture de chaque page, en français puis en anglais : elles sont
 jointes à chaque exécution (artefact `screenshots`). Dependabot tient à jour les actions et
 les paquets.
@@ -345,7 +345,7 @@ le pipeline.
 | `Common/` | Textes et langue (`L.cs`), paramètres, journal des changements, messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
 | `Localization/` | `en.json` : l'anglais de chaque texte français |
 | `UI/` | La fenêtre, son menu en arbre (`MainWindow.Nav.cs`), un fichier par domaine (`MainWindow.Home.cs`, `.Games.cs`…), l'en-tête commun des pages, la jauge, la traduction des textes du XAML, la question « garder cet affichage ? » |
-| (racine) | `App.xaml` (thème néon), manifeste, icône, projet |
+| (racine) | `App.xaml` (thème : le sombre de Windows 11, l'accent choisi dans Windows), manifeste, icône, projet |
 
 | Ailleurs | Contenu |
 |---|---|

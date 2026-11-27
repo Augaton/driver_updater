@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Animation;
 
 namespace DriverUpdater.UI;
 
@@ -165,7 +164,7 @@ public partial class MainWindow
     {
         if (Settings.LastScan is not { } last) return;
         ShowFigures(last);
-        ScanStatus.Text = L.F("Dernière analyse le {0:dd/MM à HH:mm} : {1} pilote(s) à mettre à jour. ANALYSER vérifie à nouveau.", last.When, last.Updates)
+        ScanStatus.Text = L.F("Dernière analyse le {0:dd/MM à HH:mm} : {1} pilote(s) à mettre à jour.", last.When, last.Updates)
                           + (last.Complete ? "" : L.T(" Elle était incomplète."));
     }
 
@@ -312,11 +311,5 @@ public partial class MainWindow
         }
     }
 
-    void ScanSpinning(bool on)
-    {
-        ScanRing.Opacity = on ? 1 : 0;
-        ScanRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, on
-            ? new DoubleAnimation(0, 360, TimeSpan.FromSeconds(3)) { RepeatBehavior = RepeatBehavior.Forever }
-            : null);
-    }
+    void ScanSpinning(bool on) => ScanProgress.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
 }

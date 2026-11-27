@@ -4,52 +4,59 @@
              xmlns:ui="clr-namespace:DriverUpdater.UI"
              DispatcherUnhandledException="OnUnhandledException">
   <Application.Resources>
-    <!-- Palette: near-black blues, neon accents. Contrast of Ink and InkMuted on Panel stays above 4.5:1.
-         The styles below read it as DynamicResource: with high contrast on, App.ApplyTheme swaps it for
-         Windows' own colors after this file is loaded. -->
-    <SolidColorBrush x:Key="Void" Color="#07090F" />
-    <SolidColorBrush x:Key="Panel" Color="#0F1420" />
-    <SolidColorBrush x:Key="PanelRaised" Color="#121927" />
-    <SolidColorBrush x:Key="Edge" Color="#1F2A3F" />
-    <SolidColorBrush x:Key="Ink" Color="#E8EEF7" />
-    <SolidColorBrush x:Key="InkMuted" Color="#93A1B8" />
-    <SolidColorBrush x:Key="NeonCyan" Color="#00E5FF" />
-    <SolidColorBrush x:Key="NeonViolet" Color="#B44DFF" />
-    <SolidColorBrush x:Key="NeonGreen" Color="#2BFF88" />
-    <SolidColorBrush x:Key="NeonAmber" Color="#FFB020" />
-    <SolidColorBrush x:Key="NeonPink" Color="#FF2E88" />
-    <!-- Chart bars: the neon cyan, deep enough for marks on the dark surface (checked with the dataviz validator). -->
-    <SolidColorBrush x:Key="ChartCyan" Color="#2299C8" />
-    <LinearGradientBrush x:Key="NeonGradient" StartPoint="0,0" EndPoint="1,1">
-      <GradientStop Color="#00E5FF" Offset="0" />
-      <GradientStop Color="#B44DFF" Offset="1" />
-    </LinearGradientBrush>
-    <DropShadowEffect x:Key="Glow" Color="#00E5FF" BlurRadius="24" ShadowDepth="0" Opacity="0.6" />
+    <!-- Palette: the neutral grays of Windows 11's dark theme, one accent (the one chosen in Windows,
+         set by App.ApplyTheme) and Windows' own state colors. Ink and InkMuted stay above 4.5:1 on every
+         surface, a chosen table row included. The styles below read it as DynamicResource: with high
+         contrast on, App.ApplyTheme swaps it for Windows' own colors after this file is loaded. -->
+    <SolidColorBrush x:Key="Void" Color="#202020" />
+    <SolidColorBrush x:Key="Chrome" Color="#1B1B1B" />
+    <SolidColorBrush x:Key="Panel" Color="#2B2B2B" />
+    <SolidColorBrush x:Key="Edge" Color="#383838" />
+    <SolidColorBrush x:Key="Ink" Color="#F3F3F3" />
+    <SolidColorBrush x:Key="InkMuted" Color="#ADADAD" />
+    <!-- Windows' default blue until App.ApplyTheme reads the accent chosen in Windows. -->
+    <SolidColorBrush x:Key="Accent" Color="#99EBFF" />
+    <!-- Chart bars: the accent one step deeper, calmer over a large area. -->
+    <SolidColorBrush x:Key="Chart" Color="#4CC2FF" />
+    <!-- States, in the colors Windows 11 gives them on a dark surface. -->
+    <SolidColorBrush x:Key="Success" Color="#6CCB5F" />
+    <SolidColorBrush x:Key="Caution" Color="#FCE100" />
+    <SolidColorBrush x:Key="Critical" Color="#FF99A4" />
 
-    <FontFamily x:Key="Display">Bahnschrift SemiBold, Segoe UI Semibold</FontFamily>
+    <FontFamily x:Key="Display">Segoe UI Variable Display Semibold, Segoe UI Semibold</FontFamily>
     <FontFamily x:Key="Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
-    <!-- The Fluent theme's accent, repainted neon: buttons, check boxes and progress bars follow it. -->
-    <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#00E5FF" />
-    <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#E600E5FF" />
-    <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#CC00E5FF" />
-    <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#021018" />
-    <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="#0F1420" />
-    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#1F2A3F" />
-    <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#93A1B8" />
-    <!-- A chosen row in a table: a dark cyan, not the theme's light blue with black text, on which
-         the states drawn in their own color (amber, pink, green…) could not be read. Dark enough
-         for the darkest of them, the pink, to keep 4.5:1. -->
-    <SolidColorBrush x:Key="DataGridRowSelectedBackgroundThemeBrush" Color="#072431" />
-    <SolidColorBrush x:Key="DataGridRowSelectedForegroundThemeBrush" Color="#E8EEF7" />
+    <!-- The Fluent theme's surfaces, matched to the palette. Its accent is left alone: buttons, check
+         boxes and progress bars take the color chosen in Windows. -->
+    <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="#2B2B2B" />
+    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#383838" />
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#ADADAD" />
+    <!-- A chosen row in a table: a neutral gray, not the theme's accent fill with black text, on which
+         the states drawn in their own color could not be read. Light enough to see, dark enough for
+         every state color and InkMuted to keep 4.5:1. -->
+    <SolidColorBrush x:Key="DataGridRowSelectedBackgroundThemeBrush" Color="#3D3D3D" />
+    <SolidColorBrush x:Key="DataGridRowSelectedForegroundThemeBrush" Color="#F3F3F3" />
 
     <Style x:Key="Card" TargetType="Border">
       <Setter Property="Background" Value="{DynamicResource Panel}" />
       <Setter Property="BorderBrush" Value="{DynamicResource Edge}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="18" />
-      <Setter Property="Margin" Value="0,0,0,14" />
+      <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+
+    <!-- One item of a list shown straight on the page (graphics cards, games): a card of its own. -->
+    <Style x:Key="ListCard" TargetType="Border" BasedOn="{StaticResource Card}">
+      <Setter Property="Padding" Value="16,12" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+
+    <!-- One item of a list inside a card: a line above it, no card within the card. -->
+    <Style x:Key="CardRow" TargetType="Border">
+      <Setter Property="BorderBrush" Value="{DynamicResource Edge}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="Padding" Value="0,12" />
     </Style>
 
     <Style x:Key="Heading" TargetType="TextBlock">
@@ -59,12 +66,11 @@
       <Setter Property="Margin" Value="0,0,0,4" />
     </Style>
 
-    <!-- The small cyan label above a heading. -->
-    <Style x:Key="Kicker" TargetType="TextBlock">
-      <Setter Property="FontFamily" Value="{StaticResource Display}" />
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{DynamicResource NeonCyan}" />
-      <Setter Property="Margin" Value="0,0,0,2" />
+    <!-- The name of a figure (a meter, a dashboard cell), above or below it. -->
+    <Style x:Key="Caption" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource InkMuted}" />
     </Style>
 
     <Style x:Key="Muted" TargetType="TextBlock">
@@ -86,6 +92,14 @@
           </ControlTemplate>
         </Setter.Value>
       </Setter>
+    </Style>
+
+    <!-- A page that scrolls: its scroll bar out at the window's edge, as in Windows' Settings, rather than
+         over the cards and buttons along the page's right side. -->
+    <Style x:Key="PageScroll" TargetType="ScrollViewer">
+      <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+      <Setter Property="Margin" Value="0,0,-24,0" />
+      <Setter Property="Padding" Value="0,0,24,0" />
     </Style>
 
     <!-- A page inherits its TabItem's Foreground: the text color, not the classic theme's black. -->
@@ -122,11 +136,11 @@
                 <ToggleButton.Template>
                   <ControlTemplate TargetType="ToggleButton">
                     <Border x:Name="Bd" Background="Transparent" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
-                            CornerRadius="6" Margin="12,12,12,2" Padding="13,4">
+                            CornerRadius="4" Margin="12,12,12,2" Padding="13,4">
                       <DockPanel>
                         <TextBlock x:Name="Chevron" DockPanel.Dock="Right" Text="&#xE70D;" FontFamily="{StaticResource Icons}"
                                    FontSize="10" VerticalAlignment="Center" />
-                        <ContentPresenter TextElement.FontFamily="{StaticResource Display}" TextElement.FontSize="11" />
+                        <ContentPresenter TextElement.FontSize="11" TextElement.FontWeight="SemiBold" />
                       </DockPanel>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -134,7 +148,7 @@
                         <Setter TargetName="Chevron" Property="Text" Value="&#xE76C;" />
                       </Trigger>
                       <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="Bd" Property="Background" Value="#0DFFFFFF" />
+                        <Setter TargetName="Bd" Property="Background" Value="#0AFFFFFF" />
                         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
                       </Trigger>
                     </ControlTemplate.Triggers>
@@ -149,7 +163,7 @@
                 <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed" />
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Toggle" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
+                <Setter TargetName="Toggle" Property="BorderBrush" Value="{DynamicResource Ink}" />
                 <Setter TargetName="Toggle" Property="Foreground" Value="{DynamicResource Ink}" />
               </Trigger>
             </ControlTemplate.Triggers>
@@ -158,7 +172,8 @@
       </Setter>
     </Style>
 
-    <!-- One page of the menu: icon and name; the open one glows. -->
+    <!-- One page of the menu: icon and name; the open one gets a light fill and the accent mark, as
+         in Windows' own Settings. -->
     <!-- The label (MainWindow.Nav.cs) is the item's logical child: it takes its color and size from
          the item itself, not from the ContentPresenter that shows it. Set there, they never reached
          it, and the menu was drawn in the default black. -->
@@ -171,25 +186,25 @@
         <Setter.Value>
           <ControlTemplate TargetType="TreeViewItem">
             <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="1"
-                    CornerRadius="8" Margin="12,1" Padding="13,7">
+                    CornerRadius="4" Margin="12,1" Padding="13,7">
               <Grid>
-                <Border x:Name="Bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Margin="-13,1,0,1"
-                        Background="{DynamicResource NeonCyan}" Effect="{DynamicResource Glow}" Visibility="Hidden" />
+                <Border x:Name="Bar" Width="3" Height="16" CornerRadius="2" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Margin="-13,0,0,0" Background="{DynamicResource Accent}" Visibility="Hidden" />
                 <ContentPresenter ContentSource="Header" />
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger SourceName="Bd" Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="#12FFFFFF" />
+                <Setter TargetName="Bd" Property="Background" Value="#0AFFFFFF" />
                 <Setter Property="Foreground" Value="{DynamicResource Ink}" />
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="#1A00E5FF" />
+                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF" />
                 <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
-                <Setter Property="Foreground" Value="{DynamicResource NeonCyan}" />
+                <Setter Property="Foreground" Value="{DynamicResource Ink}" />
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Ink}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -223,53 +238,28 @@
       </Setter>
     </Style>
 
-    <!-- Dashboard tile: a card that lights up under the mouse and opens its section. -->
-    <Style x:Key="Tile" TargetType="Button">
+    <!-- One cell of the dashboard's status strip: opens its page. A light fill under the mouse,
+         a darker one when pressed. -->
+    <Style x:Key="StatusCell" TargetType="Button">
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Foreground" Value="{DynamicResource Ink}" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Edge}" BorderThickness="1"
-                    CornerRadius="14" Padding="20,18" Margin="0,0,14,14">
+            <Border x:Name="Bd" Background="Transparent" BorderBrush="Transparent" BorderThickness="1"
+                    CornerRadius="4" Padding="14,12">
               <ContentPresenter />
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
-                <Setter TargetName="Bd" Property="Effect" Value="{DynamicResource Glow}" />
-              </Trigger>
-              <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource NeonCyan}" />
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-
-    <!-- The big round "scan" button of the dashboard. -->
-    <Style x:Key="ScanButton" TargetType="Button">
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="Foreground" Value="{DynamicResource Ink}" />
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Grid Width="210" Height="210">
-              <Ellipse Stroke="{DynamicResource NeonGradient}" StrokeThickness="3" Effect="{DynamicResource Glow}" />
-              <Ellipse x:Name="Face" Margin="14" Fill="{DynamicResource Panel}" Stroke="{DynamicResource Edge}" StrokeThickness="1" />
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Grid>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Face" Property="Fill" Value="#1A00E5FF" />
+                <Setter TargetName="Bd" Property="Background" Value="#0AFFFFFF" />
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="Face" Property="Fill" Value="#3300E5FF" />
+                <Setter TargetName="Bd" Property="Background" Value="#06FFFFFF" />
               </Trigger>
-              <Trigger Property="IsEnabled" Value="False">
-                <Setter Property="Opacity" Value="0.55" />
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Ink}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>

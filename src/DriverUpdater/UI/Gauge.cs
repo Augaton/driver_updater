@@ -41,9 +41,9 @@ public sealed class Gauge : FrameworkElement
         double value = Math.Clamp(Value, 0, 100);
         if (value > 0.5)
         {
-            var color = value >= 85 ? Brush("NeonPink", Brushes.DeepPink)
-                : value >= 60 ? Brush("NeonAmber", Brushes.Orange)
-                : Brush("NeonCyan", Brushes.Cyan);
+            var color = value >= 85 ? Brush("Critical", Brushes.DeepPink)
+                : value >= 60 ? Brush("Caution", Brushes.Orange)
+                : Brush("Accent", Brushes.Cyan);
             drawing.DrawGeometry(null, RoundPen(color), Arc(center, radius, Sweep * value / 100));
         }
     }

@@ -18,7 +18,7 @@ public sealed class LocalizationTests
         ["Text", "Content", "Header", "ToolTip", "Title", "Description", "Note", "ContentStringFormat", "AutomationProperties.Name"];
 
     // Names that stay as they are in both languages.
-    static readonly HashSet<string> Untranslated = ["DRIVER", "UPDATER", "Driver Updater", "Français", "English"];
+    static readonly HashSet<string> Untranslated = ["Driver Updater", "Français", "English"];
 
     static string AppSource()
     {

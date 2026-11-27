@@ -2,7 +2,7 @@
 
     python3 installer/art/make-art.py
 
-Writes src/DriverUpdater/app.ico and installer/art/*.bmp. Needs Pillow. The text uses Segoe UI
+Writes src/DriverUpdater/app.ico, docs/logo.png and installer/art/*.bmp. Needs Pillow. The text uses Segoe UI
 Semibold on Windows, a bold system font found with fc-match on Linux, or Pillow's default font.
 
 The look follows Windows 11, as the app does: a flat tile in Windows' default blue, a white
@@ -75,6 +75,7 @@ def small(scale):
 if __name__ == "__main__":
     big = icon(256)
     big.save(os.path.join(ROOT, "src", "DriverUpdater", "app.ico"), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    big.save(os.path.join(ROOT, "docs", "logo.png"))  # the README's
     for scale, suffix in ((1, ""), (2, "-200")):
         wizard(scale).save(os.path.join(HERE, f"wizard{suffix}.bmp"))
         small(scale).save(os.path.join(HERE, f"small{suffix}.bmp"))

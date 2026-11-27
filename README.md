@@ -1,388 +1,304 @@
-# Driver Updater
+<p align="center">
+  <img src="docs/logo.png" width="96" height="96" alt="">
+</p>
 
-Petite application Windows 10/11, dans l'esprit de Driver Booster, mais honnête :
-elle ne propose que ce qui marche vraiment. En français ou en anglais, claire ou sombre comme Windows.
+<h1 align="center">Driver Updater</h1>
 
-## Ce qu'elle fait
+<p align="center">
+  <strong>Les pilotes et les réglages de ton PC Windows, honnêtement.</strong><br>
+  Il ne propose que ce qui marche vraiment, dit pourquoi, et sait revenir en arrière.
+</p>
 
-Une page par fonction, rangées dans une barre latérale en quatre branches repliables,
-plus les pages Journal et Paramètres (au clavier aussi : flèches haut et bas, gauche et droite pour
-replier et déplier).
+<p align="center">
+  <a href="https://github.com/Augaton/driver_updater/releases/latest"><img src="https://img.shields.io/github/v/release/Augaton/driver_updater?label=version&color=0067c0" alt="Dernière version"></a>
+  <a href="https://github.com/Augaton/driver_updater/actions/workflows/build.yml"><img src="https://github.com/Augaton/driver_updater/actions/workflows/build.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d6" alt="Windows 10 et 11">
+  <img src="https://img.shields.io/badge/fait%20en-C%23%20%2F%20.NET%2010-512bd4" alt="Fait en C# et .NET 10">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-3fb950" alt="Licence MIT"></a>
+</p>
 
-**Accueil.** « Analyser les pilotes » compare chaque périphérique à trois sources : Windows Update,
-le catalogue Microsoft Update (les pilotes des fabricants) et, pour une carte NVIDIA, le
-site de NVIDIA. Le rapport donne pour chacun la version installée, la version disponible,
-sa source et un verdict (à jour, mise à jour, aucun pilote, erreur, non vérifié). Ce qui est
-à mettre à jour arrive coché, sauf les pilotes « facultatifs » de Windows Update, et
-s'installe en une fois, sous une seule autorisation administrateur, après un point de
-restauration. Une source injoignable ne fait jamais passer un pilote pour « à jour » :
-l'analyse se dit incomplète, et un périphérique qu'aucune source n'a pu vérifier est « non
-vérifié ». « Arrêter », dans la barre d'état, interrompt l'analyse ; une recherche Windows
-Update sans réponse au bout de 10 minutes est abandonnée. Le même passage vérifie logiciels,
-démarrage, sécurité et disques, sans retenir le rapport. D'un lancement à l'autre, l'accueil
-rappelle la dernière analyse et sa date ; démarrage, antivirus, pare-feu et disques se lisent
-dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages.
+<p align="center">
+  <a href="https://github.com/Augaton/driver_updater/releases/latest"><strong>Télécharger</strong></a> ·
+  <a href="#premiers-pas">Premiers pas</a> ·
+  <a href="#questions-fréquentes">Questions fréquentes</a> ·
+  <a href="SECURITY.md">Sécurité</a> ·
+  <a href="CONTRIBUTING.md">Contribuer</a>
+</p>
 
-### Pilotes
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/accueil-clair.png">
+    <img src="docs/accueil-sombre.png" width="100%" alt="L'accueil de Driver Updater : le PC, le bouton « Analyser les pilotes », le rapport pilote par pilote, et l'état des logiciels, du démarrage, de la sécurité et des disques.">
+  </picture>
+</p>
 
-- **Windows Update.** Les mises à jour de pilotes, en face du pilote installé. Les
-  « recommandées » sont cochées, les « facultatives » non (Microsoft ne les conseille que
-  pour un problème précis). Un pilote refusé peut être masqué.
-- **Fabricants.** Pour chaque périphérique, une version plus récente dans le catalogue
-  Microsoft Update, signée par Microsoft, téléchargée depuis ses serveurs et vérifiée.
-  Seuls les paquets publiés pour la version de Windows du PC, ou une plus ancienne, sont
-  proposés (un paquet pour 24H2 ne l'est pas sur une 23H2). Windows garde le pilote actuel
-  s'il est plus adapté au PC ; ce pilote-là, et les versions plus anciennes, ne sont alors
-  plus proposés. On peut choisir la version (la précédente, si la dernière pose problème),
-  ou masquer celle qu'on ne veut pas. Les pilotes de stockage ne sont jamais
-  installés ainsi, même s'ils sont dans le même paquet : un mauvais pilote à cet endroit
-  empêche Windows de démarrer.
-- **Carte graphique.** Le pilote qui compte le plus en jeu. Pour NVIDIA, le dernier Game
-  Ready est demandé à NVIDIA directement : le catalogue a souvent plusieurs semaines de
-  retard et saute des versions. Une seule autorisation : point de restauration, puis
-  installateur officiel téléchargé depuis les serveurs de NVIDIA et lancé seulement si
-  Windows valide sa signature et que le signataire est NVIDIA. Game Ready ou Studio, au
-  choix dans Paramètres. Pour AMD et Intel, l'outil du fabricant.
-- **Carte mère.** Le BIOS installé et l'outil du fabricant pour le mettre à jour.
-- **Inventaire.** Chaque périphérique, son pilote, sa date, sa signature et son état,
-  filtrable et cherchable par nom ; mis à jour tout seul quand on branche ou débranche quelque chose. « Revenir
-  au pilote précédent » fait comme le Gestionnaire de périphériques.
-- **Périphériques en erreur.** Ce que signale le Gestionnaire de périphériques, avec le sens
-  de chaque code d'erreur, et ce qui peut le régler : la recherche d'un pilote quand il manque
-  ou ne marche pas, le Gestionnaire de périphériques pour un appareil désactivé.
-- **Anciennes versions.** Windows garde chaque version installée (près de 1 Go par pilote
-  graphique). Celles qu'aucun périphérique n'utilise peuvent partir ; la précédente de
-  chaque pilote est gardée, pour pouvoir y revenir.
-- **Sauvegarde.** Les pilotes des fabricants copiés dans un dossier, et réinstallés en une
-  fois après une réinstallation de Windows : de chacun, la version qu'un périphérique utilise
-  (la plus récente seulement si aucun ne l'utilise), pour qu'un retour au pilote précédent
-  tienne après la restauration ; pas les anciennes que Windows garde (près de 1 Go chacune
-  pour un pilote graphique). La restauration n'accepte qu'un dossier de sauvegarde et liste
-  ses pilotes avant de les installer.
-- **Historique.** Ce que Windows Update a installé, quand, et avec quel résultat.
+Driver Updater compare chaque pilote de ton PC à Windows Update, au catalogue Microsoft Update et,
+pour une carte NVIDIA, au site de NVIDIA, puis installe ce qui manque en une fois, après un point de
+restauration. Il règle aussi Windows pour le jeu, défait les « boosts » que d'autres outils ont
+laissés, met tes logiciels à jour et fait le ménage. En français ou en anglais, clair ou sombre
+comme Windows.
 
-### Jeux
+> Dans l'esprit de Driver Booster, sans ses défauts : pas de « score », pas de nettoyage du
+> registre, pas de réglage sans effet mesuré. Chaque réglage s'appuie sur la documentation de
+> Microsoft ou des mesures publiées, garde la valeur d'origine et s'annule exactement.
 
-- **Réglages de jeu.** Le compte des réglages appliqués et tous les réglages qui font gagner en jeu, chacun avec ce
-  qui le justifie : Mode jeu (activé par défaut, indispensable aux Ryzen X3D),
-  enregistrement en arrière-plan coupé (jusqu'à 7 % d'images), optimisations des jeux
-  fenêtrés (recommandées par Microsoft), planification GPU (nécessaire au DLSS Frame
-  Generation). « Tout optimiser » les applique en une fois ; chacun s'annule exactement,
-  valeur d'origine comprise. À part, sans gain d'images et dit tel quel : la précision du
-  pointeur et « Fin de tâche ». Et ce qu'aucun réglage ne corrige d'ici, vérifié sur le
-  matériel :
-  - écran réglé sous sa meilleure fréquence : passé à la bonne d'un clic, après un test de
-    Windows ; si l'image ne revient pas, l'ancienne fréquence revient seule au bout de
-    15 secondes ;
-  - écran branché sur la carte mère alors qu'il y a une carte graphique ;
-  - sur un portable à deux puces graphiques, jeux laissés au choix de Windows, qui
-    peut les lancer sur la moins puissante : forcés d'un clic sur la carte dédiée, par le
-    réglage de Windows lui-même, et annulable ;
-  - mémoire sans profil XMP/EXPO (lu aussi dans la référence des barrettes, quand le
-    BIOS ne le dit pas), ou une seule barrette ;
-  - mode d'alimentation qui bride le processeur ; Ryzen X3D sans son pilote de cache 3D,
-    sans Game Bar ou hors du mode Équilibré ;
-  - jeux installés sur un disque dur (ceux de Steam, Epic Games, GOG et Ubisoft Connect, lus
-    là où chaque lanceur les note ; pas ceux de l'application Xbox) ; disque système plein ;
-  - Secure Boot ou puce TPM 2.0 absents, que demandent les anti-triche de Battlefield 6, Call of
-    Duty Black Ops 7 et Valorant (ils s'activent dans le BIOS) ;
-  - Core Intel de 13e ou 14e génération de bureau sans le microcode d'Intel contre leur
-    dégradation (0x12F, mai 2025), qui vient avec une mise à jour du BIOS.
+## Sommaire
 
-  Laissés de côté parce que rien ne les mesure ou qu'ils nuisent : réglages réseau
-  (Nagle, MMCSS), HPET et minuterie, parcage des cœurs, services coupés, MPO, et le plan
-  « Performances optimales » (aucun gain mesuré, et il casse le cache 3D des Ryzen X3D).
-  Ceux qui l'avaient appliqué avec une version précédente gardent le bouton « Annuler ».
-  Ceux qu'un autre outil a laissés se défont dans la page Faux boosts.
-- **Composants de jeu.** Visual C++ 2005 à 2022, DirectX 9, XNA, OpenAL, PhysX, détectés
-  et installés via winget. Arrivent cochés les mises à jour et Visual C++ 2015-2022 s'il
-  manque ; un composant plus ancien ne sert qu'au jeu qui le réclame.
-- **Conseils par jeu.** Pour les jeux Steam installés, les réglages des communautés ; pour
-  Garry's Mod, le cfg multicœur, ajouté à `autoexec.cfg` et retiré d'un clic sans toucher
-  à vos propres lignes.
+- [Fonctionnalités](#fonctionnalités)
+- [La fenêtre](#la-fenêtre)
+- [Installation](#installation)
+- [Premiers pas](#premiers-pas)
+- [Ce qu'il ne fait pas, exprès](#ce-quil-ne-fait-pas-exprès)
+- [Données et réseau](#données-et-réseau)
+- [Questions fréquentes](#questions-fréquentes)
+- [Désinstaller](#désinstaller)
+- [Sécurité](#sécurité)
+- [Compiler depuis les sources](#compiler-depuis-les-sources)
+- [Architecture](#architecture)
+- [Contribuer](#contribuer)
+- [Licence](#licence)
 
-### Système
+## Fonctionnalités
 
-- **Performances.** Dix secondes d'observation, les applications classées par processeur,
-  mémoire, disque et carte graphique, et un verdict en clair. Avec plusieurs disques, c'est
-  le plus occupé qui compte, nommé. « Mesurer un jeu » laisse 15 secondes pour retourner en
-  jeu, mesure 30 secondes et sonne au début et à la fin : quitter le jeu pour cliquer le
-  mesurerait en arrière-plan.
-- **Démarrage.** Les programmes lancés avec Windows, activés ou désactivés comme dans le
-  Gestionnaire des tâches, et les tâches planifiées qui lancent un programme à l'ouverture de
-  session (jamais celles de Windows), activées ou désactivées comme dans le Planificateur, avec le temps que chacun fait perdre d'après les mesures de
-  Windows, le graphique des 30 derniers démarrages et, après vos changements, le temps
-  gagné d'après les démarrages suivants. Les applications du Store (le nouveau Teams,
-  WhatsApp…) sont listées aussi ; elles se règlent dans Paramètres, que la page ouvre.
-- **Confidentialité.** Les réglages les plus suivis (dont ceux de WinUtil de Chris Titus) :
-  identifiant publicitaire, expériences personnalisées, applications suggérées, Bing dans
-  la recherche, historique des activités, télémétrie. Ils ne rendent pas le PC plus
-  rapide, et c'est dit ; chacun s'annule exactement.
-- **Faux boosts.** Ce que les « optimiseurs » et les guides laissent sur un PC et qui le
-  ralentit ou l'expose : minuterie forcée au démarrage, fichier d'échange supprimé,
-  parcage des cœurs coupé (indispensable aux Ryzen X3D), protections Spectre et Meltdown
-  désactivées, UAC coupé, Windows Update, Defender ou la restauration du système bloqués par
-  stratégie, Windows Update
-  envoyé vers un faux serveur d'entreprise (ce PC lui-même), services utiles désactivés,
-  IPv6 coupé… Chaque point s'appuie sur la documentation de Microsoft
-  ou sur des mesures publiées. « Rétablir » remet la valeur de Windows et garde l'ancienne
-  pour revenir en arrière. Ce qui n'est qu'un choix défendable (ou sans effet prouvé) est
-  seulement signalé, et sur un PC géré par une entreprise, c'est l'affaire de son service
-  informatique.
-- **Sécurité.** Antivirus actif et à jour, pare-feu actif (celui de Windows, ou celui d'une
-  suite de sécurité à sa place), mises à jour de Windows en attente, redémarrage attendu pour
-  les finir, chacun avec un lien vers l'endroit où agir. Pas de « score ».
-- **Points de restauration.** La liste, en créer un, ouvrir la restauration du système. Si
-  la protection du système est coupée (fréquent sur un Windows neuf), la page le dit et
-  l'active ; avant une installation de pilotes, l'application le propose aussi plutôt que de
-  continuer sans point. Le point est créé juste avant les pilotes, même si un autre a moins
-  de 24 heures.
-- **Disques et batterie.** État, usure et température des disques, santé de la batterie.
-- **Nettoyage.** Fichiers temporaires de plus de 2 jours, anciennes versions des composants
-  de Windows (DISM), mise en veille prolongée, corbeille, vidages de plantage de plus de
-  30 jours (les récents restent : ils expliquent un plantage), cache de l'Optimisation de
-  distribution (vidé par la commande de Windows). Pas de « nettoyage du registre ».
-- **Réparer Windows.** Les outils de Microsoft dans l'ordre qu'il conseille, sous une seule
-  autorisation : DISM répare l'image de Windows, puis SFC les fichiers système, avec un verdict
-  pour les deux. SFC seul reste à portée, plus rapide.
+**Pilotes**
 
-### Logiciels
+- **Une analyse, trois sources** : Windows Update, le catalogue Microsoft Update (les pilotes des
+  fabricants, signés par Microsoft) et NVIDIA pour ses cartes. Le rapport donne pour chaque
+  périphérique la version installée, la version disponible, sa source et un verdict.
+- **Installation en une fois**, sous une seule autorisation, après un point de restauration créé
+  juste avant. Les pilotes « facultatifs » de Windows Update ne sont pas cochés, et ceux du
+  stockage ne sont jamais installés depuis le catalogue : un mauvais pilote à cet endroit empêche
+  Windows de démarrer.
+- **Une source injoignable ne fait jamais passer un pilote pour « à jour »** : l'analyse se dit
+  incomplète, et un périphérique qu'aucune source n'a vérifié est « non vérifié ».
+- **Carte graphique** : le dernier Game Ready (ou Studio) demandé à NVIDIA directement, lancé
+  seulement si Windows valide sa signature et que le signataire est NVIDIA. Pour AMD et Intel,
+  l'outil du fabricant.
+- **Inventaire**, périphériques en erreur (avec le sens de chaque code et ce qui le règle),
+  anciennes versions que Windows garde (près de 1 Go par pilote graphique), historique de
+  Windows Update, et **retour au pilote précédent**.
+- **Sauvegarde** des pilotes des fabricants, réinstallés en une fois après une réinstallation de
+  Windows : la version que chaque périphérique utilise, pour qu'un retour en arrière tienne.
 
-- **Mises à jour.** Les logiciels installés, mis à jour via winget. Un logiciel dont winget
-  coupe le nom ne peut pas être désigné d'ici : la page le dit plutôt que de le taire.
-  « Arrêter » laisse finir le logiciel en cours. Un échec dit sa raison en clair (programme
-  ouvert, disque plein, réseau…), et une installation qui attend seulement un redémarrage compte
-  comme réussie. « Ne plus proposer » épingle un logiciel dans winget, qui ne le propose plus
-  (ici, chaque semaine, ni par « winget upgrade --all ») ; « Réafficher les logiciels écartés »
-  ne retire que les épinglages posés par l'application.
-- **Désinstaller.** Le désinstalleur du programme, puis les dossiers laissés derrière lui,
-  mis à la corbeille, y compris pour un programme installé pour un seul utilisateur
-  (`%LocalAppData%\Programs`). Un dossier qu'un autre programme installé utilise encore
-  n'est jamais proposé.
+**Jeux**
 
-**Journal.** Ce que l'application a changé sur le PC, du plus récent au plus ancien :
-pilotes installés ou masqués, réglages, programmes au démarrage, nettoyages, logiciels.
-« Annuler » remet un réglage ou un programme au démarrage comme avant, tant que c'est
-encore le dernier changement ; un pilote se défait depuis l'Inventaire ou avec un point de
-restauration. Le journal (`%LOCALAPPDATA%\Driver Updater\journal.jsonl`, 500 lignes) n'est
-écrit que par la fenêtre, jamais par le module administrateur.
+- **Réglages de jeu** qui font gagner des images ou de la latence (Mode jeu, enregistrement en
+  arrière-plan, optimisations des jeux fenêtrés, planification GPU), appliqués en un clic et
+  annulables un par un.
+- **Ce qu'aucun réglage ne corrige d'ici**, vérifié sur le matériel : écran sous sa meilleure
+  fréquence ou branché sur la carte mère, mémoire sans XMP/EXPO ou en une seule barrette, Ryzen X3D
+  sans son pilote, jeux sur un disque dur (Steam, Epic, GOG, Ubisoft), Secure Boot et TPM 2.0
+  pour les anti-triche, microcode des Core Intel de 13e et 14e génération.
+- **Composants de jeu** (Visual C++, DirectX 9, XNA, OpenAL, PhysX) installés via winget, et
+  **conseils par jeu** pour les jeux Steam installés.
 
-**Paramètres.** La vérification hebdomadaire, silencieuse et sans droits administrateur :
-les pilotes de Windows Update et, au choix, un nouveau pilote NVIDIA et les mises à jour
-de logiciels ; une notification seulement s'il y a du nouveau, une seule fois pour chaque
-nouveauté. Les pilotes NVIDIA Game Ready ou Studio. La langue : français, anglais, ou
-celle de Windows (par défaut), appliquée d'un clic sur « Redémarrer maintenant ».
+**Système**
 
-**Et aussi.** « Copier le diagnostic » prépare un rapport texte pour signaler un bug, avec
-le détail des erreurs inattendues ; un plantage laisse ce détail dans
-`%LOCALAPPDATA%\Driver Updater\crash.txt` pour le diagnostic suivant. Un bandeau prévient
-quand une nouvelle version est publiée sur GitHub et l'installe d'un clic. Une seule fenêtre
-à la fois : relancer l'application ramène celle qui est ouverte. La fenêtre rouvre là où elle
-était laissée, sans jamais dépasser l'écran, et suit le contraste élevé de Windows.
+- **Faux boosts** : ce que les « optimiseurs » laissent et qui ralentit ou expose le PC (fichier
+  d'échange supprimé, protections Spectre coupées, UAC coupé, Windows Update ou Defender bloqués…),
+  remis comme Windows le prévoit, avec retour possible.
+- **Démarrage** : programmes lancés avec Windows et tâches planifiées d'ouverture de session,
+  avec le temps que chacun fait perdre d'après les mesures de Windows, et le temps gagné ensuite.
+- **Performances** : ce qui consomme vraiment, mesuré, y compris pendant une partie.
+- **Confidentialité**, **sécurité** (antivirus, pare-feu, mises à jour, redémarrage en attente),
+  **points de restauration**, **disques et batterie**, **nettoyage** (temporaires, composants de
+  Windows, corbeille, vidages de plantage, cache des mises à jour) et **réparation** de Windows
+  (DISM puis SFC).
 
-## Installer
+**Logiciels**
 
-Téléchargez `DriverUpdater-Setup-x.y.z.exe` depuis la page
-[Releases](https://github.com/Augaton/driver_updater/releases). Il installe l'application
-dans `C:\Program Files\Driver Updater` et l'ajoute au menu Démarrer ; il parle français sur
-un Windows français, anglais sinon. Le zip « portable »
-fonctionne aussi, mais ses actions administrateur ne s'ouvrent que s'il est placé dans un
-dossier que seuls les administrateurs peuvent modifier (voir Sécurité).
+- **Mises à jour** via winget, avec la raison d'un échec en clair, et « Ne plus proposer » pour
+  un logiciel qu'on veut garder tel quel.
+- **Désinstallation** complète : le désinstalleur du programme, puis les dossiers qu'il laisse,
+  mis à la corbeille.
 
-Lancé alors que Driver Updater est déjà installé, l'installateur indique la version en
-place et propose ce qui a du sens : mettre à jour, réparer (même version : tous les
-fichiers sont réinstallés), revenir à une version plus ancienne (avec avertissement) ou
-désinstaller. Le bouton « Modifier » de Windows (Paramètres → Applications) ouvre la même
-page, grâce à une copie de l'installateur gardée dans `Driver Updater\setup`. Si la
-vérification hebdomadaire était activée depuis une autre copie de l'application (le zip
-portable, par exemple), elle est redirigée vers la copie installée.
+**Toujours là**
 
-Pour vérifier qu'un fichier a bien été produit par le pipeline de ce dépôt :
+- **Journal** de tout ce que l'appli a changé, avec « Annuler » quand c'est possible.
+- **Vérification hebdomadaire** silencieuse, sans droits administrateur, qui prévient seulement
+  s'il y a du nouveau.
+- **Mises à jour de l'appli** signalées par un bandeau et installées d'un clic.
+- **« Copier le diagnostic »** prépare un rapport texte pour signaler un bug.
+
+## La fenêtre
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/reglages-clair.png">
+    <img src="docs/reglages-sombre.png" width="100%" alt="La page Réglages de jeu : le compte des réglages appliqués, les vérifications du matériel, et chaque réglage avec ce qui le justifie et son bouton Appliquer ou Annuler.">
+  </picture>
+</p>
+
+Une page par fonction, rangées dans une barre latérale en quatre branches repliables : Pilotes,
+Jeux, Système et Logiciels, plus le Journal et les Paramètres. Au clavier aussi : flèches haut et
+bas pour changer de page, gauche et droite pour replier une branche. Chaque page dit ce qu'elle
+fait et, pour chaque réglage, pourquoi.
+
+## Installation
+
+1. Télécharge `DriverUpdater-Setup-<version>.exe` dans les
+   [Releases](https://github.com/Augaton/driver_updater/releases/latest), pour Windows 10 et 11 en
+   64 bits. Il installe l'appli dans `C:\Program Files\Driver Updater` et l'ajoute au menu
+   Démarrer, en français sur un Windows français, en anglais sinon.
+2. S'il n'est pas signé, Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » :
+   « Informations complémentaires », puis « Exécuter quand même ».
+
+Relancé sur une version installée, l'installateur propose ce qui a du sens : mettre à jour,
+réparer, revenir à une version plus ancienne ou désinstaller. Le zip portable marche aussi, mais
+ses actions administrateur ne s'ouvrent que depuis un dossier que seuls les administrateurs
+peuvent modifier (voir [Sécurité](#sécurité)).
+
+Chaque version est compilée, testée et attestée par la [CI](.github/workflows/build.yml) à partir
+de ce dépôt. Pour vérifier qu'un fichier en vient :
 
 ```sh
-gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_updater
+gh attestation verify DriverUpdater-Setup-<version>.exe --repo Augaton/driver_updater
 ```
+
+## Premiers pas
+
+1. **Analyse tes pilotes** : « Analyser les pilotes » sur l'accueil. Compte une à deux minutes.
+2. **Installe ce qui est coché** : « Mettre à jour la sélection ». Windows demande l'autorisation
+   administrateur une fois ; un point de restauration est créé avant. Si la protection du système
+   est coupée, l'appli propose de l'activer.
+3. **Règle Windows pour le jeu** : page Réglages de jeu, « Tout optimiser », puis regarde les
+   vérifications du matériel, qui disent où agir.
+4. **Défais les faux boosts** si un autre outil est passé par là : page Faux boosts.
+5. **Active la vérification hebdomadaire** dans les Paramètres, pour être prévenu du nouveau.
+
+Un changement ne convient pas ? Le Journal l'annule, l'Inventaire revient au pilote précédent, et
+le point de restauration reste là.
+
+## Ce qu'il ne fait pas, exprès
+
+- **Pas de réglage sans effet mesuré** : réseau (Nagle, MMCSS), HPET et minuterie, parcage des
+  cœurs, services coupés, plan « Performances optimales ». Ceux qu'un autre outil a laissés se
+  défont dans Faux boosts.
+- **Pas de nettoyage du registre**, ni de « score » de sécurité ou de santé : des faits, et où agir.
+- **Rien sans le dire** : chaque action passe par un bouton, et va au Journal.
+- **Pas de décision d'entreprise défaite** : sur un PC géré, ce qui relève du service
+  informatique est seulement signalé.
+
+## Données et réseau
+
+- **Journal** : `%LOCALAPPDATA%\Driver Updater\journal.jsonl`, les 500 derniers changements.
+- **Réglages de l'appli et valeurs d'origine des réglages Windows** : `HKCU\Software\Driver Updater`.
+- **Après un plantage** : le détail reste dans `%LOCALAPPDATA%\Driver Updater\crash.txt`, joint
+  au diagnostic suivant.
+
+**Réseau** : l'appli ne contacte que Windows Update, le catalogue Microsoft Update, NVIDIA pour
+ses cartes, les sources de winget, et GitHub pour ses propres mises à jour. Aucune télémétrie.
+
+## Questions fréquentes
+
+<details>
+<summary><strong>Pourquoi Windows demande-t-il l'autorisation administrateur ?</strong></summary>
+
+Seulement pour les actions qui en ont besoin : installer un pilote, créer un point de restauration,
+toucher aux réglages de tous les utilisateurs. L'appli se relance en administrateur pour cette
+seule action, puis ce processus se termine. La fenêtre, elle, tourne toujours avec tes droits.
+</details>
+
+<details>
+<summary><strong>Les actions administrateur sont refusées.</strong></summary>
+
+Le zip portable est dans un dossier où n'importe quel programme peut écrire (Téléchargements, le
+Bureau) : un fichier pourrait y être remplacé avant que tu acceptes. Utilise l'installateur, ou
+place le dossier dans un endroit que seuls les administrateurs modifient.
+</details>
+
+<details>
+<summary><strong>Un pilote est « non vérifié », ou l'analyse est « incomplète ».</strong></summary>
+
+Une source n'a pas répondu (réseau, Windows Update occupé). Plutôt que de dire « à jour » sans le
+savoir, l'appli le dit. Relance l'analyse un peu plus tard.
+</details>
+
+<details>
+<summary><strong>Un nouveau pilote pose problème.</strong></summary>
+
+Page Inventaire : choisis le périphérique, « Revenir au pilote précédent ». Sur la page Fabricants,
+tu peux aussi choisir une version plus ancienne, ou masquer celle qui pose problème. En dernier
+recours, la page Points de restauration ouvre la restauration du système.
+</details>
+
+<details>
+<summary><strong>Windows dit que l'appli n'est pas reconnue.</strong></summary>
+
+L'exe n'est pas signé tant qu'un certificat de signature n'est pas configuré (voir
+[CONTRIBUTING.md](CONTRIBUTING.md#signature-de-code)). « Informations complémentaires », puis
+« Exécuter quand même ». Le code est entièrement dans ce dépôt, et chaque version publiée est
+construite et attestée par la CI.
+</details>
+
+## Désinstaller
+
+1. **Annule d'abord les réglages** que tu veux retrouver comme avant (Réglages de jeu,
+   Confidentialité, Faux boosts, ou le Journal) : la désinstallation efface les valeurs d'origine
+   gardées par l'appli.
+2. Paramètres de Windows, Applications, Driver Updater, « Désinstaller ». La vérification
+   hebdomadaire est retirée avec l'appli.
+3. Supprime `%LOCALAPPDATA%\Driver Updater` si tu ne veux pas garder le journal.
 
 ## Sécurité
 
-- **Pas de droits administrateur par défaut.** La fenêtre tourne avec les droits de
-  l'utilisateur. Chaque action qui en a besoin (installer ou masquer un pilote, point de
-  restauration, sauvegarde, `C:\Windows\Temp`, réparation, lecture de l'usure des
-  disques, pilotes du catalogue, programmes au démarrage de tous les utilisateurs,
-  restes dans Program Files, anciennes versions de pilotes) relance l'application en administrateur pour cette seule action : Windows
-  demande l'autorisation, l'action se fait, le processus se termine. Aucun processus
-  administrateur ne reste ouvert pour qu'un autre programme lui parle.
-- **Jamais depuis un dossier modifiable par tous.** Le module administrateur exécute les
-  fichiers de l'application : depuis un dossier où n'importe quel programme peut écrire (un
-  zip portable dans Téléchargements), un fichier pourrait être remplacé avant que vous
-  n'acceptiez. La fenêtre refuse alors les actions administrateur et dit pourquoi.
-- **Comptes standard.** Sur un compte sans droits, Windows demande le mot de passe d'un
-  administrateur et le module tourne sous ce compte-là : le canal l'accepte, et vérifie
-  toujours quel processus s'y connecte.
-- **Seule la fenêtre de Driver Updater commande le module administrateur.** N'importe quel
-  programme peut le lancer avec une commande valide et obtenir de Windows la question
-  « Autoriser Driver Updater ? », à laquelle on répondrait oui. Le module vérifie donc que
-  le processus à l'autre bout du canal est bien l'exe de Driver Updater, et refuse sinon.
-  La fenêtre vérifie de son côté que c'est bien le module qu'elle a lancé, et le module
-  n'agit qu'après son feu vert : un module lancé par un autre programme sur le même canal
-  est refusé avant d'avoir rien fait.
-- **Module administrateur.** Il n'accepte qu'une liste fermée de commandes, et vérifie
-  leurs arguments : identifiants de mise à jour au format GUID, dossiers locaux en chemin
-  complet, nom de canal généré par l'application. Il rend compte par un canal nommé privé
-  (réservé au compte, contrôle du processus à l'autre bout, sans possibilité pour la
-  fenêtre d'emprunter ses droits).
-- **Nettoyage.** Les liens (jonctions, liens symboliques) ne sont jamais suivis. Sous
-  Windows, chaque fichier est supprimé via un handle, après avoir vérifié l'emplacement
-  réel du fichier ouvert : un dossier remplacé par un lien en cours de route ne peut pas
-  rediriger la suppression.
-- **Pilotes du catalogue.** Le lien de téléchargement est retrouvé par le module
-  administrateur lui-même à partir de l'identifiant de la mise à jour, jamais transmis par
-  la fenêtre, et n'est accepté que sur les serveurs de Microsoft en HTTPS, sans suivre de
-  redirection. Le pilote est
-  vérifié puis extrait dans un dossier que seuls SYSTEM et les administrateurs peuvent
-  modifier, créé avec ces droits d'un seul coup, et `pnputil` refuse tout pilote non signé.
-- **Mise à jour de l'application.** L'installateur n'est pris que dans les releases de ce
-  dépôt, et n'est lancé que si son empreinte SHA-256 est celle publiée avec lui dans
-  `SHA256SUMS.txt`.
-- **Réglages de jeu.** Avant chaque modification, la valeur d'origine est
-  gardée sous `HKCU\Software\Driver Updater\Tweaks` ; « Annuler » la remet telle quelle,
-  ou supprime la valeur si elle n'existait pas. Le module administrateur n'accepte que les
-  identifiants de réglages de sa propre liste.
-- **Faux boosts.** Mêmes garanties : l'ancienne valeur est gardée avant d'être rétablie.
-  Remettre la minuterie de démarrage passe par `bcdedit` : BitLocker est d'abord suspendu
-  pour un seul redémarrage, sans quoi il demanderait la clé de récupération.
-- **Fréquence d'écran.** Windows teste le mode avant qu'il soit appliqué ; sans réponse,
-  l'ancien revient au bout de 15 secondes, et il n'est enregistré qu'une fois gardé.
-- **Pilotes NVIDIA.** Demandés au service qu'utilise l'application de NVIDIA ; une réponse
-  qui ne ressemble pas à ce qui est attendu est ignorée. La fenêtre ne transmet que le
-  numéro de la carte et le choix Game Ready ou Studio (le module administrateur peut tourner
-  sous un autre compte, dont les réglages ne sont pas les vôtres) : il redemande lui-même la
-  version à NVIDIA, la
-  télécharge depuis les serveurs de NVIDIA seulement (HTTPS, révocation des certificats
-  vérifiée, aucune redirection suivie, abandon si le serveur cesse d'envoyer) dans un
-  dossier où seuls les administrateurs peuvent écrire (rien ne peut être déposé à côté de
-  l'installateur), Windows vérifie sa signature sur le fichier ouvert en lecture seule, et
-  il n'est lancé que si le signataire est NVIDIA.
-- **Sauvegarde des pilotes.** Le dossier de sauvegarde est créé neuf (jamais un lien posé à
-  sa place), réservé aux administrateurs pendant que `pnputil` le remplit, puis il reprend
-  les droits du dossier qui le contient, même si la sauvegarde échoue en cours de route.
-  À la restauration, `pnputil` installe chaque INF qu'il trouve : seul un dossier fait comme
-  une sauvegarde (un sous-dossier `oemNN.inf` par pilote, aucun lien) est accepté, vérifié
-  par la fenêtre puis par le module, et copié dans un dossier réservé aux administrateurs
-  avant l'installation, comme les pilotes du catalogue.
-- **Restes de désinstallation.** Seulement dans Program Files, ProgramData et AppData
-  (dont `%LocalAppData%\Programs`, jamais ce dossier lui-même),
-  jamais un dossier partagé par plusieurs programmes (Microsoft, Common Files…) ou encore
-  utilisé par un programme installé, jamais un lien, jamais le dossier de l'application. Le
-  module administrateur ne s'occupe que de Program Files et ProgramData : il revérifie
-  chaque dossier en gardant ouverts tous ceux qui mènent à lui, pour qu'aucun ne puisse être
-  remplacé par un lien entre la vérification et le déplacement. Si un dossier est trop
-  gros pour la corbeille, Windows demande avant de le supprimer pour de bon.
-- **Emplacement.** L'installateur place l'application dans `Program Files`, que seul un
-  administrateur peut modifier : personne ne peut remplacer l'exe que Windows élèvera.
-- **Programmes lancés.** Les outils Windows sont appelés par leur chemin complet dans
-  `System32`, jamais par leur seul nom. Le PowerShell que lance le module administrateur
-  (magasin de pilotes, cache de l'Optimisation de distribution) ne charge aucun module tout
-  seul : il chercherait d'abord dans `Documents\WindowsPowerShell\Modules`, où n'importe quel
-  programme de l'utilisateur peut écrire. Chaque module de Windows est importé par son chemin
-  dans `System32`, et chaque commande appelée avec le nom de son module.
-- **DLL.** Les DLL natives sont livrées à côté de l'exe, pas décompressées dans `%TEMP%`.
-- **Dépendances.** Elles sont verrouillées (`packages.lock.json`) et contrôlées contre les
-  vulnérabilités connues. Tous les analyseurs de sécurité .NET sont actifs. En CI, le
-  moindre avertissement fait échouer la compilation.
+La fenêtre tourne sans droits administrateur. Chaque action qui en a besoin relance l'appli en
+administrateur pour cette seule action, avec une liste fermée de commandes dont les arguments
+sont vérifiés, et un canal qui n'accepte que la fenêtre de Driver Updater. Les pilotes et
+installateurs téléchargés sont vérifiés (empreinte, signature, éditeur) dans un dossier que
+seuls les administrateurs peuvent modifier, avant d'être lancés.
 
-## Compiler
+Le détail, et comment signaler une faille en privé : [SECURITY.md](SECURITY.md).
 
-Il faut le SDK .NET 10. La compilation et les tests portables fonctionnent aussi sous
-Linux ; l'application et son installateur ne se construisent et ne tournent que sous
-Windows.
+## Compiler depuis les sources
+
+Il faut le [SDK .NET 10](https://dotnet.microsoft.com/download). L'appli et son installateur ne se
+construisent et ne tournent que sous Windows ; la logique portable se teste aussi sous Linux.
 
 ```sh
-dotnet test tests/DriverUpdater.Tests        # tests portables (Linux ou Windows)
-dotnet test DriverUpdater.sln                # tous les tests (Windows seulement)
-dotnet publish src/DriverUpdater -c Release -p:PublishProfile=win-x64
-ISCC installer\DriverUpdater.iss             # installateur (Inno Setup 6)
+dotnet build DriverUpdater.sln -c Release
+dotnet publish src/DriverUpdater -c Release -p:PublishProfile=win-x64   # l'exe dans publish\
+ISCC installer\DriverUpdater.iss                                         # l'installateur (Inno Setup 6)
 ```
 
-**Textes.** Le français est la source, et chaque texte est sa propre clé : un nouveau texte
-s'écrit `L.T("…")`, ou `L.F("… {0} …", valeur)` s'il contient une valeur. Les textes du
-XAML sont traduits à la création de la fenêtre ; dans un modèle (`DataTemplate`), ils
-s'écrivent `{local:Translate '…'}`. Son anglais va dans
-`src/DriverUpdater/Localization/en.json`. Les tests portables (`LocalizationTests`)
-listent les textes sans traduction et les traductions qui ne servent plus.
-
-## Pipeline (GitHub Actions)
-
-`.github/workflows/build.yml` tourne sur Windows à chaque push, pull request et chaque
-semaine (correctifs .NET, nouvelles vulnérabilités). Il restaure en mode verrouillé,
-compile, lance tous les tests (y compris ceux qui interrogent le vrai Windows et un
-aller-retour réel avec le module administrateur), publie, construit l'installateur, puis
-l'installe et le désinstalle pour de vrai. Le test de la fenêtre la parcourt comme un
-utilisateur (menu, branches, bandeau de l'accueil), vérifie que chaque contrôle a un nom pour les lecteurs
-d'écran, et garde une capture de chaque page, en français, en anglais et en thème clair : elles sont
-jointes à chaque exécution (artefact `screenshots`). Dependabot tient à jour les actions et
-les paquets.
-
-**Publier une version :** changez `<Version>` dans `src/DriverUpdater/DriverUpdater.csproj`,
-committez, puis poussez un tag du même numéro :
+Tests, ceux que la CI passe :
 
 ```sh
-git tag v0.11.1
-git push origin v0.11.1
+dotnet test tests/DriverUpdater.Tests        # logique portable (Linux ou Windows)
+dotnet test DriverUpdater.sln                # tout, y compris le vrai Windows et le module administrateur
 ```
 
-Le pipeline crée alors la release GitHub : installateur, zip portable, `SHA256SUMS.txt`
-et attestation de provenance.
+La CI compile en mode verrouillé, traite chaque avertissement comme une erreur, et parcourt la
+fenêtre comme un utilisateur : accessibilité, contraste de chaque texte, capture de chaque page en
+français, en anglais et en thème clair. Le détail est dans [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Signature de code
+## Architecture
 
-Une application signée n'affiche plus l'avertissement SmartScreen, et Windows montre
-l'éditeur dans sa demande d'autorisation administrateur. Deux possibilités, à choisir :
+Driver Updater est écrit en C# avec WPF et le thème Fluent de .NET 10. Ses deux dépendances NuGet
+viennent de Microsoft : `System.Management` (WMI) et l'analyseur de la publication en un seul
+fichier. L'installateur est fait avec Inno Setup.
 
-**SignPath Foundation (gratuit pour l'open source).** Le dépôt est sous licence MIT, ce
-qui remplit leur condition de licence open source. Ensuite :
+| Dossier de `src/DriverUpdater` | Rôle |
+|---|---|
+| `Admin/` | Élévation : lancement du module administrateur, canal privé avec la fenêtre, commandes admises et leur vérification |
+| `Drivers/` | Windows Update, catalogue Microsoft Update, NVIDIA, inventaire, magasin de pilotes, sauvegarde, vérification hebdomadaire |
+| `Maintenance/` | Matériel et santé, sécurité, points de restauration, performances, démarrage, réparation, nettoyage, diagnostic |
+| `Tuning/` | Réglages de jeu et leur annulation, faux boosts, vérifications du matériel, jeux installés et leurs conseils |
+| `Software/` | winget, programmes installés et désinstallation, composants de jeu |
+| `Common/` | Textes et langue, paramètres, journal, fichiers et PowerShell sûrs en administrateur |
+| `UI/` | La fenêtre, son menu, une partie par domaine (`MainWindow.Home.cs`, `.Games.cs`…) |
+| `Localization/` | `en.json`, l'anglais de chaque texte français |
 
-1. Demandez l'adhésion sur [signpath.org](https://signpath.org).
-2. Dans SignPath, créez deux configurations d'artefact : `app` (signe `DriverUpdater.exe`
-   à la racine de l'artefact) et `installer` (signe `DriverUpdater-Setup-*.exe`).
-3. Dans GitHub (Settings → Secrets and variables → Actions), ajoutez le secret
-   `SIGNPATH_API_TOKEN` et les variables `SIGNPATH_ORGANIZATION_ID`,
-   `SIGNPATH_PROJECT_SLUG` et `SIGNPATH_SIGNING_POLICY_SLUG`.
+Ailleurs : `installer/` (l'installateur et `art/make-art.py`, qui dessine l'icône),
+`tests/DriverUpdater.Tests` (logique portable) et `tests/DriverUpdater.WindowsTests` (sur le vrai
+Windows).
 
-**Votre propre certificat** (`.pfx`, payant) : ajoutez les secrets
-`SIGNING_CERT_PFX_BASE64` (le fichier en base64, obtenu sous Windows avec
-`[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))`) et
-`SIGNING_CERT_PASSWORD`.
+## Contribuer
 
-Sans l'un ou l'autre, le pipeline livre l'application non signée.
+Les rapports de bug, idées et contributions sont les bienvenus. Lis
+[CONTRIBUTING.md](CONTRIBUTING.md) avant d'ouvrir une pull request, et [SECURITY.md](SECURITY.md)
+pour signaler une faille.
 
 ## Licence
 
-MIT : voir [LICENSE](LICENSE).
-
-## Code
-
-Le code de l'application est rangé par domaine, un dossier par espace de noms
-(`DriverUpdater.Drivers`, `DriverUpdater.Maintenance`…). La logique qui ne dépend pas de
-Windows est testée sous Linux comme sous Windows ; le reste l'est sur un vrai Windows par
-le pipeline.
-
-| Dossier de `src/DriverUpdater` | Contenu |
-|---|---|
-| `Admin/` | Élévation : lancement du module administrateur, canal privé avec la fenêtre, commandes admises et leur vérification, exécution |
-| `Drivers/` | Windows Update, catalogue Microsoft Update, inventaire, détection des branchements, rapport de tous les pilotes, magasin de pilotes, sauvegarde, retour au pilote précédent, vérification hebdomadaire |
-| `Maintenance/` | Matériel et santé (WMI), sécurité, points de restauration, performances, démarrage de Windows, programmes au démarrage, réparation (SFC, DISM), fichiers temporaires, diagnostic |
-| `Tuning/` | « Réglages de jeu » : réglages réversibles et leur liste, faux boosts et leur correction, vérifications du matériel et leurs règles, écrans et leur fréquence, carte graphique des jeux sur portable, jeux Steam et leurs conseils |
-| `Software/` | winget, programmes installés et désinstallation, restes, composants de jeu |
-| `Common/` | Textes et langue (`L.cs`), paramètres, journal des changements, messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
-| `Localization/` | `en.json` : l'anglais de chaque texte français |
-| `UI/` | La fenêtre, son menu en arbre (`MainWindow.Nav.cs`), un fichier par domaine (`MainWindow.Home.cs`, `.Games.cs`…), l'en-tête commun des pages, la jauge, la traduction des textes du XAML, la question « garder cet affichage ? » |
-| (racine) | `App.xaml` et `App.xaml.cs` (thème : clair ou sombre comme Windows 11, avec l'accent choisi dans Windows), manifeste, icône, projet |
-
-| Ailleurs | Contenu |
-|---|---|
-| `installer/DriverUpdater.iss` | Installateur Inno Setup, en français et en anglais : thème sombre, mise à jour, réparation, désinstallation |
-| `installer/art/make-art.py` | Dessine l'icône et les images de l'installateur |
-| `build/sign.ps1` | Signature avec votre propre certificat |
-| `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour, règles du matériel (XMP, écrans), réponses de NVIDIA (Game Ready et Studio), faux boosts, carte graphique des portables, vérification hebdomadaire, temps de démarrage gagné, journal, traduction complète |
-| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre parcourue comme un utilisateur, accessibilité, capture de chaque section en français, en anglais et en clair, avec le contraste de chaque texte, réglages dans le vrai registre, signatures Authenticode, service de NVIDIA, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |
+[MIT](LICENSE).

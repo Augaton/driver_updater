@@ -260,7 +260,7 @@ public partial class MainWindow
             int count = await Task.Run(() =>
             {
                 if (!force) return GpuPreference.Undo(registry);
-                var programs = SteamGames.AllGameFolders().SelectMany(SteamGames.GamePrograms).ToList();
+                var programs = LauncherGames.AllFolders().SelectMany(SteamGames.GamePrograms).ToList();
                 GpuPreference.Force(programs, registry);
                 return programs.Count;
             });

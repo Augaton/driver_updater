@@ -140,3 +140,23 @@ public sealed class GameTipsTests
     public void Removing_from_a_file_that_only_held_the_block_leaves_it_empty() =>
         Assert.Equal("", GameTips.WithoutBlock(GameTips.WithBlock(null, ["gmod_mcore_test 1"])));
 }
+
+// The game checks look at Epic's games too, from the launcher's own manifests.
+public sealed class EpicManifestTests
+{
+    [Fact]
+    public void Reads_a_game_s_name_and_folder() =>
+        Assert.Equal(("Fortnite", @"C:\Program Files\Epic Games\Fortnite"), GameTips.EpicManifest(
+            """{ "DisplayName": "Fortnite", "InstallLocation": "C:\\Program Files\\Epic Games\\Fortnite", "AppCategories": ["public", "games", "applications"] }"""));
+
+    [Fact]
+    public void Leaves_out_add_ons_but_not_launchable_ones()
+    {
+        Assert.Null(GameTips.EpicManifest("""{ "DisplayName": "Skin pack", "InstallLocation": "D:\\Games\\Pack", "AppCategories": ["addons"] }"""));
+        Assert.NotNull(GameTips.EpicManifest("""{ "DisplayName": "Mode", "InstallLocation": "D:\\Games\\Mode", "AppCategories": ["addons", "addons/launchable"] }"""));
+    }
+
+    [Fact]
+    public void A_manifest_without_a_folder_is_no_game() =>
+        Assert.Null(GameTips.EpicManifest("""{ "DisplayName": "Fortnite" }"""));
+}

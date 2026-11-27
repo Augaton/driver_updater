@@ -26,6 +26,7 @@ public static class PcChecks
         Add(checks, MemoryIntegrity);
         Add(checks, AntiCheat);
         Add(checks, SteamLibraries);
+        Add(checks, OtherGames);
         Add(checks, () => LaptopGraphics(laptop));
         Add(checks, SystemDisk);
         return checks;
@@ -149,20 +150,33 @@ public static class PcChecks
         }
     }
 
-    // A laptop with two graphics chips: are the Steam games set to use the dedicated one?
+    // The same for the games of Epic, GOG and Ubisoft: one check per launcher with games on a hard disk.
+    static IEnumerable<PcCheck?> OtherGames()
+    {
+        foreach (var launcher in LauncherGames.All().GroupBy(g => g.Launcher))
+        {
+            var onHardDisk = launcher.Where(g => Machine.OnHardDisk(g.Folder) == true).Select(g => g.Name).ToList();
+            yield return onHardDisk.Count > 0
+                ? new PcCheck(L.F("Jeux {0}", launcher.Key), L.F("{0} jeu(x) sur un disque dur : {1}", onHardDisk.Count, string.Join(", ", onHardDisk)), true,
+                    L.T("Chargements bien plus longs et saccades dans les mondes ouverts. Réinstallez-les sur un SSD depuis le lanceur, qui sait souvent les déplacer."))
+                : new PcCheck(L.F("Jeux {0}", launcher.Key), L.F("{0} jeu(x), aucun sur un disque dur", launcher.Count()), false, L.T("Rien à faire."));
+        }
+    }
+
+    // A laptop with two graphics chips: are the games (Steam's and the other launchers') set to use the dedicated one?
     static PcCheck? LaptopGraphics(bool laptop)
     {
         if (!laptop) return null;
         var adapters = Displays.Adapters();
         if (!adapters.Any(a => a.Integrated) || !adapters.Any(a => !a.Integrated)) return null;
         var registry = new WindowsRegistry();
-        var games = SteamGames.AllGameFolders().Select(SteamGames.GamePrograms).Where(programs => programs.Count > 0).ToList();
+        var games = LauncherGames.AllFolders().Select(SteamGames.GamePrograms).Where(programs => programs.Count > 0).ToList();
         if (games.Count == 0) return null;
         int left = games.Count(programs => !programs.All(p => GpuPreference.IsForced(p, registry)));
         return left == 0
-            ? new(L.T("Jeux Steam"), L.T("Tous réglés sur la carte graphique dédiée"), false, L.T("Windows ne les fera pas tourner sur la puce graphique du processeur."),
+            ? new(L.T("Jeux"), L.T("Tous réglés sur la carte graphique dédiée"), false, L.T("Windows ne les fera pas tourner sur la puce graphique du processeur."),
                 GpuPreference.CanUndo(registry) ? L.T("Annuler") : null, GpuPreference.CanUndo(registry) ? "gpu-preference-undo" : null)
-            : new(L.T("Jeux Steam"), L.F("{0} jeu(x) sur {1} laissé(s) au choix de Windows", left, games.Count), true,
+            : new(L.T("Jeux"), L.F("{0} jeu(x) sur {1} laissé(s) au choix de Windows", left, games.Count), true,
                 L.T("Sur un portable à deux puces graphiques, Windows peut faire tourner un jeu sur celle du processeur, bien moins puissante. Ce réglage de Windows (Paramètres → Affichage → Graphiques) les force sur la carte dédiée ; il s'annule d'un clic.")
                 // A game installed since: "Forcer" covers it too, and the way back stays in the journal.
                 + (GpuPreference.CanUndo(registry) ? L.T(" Les jeux déjà réglés reviennent au choix de Windows depuis le Journal.") : ""),

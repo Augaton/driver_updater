@@ -994,5 +994,10 @@
  "Ce dossier n'est pas une sauvegarde de Driver Updater : choisissez le dossier « Pilotes … » que « Sauvegarder… » a créé.": "This folder is not a Driver Updater backup: choose the “Drivers …” folder that “Back up…” made.",
  "Ce dossier n'est pas une sauvegarde de Driver Updater.": "This folder is not a Driver Updater backup.",
  "Installer les {0} pilote(s) de « {1} » ?\n\n{2}\n\nUn point de restauration système sera créé avant.": "Install the {0} driver(s) of “{1}”?\n\n{2}\n\nA system restore point will be made first.",
- "Restaurer une sauvegarde": "Restore a backup"
+ "Restaurer une sauvegarde": "Restore a backup",
+ "Chargements bien plus longs et saccades dans les mondes ouverts. Réinstallez-les sur un SSD depuis le lanceur, qui sait souvent les déplacer.": "Much longer loading and stutter in open worlds. Reinstall them on an SSD from the launcher, which can often move them.",
+ "Jeux": "Games",
+ "Jeux {0}": "{0} games",
+ "{0} jeu(x) sur un disque dur : {1}": "{0} game(s) on a hard disk: {1}",
+ "{0} jeu(x), aucun sur un disque dur": "{0} game(s), none on a hard disk"
 }

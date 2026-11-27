@@ -75,14 +75,15 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
     Windows ; si l'image ne revient pas, l'ancienne fréquence revient seule au bout de
     15 secondes ;
   - écran branché sur la carte mère alors qu'il y a une carte graphique ;
-  - sur un portable à deux puces graphiques, jeux Steam laissés au choix de Windows, qui
+  - sur un portable à deux puces graphiques, jeux laissés au choix de Windows, qui
     peut les lancer sur la moins puissante : forcés d'un clic sur la carte dédiée, par le
     réglage de Windows lui-même, et annulable ;
   - mémoire sans profil XMP/EXPO (lu aussi dans la référence des barrettes, quand le
     BIOS ne le dit pas), ou une seule barrette ;
   - mode d'alimentation qui bride le processeur ; Ryzen X3D sans son pilote de cache 3D,
     sans Game Bar ou hors du mode Équilibré ;
-  - jeux Steam installés sur un disque dur ; disque système plein ;
+  - jeux installés sur un disque dur (ceux de Steam, Epic Games, GOG et Ubisoft Connect, lus
+    là où chaque lanceur les note ; pas ceux de l'application Xbox) ; disque système plein ;
   - Secure Boot ou puce TPM 2.0 absents, que demandent les anti-triche de Battlefield 6, Call of
     Duty Black Ops 7 et Valorant (ils s'activent dans le BIOS) ;
   - Core Intel de 13e ou 14e génération de bureau sans le microcode d'Intel contre leur

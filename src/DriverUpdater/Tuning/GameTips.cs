@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace DriverUpdater.Tuning;
@@ -51,6 +53,26 @@ public static partial class GameTips
 
     /// <summary>A game's folder name under steamapps\common, from its appmanifest_*.acf.</summary>
     public static string? InstallDir(string acf) => InstallDirEntry().Match(acf) is { Success: true } m ? m.Groups[1].Value : null;
+
+    /// <summary>
+    /// An Epic Games manifest (*.item): the game's name and install folder; null for an add-on (its
+    /// categories say "addons" but not "addons/launchable") or a manifest without a folder.
+    /// </summary>
+    public static (string Name, string Folder)? EpicManifest(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object) return null;
+        var categories = root.TryGetProperty("AppCategories", out var list) && list.ValueKind == JsonValueKind.Array
+            ? list.EnumerateArray().Where(c => c.ValueKind == JsonValueKind.String).Select(c => c.GetString()!).ToList()
+            : [];
+        if (categories.Contains("addons") && !categories.Contains("addons/launchable")) return null;
+        if (Text(root, "InstallLocation") is not { } folder) return null;
+        return (Text(root, "DisplayName") ?? Path.GetFileName(folder.TrimEnd('\\')), folder);
+    }
+
+    static string? Text(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && value.GetString() is { Length: > 0 } text ? text : null;
 
     public static bool HasBlock(string? cfg) => cfg is not null && cfg.Contains(BlockStart, StringComparison.Ordinal);
 

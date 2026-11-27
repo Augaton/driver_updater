@@ -1,9 +1,35 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Microsoft.Win32;
 
 namespace DriverUpdater.UI;
+
+public enum SecurityLevel { Good, ToDo, Bad, Neutral }
+
+/// <summary>
+/// One line of the "Sécurité" page: what Windows reports, how it stands, and the page of
+/// Windows where to act. The state is said in words too, never by the color alone.
+/// </summary>
+public sealed record SecurityRow(string Title, string Detail, SecurityLevel Level, string ActionText, string Target)
+{
+    public string Glyph => Level switch
+    {
+        SecurityLevel.Good => "", // check mark
+        SecurityLevel.ToDo => "", // warning
+        SecurityLevel.Bad => "", // cross
+        _ => "", // info
+    };
+
+    public Brush Color => (Brush)Application.Current.FindResource(Level switch
+    {
+        SecurityLevel.Good => "Success",
+        SecurityLevel.ToDo => "Caution",
+        SecurityLevel.Bad => "Critical",
+        _ => "InkMuted",
+    });
+}
 
 // "Santé et nettoyage" and "Sauvegarde" tabs.
 public partial class MainWindow
@@ -56,40 +82,56 @@ public partial class MainWindow
         try
         {
             var quick = await Task.Run(() => SecurityStatus.Read(askWindowsUpdate: false));
-            ShowSecurity(quick, askWindowsUpdate ? L.T("recherche en cours…") : L.T("non vérifiées"));
+            ShowSecurity(quick, askWindowsUpdate ? L.T("Recherche en cours…") : L.T("Pas encore demandées à Windows Update."));
             if (!askWindowsUpdate) return quick;
             var full = await Task.Run(() => SecurityStatus.Read(askWindowsUpdate: true));
-            ShowSecurity(full, L.T("Windows Update n'a pas répondu"));
+            ShowSecurity(full, L.T("Windows Update n'a pas répondu."));
             return full;
         }
         catch (Exception e)
         {
-            SecuritySummary.Text = L.T("Lecture impossible : ") + Errors.Describe(e);
+            SecurityMessage.Text = L.T("Lecture impossible : ") + Errors.Describe(e);
+            SecurityMessage.Visibility = Visibility.Visible;
+            SecurityList.ItemsSource = null;
             return null;
         }
     }
 
+    /// <summary>One line per antivirus, then the firewall and the Windows updates, each with where to act.</summary>
     void ShowSecurity(SecurityState state, string updatesUnknown)
     {
-        var lines = new List<string>();
-        lines.AddRange(state.Antiviruses.Count == 0
-            ? [L.T("Antivirus : aucun déclaré à Windows (Security Center absent, comme sur Windows Server).")]
-            : state.Antiviruses.Select(a => L.F("{0} {1} : {2}, {3}", a.Enabled && a.UpToDate ? "✔" : "✘", a.Name,
-                                                a.Enabled ? L.T("actif") : L.T("inactif"), a.UpToDate ? L.T("à jour") : L.T("pas à jour"))));
-        lines.Add(state.FirewallOn switch
+        const string Threats = "windowsdefender://threat", Network = "windowsdefender://network", Updates = "ms-settings:windowsupdate";
+        var rows = new List<SecurityRow>();
+        bool anyActive = state.Antiviruses.Any(a => a.Enabled);
+        if (state.Antiviruses.Count == 0)
+            rows.Add(new(L.T("Antivirus"), L.T("Aucun déclaré à Windows (Security Center absent, comme sur Windows Server)."),
+                         SecurityLevel.Neutral, L.T("Protection antivirus"), Threats));
+        foreach (var antivirus in state.Antiviruses)
+            rows.Add(antivirus switch
+            {
+                { Enabled: true, UpToDate: true } => new(antivirus.Name, L.T("Actif, à jour."), SecurityLevel.Good, L.T("Protection antivirus"), Threats),
+                { Enabled: true } => new(antivirus.Name, L.T("Actif, mais ses définitions de virus ne sont pas à jour."),
+                                         SecurityLevel.ToDo, L.T("Protection antivirus"), Threats),
+                _ when anyActive => new(antivirus.Name, L.T("Inactif : un autre antivirus protège le PC."),
+                                        SecurityLevel.Neutral, L.T("Protection antivirus"), Threats),
+                _ => new(antivirus.Name, L.T("Inactif : aucun antivirus ne protège le PC."), SecurityLevel.Bad, L.T("Protection antivirus"), Threats),
+            });
+        rows.Add(state.FirewallOn switch
         {
-            true => L.T("✔ Pare-feu Windows : actif"),
-            _ when state.OtherFirewalls is { Count: > 0 } others => L.F("✔ Pare-feu : {0}, actif (celui de Windows lui laisse la place)", string.Join(", ", others)),
-            false => L.T("✘ Pare-feu Windows : désactivé"),
-            null => L.T("Pare-feu Windows : état illisible"),
+            true => new(L.T("Pare-feu Windows"), L.T("Actif."), SecurityLevel.Good, L.T("Pare-feu"), Network),
+            _ when state.OtherFirewalls is { Count: > 0 } others =>
+                new(string.Join(", ", others), L.T("Pare-feu actif : celui de Windows lui laisse la place."), SecurityLevel.Good, L.T("Pare-feu"), Network),
+            false => new(L.T("Pare-feu Windows"), L.T("Désactivé."), SecurityLevel.Bad, L.T("Pare-feu"), Network),
+            null => new(L.T("Pare-feu Windows"), L.T("État illisible."), SecurityLevel.Neutral, L.T("Pare-feu"), Network),
         });
-        lines.Add(state.PendingUpdates switch
+        rows.Add(state.PendingUpdates switch
         {
-            0 => L.T("✔ Mises à jour de Windows : aucune en attente"),
-            > 0 => L.F("✘ Mises à jour de Windows : {0} en attente", state.PendingUpdates),
-            _ => L.T("Mises à jour de Windows : ") + updatesUnknown,
+            0 => new(L.T("Mises à jour de Windows"), L.T("Aucune en attente."), SecurityLevel.Good, L.T("Windows Update"), Updates),
+            > 0 => new(L.T("Mises à jour de Windows"), L.F("{0} en attente.", state.PendingUpdates), SecurityLevel.ToDo, L.T("Windows Update"), Updates),
+            _ => new(L.T("Mises à jour de Windows"), updatesUnknown, SecurityLevel.Neutral, L.T("Windows Update"), Updates),
         });
-        SecuritySummary.Text = string.Join("\n", lines);
+        SecurityMessage.Visibility = Visibility.Collapsed;
+        SecurityList.ItemsSource = rows;
     }
 
     async void OnRestorePoints(object sender, RoutedEventArgs e) =>

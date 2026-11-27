@@ -27,6 +27,18 @@ public sealed class WeeklyDigestTests
         Assert.True(WeeklyDigest.Compute([], None, null, null, ["git@2.53"], new HashSet<string> { "git@2.52" }).HasNew);
 
     [Fact]
+    public void The_click_opens_the_page_of_what_is_new()
+    {
+        // A driver told about last week is still there: the new program is what the click is for.
+        Assert.Equal(WeeklyPage.Software,
+            WeeklyDigest.Compute(["a"], new HashSet<string> { "a" }, null, null, ["git@2.53"], None).Page);
+        Assert.Equal(WeeklyPage.Nvidia,
+            WeeklyDigest.Compute(["a"], new HashSet<string> { "a" }, "618.10", "617.42", ["git@2.53"], None).Page);
+        Assert.Equal(WeeklyPage.Drivers,
+            WeeklyDigest.Compute(["a", "b"], new HashSet<string> { "a" }, "618.10", "617.42", ["git@2.53"], None).Page);
+    }
+
+    [Fact]
     public void A_new_nvidia_driver_is_news_once() =>
         Assert.Equal((true, false),
             (WeeklyDigest.Compute([], None, "618.10", "617.42", [], None).HasNew,

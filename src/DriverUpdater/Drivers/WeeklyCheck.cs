@@ -167,7 +167,7 @@ public static class WeeklyCheck
             if (nvidia is not null) SaveNvidia(nvidia.Version);
             if (news.HasNew)
             {
-                Notify(app, news, drivers ?? [], nvidia is not null, software ?? []);
+                Notify(app, news, drivers ?? [], software ?? []);
                 notified = true; // the notification ends the app when it closes
             }
         }
@@ -202,7 +202,7 @@ public static class WeeklyCheck
         key.SetValue(NotifiedNvidiaValue, version, RegistryValueKind.String);
     }
 
-    static void Notify(App app, WeeklyNews news, List<DriverUpdate> drivers, bool nvidia, List<SoftwareUpdate> software)
+    static void Notify(App app, WeeklyNews news, List<DriverUpdate> drivers, List<SoftwareUpdate> software)
     {
         var icon = new Forms.NotifyIcon
         {
@@ -225,7 +225,7 @@ public static class WeeklyCheck
             app.ShutdownMode = ShutdownMode.OnLastWindowClose;
             var window = new MainWindow();
             window.Show();
-            window.ShowWeekly(drivers, nvidia, software);
+            window.ShowWeekly(news.Page, drivers, software);
         }
         icon.BalloonTipClicked += (_, _) => Open();
         icon.MouseClick += (_, _) => Open();

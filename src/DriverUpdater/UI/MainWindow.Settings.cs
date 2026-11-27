@@ -65,22 +65,19 @@ public partial class MainWindow
         Process.Start(Environment.ProcessPath!);
     }
 
-    /// <summary>Opened from the weekly check's notification: where the news is.</summary>
-    internal void ShowWeekly(List<DriverUpdate> drivers, bool nvidia, List<SoftwareUpdate> software)
+    /// <summary>
+    /// Opened from the weekly check's notification: on the page of what is new, with every list it
+    /// found filled in, so the other pages show their part too.
+    /// </summary>
+    internal void ShowWeekly(WeeklyPage page, List<DriverUpdate> drivers, List<SoftwareUpdate> software)
     {
-        if (drivers.Count > 0)
+        if (drivers.Count > 0) _ = ShowUpdates(drivers, L.T("Trouvé par la vérification hebdomadaire."));
+        if (software.Count > 0) ShowSoftware(software);
+        Tabs.SelectedItem = page switch
         {
-            _ = ShowUpdates(drivers, L.T("Trouvé par la vérification hebdomadaire."));
-            Tabs.SelectedItem = DriversTab;
-        }
-        else if (nvidia)
-        {
-            Tabs.SelectedItem = GpuTab;
-        }
-        else
-        {
-            ShowSoftware(software);
-            Tabs.SelectedItem = SoftwareTab;
-        }
+            WeeklyPage.Drivers => DriversTab,
+            WeeklyPage.Nvidia => GpuTab,
+            _ => SoftwareTab,
+        };
     }
 }

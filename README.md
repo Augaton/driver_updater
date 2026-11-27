@@ -81,7 +81,11 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
     BIOS ne le dit pas), ou une seule barrette ;
   - mode d'alimentation qui bride le processeur ; Ryzen X3D sans son pilote de cache 3D,
     sans Game Bar ou hors du mode Équilibré ;
-  - jeux Steam installés sur un disque dur ; disque système plein.
+  - jeux Steam installés sur un disque dur ; disque système plein ;
+  - Secure Boot ou puce TPM 2.0 absents, que demandent les anti-triche de Battlefield 6, Call of
+    Duty Black Ops 7 et Valorant (ils s'activent dans le BIOS) ;
+  - Core Intel de 13e ou 14e génération de bureau sans le microcode d'Intel contre leur
+    dégradation (0x12F, mai 2025), qui vient avec une mise à jour du BIOS.
 
   Laissés de côté parce que rien ne les mesure ou qu'ils nuisent : réglages réseau
   (Nagle, MMCSS), HPET et minuterie, parcage des cœurs, services coupés, MPO, et le plan
@@ -123,8 +127,8 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
   seulement signalé, et sur un PC géré par une entreprise, c'est l'affaire de son service
   informatique.
 - **Sécurité.** Antivirus actif et à jour, pare-feu actif (celui de Windows, ou celui d'une
-  suite de sécurité à sa place), mises à jour de Windows en attente, avec un lien vers
-  l'endroit où agir. Pas de « score ».
+  suite de sécurité à sa place), mises à jour de Windows en attente, redémarrage attendu pour
+  les finir, chacun avec un lien vers l'endroit où agir. Pas de « score ».
 - **Points de restauration.** La liste, en créer un, ouvrir la restauration du système.
 - **Disques et batterie.** État, usure et température des disques, santé de la batterie.
 - **Nettoyage.** Fichiers temporaires de plus de 2 jours, anciennes versions des composants

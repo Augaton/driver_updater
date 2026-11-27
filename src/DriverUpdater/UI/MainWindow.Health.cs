@@ -130,6 +130,9 @@ public partial class MainWindow
             > 0 => new(L.T("Mises à jour de Windows"), L.F("{0} en attente.", state.PendingUpdates), SecurityLevel.ToDo, L.T("Windows Update"), Updates),
             _ => new(L.T("Mises à jour de Windows"), updatesUnknown, SecurityLevel.Neutral, L.T("Windows Update"), Updates),
         });
+        if (state.RestartPending)
+            rows.Add(new(L.T("Redémarrage en attente"), L.T("Windows attend un redémarrage pour finir d'installer des mises à jour : elles ne protègent qu'après."),
+                         SecurityLevel.ToDo, L.T("Windows Update"), Updates));
         SecurityMessage.Visibility = Visibility.Collapsed;
         SecurityList.ItemsSource = rows;
     }

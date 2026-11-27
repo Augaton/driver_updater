@@ -6,8 +6,9 @@ public sealed record Antivirus(string Name, bool Enabled, bool UpToDate);
 /// <param name="OtherFirewalls">
 /// Firewalls of security suites (Norton, ESET…) that are on: Windows' own steps aside for them.
 /// </param>
+/// <param name="RestartPending">Windows waits for a restart to finish installing updates.</param>
 public sealed record SecurityState(IReadOnlyList<Antivirus> Antiviruses, bool? FirewallOn, int? PendingUpdates,
-    IReadOnlyList<string>? OtherFirewalls = null)
+    IReadOnlyList<string>? OtherFirewalls = null, bool RestartPending = false)
 {
     /// <summary>Some firewall guards the PC: Windows' own, or a suite's in its place.</summary>
     public bool? Firewalled => OtherFirewalls is { Count: > 0 } ? true : FirewallOn;
@@ -22,6 +23,7 @@ public sealed record SecurityState(IReadOnlyList<Antivirus> Antiviruses, bool? F
             problems.AddRange(Antiviruses.Where(a => a.Enabled && !a.UpToDate).Select(a => L.F("{0} n'est pas à jour", a.Name)));
             if (Firewalled == false) problems.Add(L.T("Pare-feu Windows désactivé"));
             if (PendingUpdates > 0) problems.Add(L.F("{0} mise(s) à jour de Windows en attente", PendingUpdates));
+            if (RestartPending) problems.Add(L.T("Redémarrage en attente pour finir des mises à jour"));
             return problems;
         }
     }

@@ -22,7 +22,9 @@ public static class PcChecks
         Add(checks, () => Memory(laptop));
         Add(checks, () => Power(laptop));
         Add(checks, X3D);
+        Add(checks, IntelVmin);
         Add(checks, MemoryIntegrity);
+        Add(checks, AntiCheat);
         Add(checks, SteamLibraries);
         Add(checks, () => LaptopGraphics(laptop));
         Add(checks, SystemDisk);
@@ -107,6 +109,11 @@ public static class PcChecks
                 L.T("Sans eux, les jeux s'étalent sur les deux parties du processeur et perdent des images. Installez le dernier pilote chipset AMD (il contient le pilote du cache 3D), gardez la Xbox Game Bar et le Mode jeu."),
                 L.T("Pilotes AMD"), L.T("https://www.amd.com/fr/support/download/drivers.html"));
     }
+
+    static PcCheck? IntelVmin() =>
+        Machine.MicrocodeRevision() is { } revision ? HardwareRules.IntelVmin(Machine.ProcessorName(), Machine.ProcessorIdentifier(), revision) : null;
+
+    static PcCheck AntiCheat() => HardwareRules.AntiCheat(Machine.UefiFirmware(), Machine.SecureBootOn(), Machine.TpmVersion());
 
     // Memory integrity blocks malicious drivers; it costs a few frames in some games. Shown,
     // never switched off from here: that choice belongs to the user, in Windows Security.

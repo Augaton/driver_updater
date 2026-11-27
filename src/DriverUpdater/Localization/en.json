@@ -964,5 +964,21 @@
  "{0} logiciel(s) écarté(s) : winget ne les propose plus.": "{0} program(s) set aside: winget no longer offers them.",
  "{0} logiciel(s) écarté(s).": "{0} program(s) set aside.",
  "{0} logiciel(s) écarté(s). Échec : {1}.": "{0} program(s) set aside. Failed: {1}.",
- "Épinglage dans winget…": "Pinning in winget…"
+ "Épinglage dans winget…": "Pinning in winget…",
+ " Passer du mode BIOS ancien à l'UEFI demande d'abord de convertir le disque système (mbr2gpt) : à faire avec une sauvegarde.": " Moving from the legacy BIOS mode to UEFI first needs the system disk converted (mbr2gpt): to do with a backup.",
+ "Anti-triche des jeux en ligne": "Online games' anti-cheat",
+ "Battlefield 6 refuse de se lancer sans Secure Boot ; Call of Duty Black Ops 7 et Valorant (sous Windows 11) demandent aussi une puce TPM 2.0. Les deux s'activent dans le BIOS de la carte mère : Secure Boot, et fTPM (AMD) ou PTT (Intel).": "Battlefield 6 refuses to start without Secure Boot; Call of Duty Black Ops 7 and Valorant (on Windows 11) also need a TPM 2.0. Both are switched on in the motherboard's BIOS: Secure Boot, and fTPM (AMD) or PTT (Intel).",
+ "Ce que demandent Valorant, Call of Duty et Battlefield 6 est en place.": "What Valorant, Call of Duty and Battlefield 6 ask for is in place.",
+ "Ces processeurs pouvaient se dégrader à cause de tensions trop élevées ; ce microcode l'empêche. Gardez le profil « Intel Default Settings » du BIOS.": "These processors could degrade from voltages set too high; this microcode prevents it. Keep the BIOS's “Intel Default Settings” profile.",
+ "Les Core de 13e et 14e génération de bureau peuvent se dégrader définitivement (plantages, puis instabilité qui s'aggrave) à cause de tensions trop élevées. Intel l'a corrigé par un microcode livré avec les BIOS récents : mettez le BIOS de la carte mère à jour, puis gardez le profil « Intel Default Settings ».": "13th and 14th generation desktop Core processors can degrade for good (crashes, then worsening instability) from voltages set too high. Intel fixed it with a microcode that comes with recent BIOSes: update the motherboard's BIOS, then keep the “Intel Default Settings” profile.",
+ "Microcode 0x{0:X} : correctif d'Intel en place": "Microcode 0x{0:X}: Intel's fix in place",
+ "Microcode 0x{0:X}, antérieur au correctif d'Intel (0x12F)": "Microcode 0x{0:X}, older than Intel's fix (0x12F)",
+ "Redémarrage en attente": "Restart pending",
+ "Redémarrage en attente pour finir des mises à jour": "Restart pending to finish updates",
+ "Secure Boot est désactivé": "Secure Boot is off",
+ "Secure Boot et TPM 2.0 actifs": "Secure Boot and TPM 2.0 on",
+ "Windows attend un redémarrage pour finir d'installer des mises à jour : elles ne protègent qu'après.": "Windows waits for a restart to finish installing updates: they only protect after it.",
+ "aucune puce TPM active": "no active TPM",
+ "la puce TPM est en version 1.2": "the TPM is version 1.2",
+ "le PC démarre en mode BIOS ancien (CSM), sans Secure Boot possible": "the PC starts in legacy BIOS mode (CSM), where Secure Boot cannot be"
 }

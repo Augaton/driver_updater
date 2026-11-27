@@ -88,4 +88,32 @@ public sealed class HardwareRulesTests
         Assert.Equal(("Passer à 144 Hz", @"refresh:144:\\.\DISPLAY1"), (check.ActionText, check.Action));
         Assert.False(HardwareRules.Refresh("Test", 0, 144).NeedsAttention); // rate not known: no claim
     }
+
+    [Fact]
+    public void Anti_cheats_want_secure_boot_and_a_tpm_2()
+    {
+        Assert.False(HardwareRules.AntiCheat(uefi: true, secureBoot: true, tpmVersion: 2).NeedsAttention);
+        Assert.Equal("Secure Boot est désactivé, aucune puce TPM active", HardwareRules.AntiCheat(true, false, 0).Finding);
+        var legacy = HardwareRules.AntiCheat(uefi: false, secureBoot: false, tpmVersion: 2);
+        Assert.True(legacy.NeedsAttention);
+        Assert.Contains("mbr2gpt", legacy.Advice); // the way out of a legacy BIOS is said, with its risk
+    }
+
+    [Theory]
+    [InlineData(new byte[] { 0, 0, 0, 0, 0x2F, 0x01, 0, 0 }, 0x12Fu)] // Intel: upper four bytes
+    [InlineData(new byte[] { 0x0D, 0x22, 0x20, 0x0A }, 0x0A20220Du)] // AMD: four bytes
+    public void Reads_the_microcode_revision_as_windows_stores_it(byte[] value, uint revision) =>
+        Assert.Equal(revision, HardwareRules.MicrocodeRevision(value));
+
+    [Fact]
+    public void Flags_raptor_lake_desktops_without_intel_s_microcode_fix()
+    {
+        const string Raptor = "Intel64 Family 6 Model 183 Stepping 1";
+        Assert.True(HardwareRules.IntelVmin("13th Gen Intel(R) Core(TM) i9-13900K", Raptor, 0x11F)!.NeedsAttention);
+        Assert.False(HardwareRules.IntelVmin("14th Gen Intel(R) Core(TM) i7-14700K", Raptor, 0x12F)!.NeedsAttention);
+        Assert.False(HardwareRules.IntelVmin("14th Gen Intel(R) Core(TM) i7-14700K", Raptor, 0x132)!.NeedsAttention); // later ones keep it
+        Assert.Null(HardwareRules.IntelVmin("13th Gen Intel(R) Core(TM) i9-13980HX", Raptor, 0x11F)); // laptop: not concerned
+        Assert.Null(HardwareRules.IntelVmin("13th Gen Intel(R) Core(TM) i5-13400", "Intel64 Family 6 Model 191 Stepping 2", 0x2F));
+        Assert.Null(HardwareRules.IntelVmin("AMD Ryzen 7 5800X 8-Core Processor", "AMD64 Family 25 Model 33 Stepping 2", 0x0A20120E));
+    }
 }

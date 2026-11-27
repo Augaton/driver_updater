@@ -129,6 +129,8 @@ public sealed class SecurityCenterTests
         Assert.Equal(3, bad.Problems.Count);
         // A suite's firewall in place of Windows' own is no problem.
         Assert.Empty((fine with { FirewallOn = false, OtherFirewalls = ["Norton Firewall"] }).Problems);
+        // A restart Windows waits for is one more thing to do.
+        Assert.Single((fine with { RestartPending = true }).Problems);
     }
 
     [Fact]

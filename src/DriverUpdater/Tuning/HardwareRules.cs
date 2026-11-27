@@ -113,4 +113,59 @@ public static partial class HardwareRules
             : new(L.F("Écran {0}", screen), L.T("Branché sur la carte mère, pas sur la carte graphique"), true,
                 L.T("Les jeux tournent alors sur les graphiques du processeur, ou perdent du temps à recopier chaque image. Branchez le câble de l'écran sur une sortie de la carte graphique (les prises du bas, à l'horizontale, au dos du PC)."));
     }
+
+    /// <summary>
+    /// What the anti-cheats of competitive games ask of the PC. Battlefield 6 (Javelin) needs Secure
+    /// Boot; Call of Duty Black Ops 7 (Ricochet) and Valorant under Windows 11 (Vanguard) need Secure
+    /// Boot and a TPM 2.0. Both are switched on in the motherboard's firmware setup, never from Windows.
+    /// </summary>
+    /// <param name="uefi">Windows started from UEFI firmware; on a legacy BIOS (CSM) there is no Secure Boot.</param>
+    /// <param name="tpmVersion">2 for a TPM 2.0, 1 for a 1.2, 0 for none or one switched off.</param>
+    public static PcCheck AntiCheat(bool uefi, bool secureBoot, int tpmVersion)
+    {
+        var missing = new List<string>();
+        if (!uefi) missing.Add(L.T("le PC démarre en mode BIOS ancien (CSM), sans Secure Boot possible"));
+        else if (!secureBoot) missing.Add(L.T("Secure Boot est désactivé"));
+        if (tpmVersion < 2) missing.Add(tpmVersion == 1 ? L.T("la puce TPM est en version 1.2") : L.T("aucune puce TPM active"));
+        if (missing.Count == 0)
+            return new(L.T("Anti-triche des jeux en ligne"), L.T("Secure Boot et TPM 2.0 actifs"), false,
+                L.T("Ce que demandent Valorant, Call of Duty et Battlefield 6 est en place."));
+        return new(L.T("Anti-triche des jeux en ligne"), string.Join(", ", missing), true,
+            L.T("Battlefield 6 refuse de se lancer sans Secure Boot ; Call of Duty Black Ops 7 et Valorant (sous Windows 11) demandent aussi une puce TPM 2.0. Les deux s'activent dans le BIOS de la carte mère : Secure Boot, et fTPM (AMD) ou PTT (Intel).")
+            + (uefi ? "" : L.T(" Passer du mode BIOS ancien à l'UEFI demande d'abord de convertir le disque système (mbr2gpt) : à faire avec une sauvegarde.")),
+            L.T("Carte mère"), "tab:BoardTab");
+    }
+
+    /// <summary>
+    /// The revision in Windows' "Update Revision" value: Intel's in the upper four of eight bytes
+    /// (the lower four zero), AMD's in the lower four.
+    /// </summary>
+    public static uint MicrocodeRevision(byte[] value)
+    {
+        ulong bits = value.Length >= 8 ? BitConverter.ToUInt64(value, 0) : BitConverter.ToUInt32(value, 0);
+        return (uint)((bits & 0xFFFFFFFF) == 0 ? bits >> 32 : bits & 0xFFFFFFFF);
+    }
+
+    /// <summary>The microcode from which Intel's 13th and 14th generation desktop processors stop degrading (May 2025).</summary>
+    public const uint VminFixed = 0x12F;
+
+    /// <summary>
+    /// Intel's 13th and 14th generation desktop processors (the Raptor Lake die, family 6 model 183)
+    /// degrade for good under voltage requests set too high ("Vmin shift instability"). Intel's
+    /// microcode fixes it from <see cref="VminFixed"/>; it comes with a BIOS update. The laptop "HX"
+    /// chips share the die but not the trouble; other processors are not concerned (null).
+    /// </summary>
+    /// <param name="identifier">Windows' processor identifier: "Intel64 Family 6 Model 183 Stepping 1".</param>
+    public static PcCheck? IntelVmin(string name, string identifier, uint revision)
+    {
+        if (!identifier.Contains("Family 6 Model 183 ", StringComparison.OrdinalIgnoreCase)
+            || !name.Contains("Intel", StringComparison.OrdinalIgnoreCase) || name.Contains("HX", StringComparison.Ordinal))
+            return null;
+        return revision >= VminFixed
+            ? new(name, L.F("Microcode 0x{0:X} : correctif d'Intel en place", revision), false,
+                L.T("Ces processeurs pouvaient se dégrader à cause de tensions trop élevées ; ce microcode l'empêche. Gardez le profil « Intel Default Settings » du BIOS."))
+            : new(name, L.F("Microcode 0x{0:X}, antérieur au correctif d'Intel (0x12F)", revision), true,
+                L.T("Les Core de 13e et 14e génération de bureau peuvent se dégrader définitivement (plantages, puis instabilité qui s'aggrave) à cause de tensions trop élevées. Intel l'a corrigé par un microcode livré avec les BIOS récents : mettez le BIOS de la carte mère à jour, puis gardez le profil « Intel Default Settings »."),
+                L.T("Carte mère"), "tab:BoardTab");
+    }
 }

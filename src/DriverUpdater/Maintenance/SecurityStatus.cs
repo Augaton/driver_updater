@@ -1,6 +1,7 @@
 using System.Management;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 
 namespace DriverUpdater.Maintenance;
 
@@ -15,7 +16,27 @@ public static class SecurityStatus
     {
         var firewall = Firewall();
         // A suite's firewall only matters when Windows' own is not on.
-        return new SecurityState(Antiviruses(), firewall, askWindowsUpdate ? PendingWindowsUpdates() : null, firewall == true ? [] : OtherFirewalls());
+        return new SecurityState(Antiviruses(), firewall, askWindowsUpdate ? PendingWindowsUpdates() : null,
+            firewall == true ? [] : OtherFirewalls(), RestartPending());
+    }
+
+    /// <summary>
+    /// Windows waits for a restart to finish installing updates: its servicing stack says so, or
+    /// Windows Update does. Each key exists only while that is so, and any user may read it.
+    /// PendingFileRenameOperations is left out: programs leave entries there no restart is waited for.
+    /// </summary>
+    static bool RestartPending()
+    {
+        try
+        {
+            using var servicing = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending");
+            using var update = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired");
+            return servicing is not null || update is not null;
+        }
+        catch (System.Security.SecurityException)
+        {
+            return false;
+        }
     }
 
     /// <summary>An active antivirus other than Microsoft Defender: Defender then stays passive on purpose.</summary>

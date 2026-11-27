@@ -33,6 +33,33 @@ public static class Machine
         return (key?.GetValue("ProcessorNameString") as string)?.Trim() ?? "";
     }
 
+    /// <summary>The processor's family, model and stepping as Windows has them ("Intel64 Family 6 Model 183 Stepping 1").</summary>
+    public static string ProcessorIdentifier()
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+        return (key?.GetValue("Identifier") as string)?.Trim() ?? "";
+    }
+
+    /// <summary>The microcode revision the processor runs, as Windows read it at start-up; null if not given.</summary>
+    public static uint? MicrocodeRevision()
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+        return key?.GetValue("Update Revision") is byte[] { Length: >= 4 } value ? HardwareRules.MicrocodeRevision(value) : null;
+    }
+
+    /// <summary>Windows started from UEFI firmware, rather than a legacy BIOS.</summary>
+    public static bool UefiFirmware() => GetFirmwareType(out int type) && type == FirmwareTypeUefi;
+
+    /// <summary>Secure Boot on. The key is missing on a legacy BIOS; any user may read it.</summary>
+    public static bool SecureBootOn()
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\SecureBoot\State");
+        return key?.GetValue("UEFISecureBootEnabled") is int on && on != 0;
+    }
+
+    /// <summary>The TPM's version: 2 for a TPM 2.0, 1 for a 1.2, 0 for none, one switched off, or its service stopped.</summary>
+    public static int TpmVersion() => Tbsi_GetDeviceInfo((uint)Marshal.SizeOf<TpmDeviceInfo>(), out var info) == 0 ? (int)info.TpmVersion : 0;
+
     /// <summary>
     /// A Ryzen X3D with the 3D cache on one of its two dies (7900X3D, 7950X3D, 9900X3D,
     /// 9950X3D): its level-3 caches differ in size. Games must stay on the cache die, which
@@ -174,6 +201,25 @@ public static class Machine
     [DllImport("kernel32.dll")]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     static extern IntPtr LocalFree(IntPtr memory);
+
+    const int FirmwareTypeUefi = 2;
+
+    [DllImport("kernel32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool GetFirmwareType(out int firmwareType);
+
+    // TPM_DEVICE_INFO (tbs.h): four 32-bit fields.
+    [StructLayout(LayoutKind.Sequential)]
+    struct TpmDeviceInfo
+    {
+        public uint StructVersion, TpmVersion, TpmInterfaceType, TpmImpRevision;
+    }
+
+    // Any user may call it; it fails (TBS_E_TPM_NOT_FOUND) when there is no TPM.
+    [DllImport("tbs.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    static extern uint Tbsi_GetDeviceInfo(uint size, out TpmDeviceInfo info);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

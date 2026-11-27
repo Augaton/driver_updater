@@ -5,11 +5,12 @@ namespace DriverUpdater.Common;
 
 /// <summary>
 /// How a change is taken back from the journal: a setting's own undo (<see cref="Tweak"/>, the
-/// setting's ID), or a startup program set back on or off (<see cref="Startup"/>, Value "on" or "off").
+/// setting's ID), a startup program set back on or off (<see cref="Startup"/>, Value "on" or "off"),
+/// or the games set back to Windows' choice of graphics chip (<see cref="GpuPreference"/>).
 /// </summary>
 public sealed record JournalUndo(string Kind, string Target, string? Value = null)
 {
-    public const string Tweak = "tweak", Startup = "startup";
+    public const string Tweak = "tweak", Startup = "startup", GpuPreference = "gpu-preference";
 }
 
 /// <summary>One change this app made to the PC.</summary>

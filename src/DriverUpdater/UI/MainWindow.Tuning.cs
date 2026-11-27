@@ -234,7 +234,7 @@ public partial class MainWindow
         if (sender is not Button { Tag: string action }) return;
         if (action is "gpu-preference" or "gpu-preference-undo")
         {
-            ChangeGpuPreference(force: action == "gpu-preference");
+            _ = ChangeGpuPreference(force: action == "gpu-preference");
         }
         else if (action.StartsWith("refresh:", StringComparison.Ordinal))
         {
@@ -253,8 +253,8 @@ public partial class MainWindow
         }
     }
 
-    async void ChangeGpuPreference(bool force) =>
-        await RunBusy(force ? L.T("Réglage des jeux sur la carte graphique dédiée…") : L.T("Retour au choix de Windows…"), async () =>
+    Task ChangeGpuPreference(bool force) =>
+        RunBusy(force ? L.T("Réglage des jeux sur la carte graphique dédiée…") : L.T("Retour au choix de Windows…"), async () =>
         {
             var registry = new WindowsRegistry();
             int count = await Task.Run(() =>
@@ -265,9 +265,11 @@ public partial class MainWindow
                 return programs.Count;
             });
             await LoadChecks();
-            return Logged(Journal.Tuning, force
-                ? L.F("{0} programme(s) de jeu réglé(s) sur la carte dédiée : effet au prochain lancement de chaque jeu.", count)
-                : L.F("{0} programme(s) remis au choix de Windows.", count));
+            // Taken back from the journal too: all at once, as "Annuler" on the check does.
+            return force
+                ? Logged(Journal.Tuning, L.F("{0} programme(s) de jeu réglé(s) sur la carte dédiée : effet au prochain lancement de chaque jeu.", count),
+                         new JournalUndo(JournalUndo.GpuPreference, "steam"))
+                : Logged(Journal.Tuning, L.F("{0} programme(s) remis au choix de Windows.", count));
         });
 
     // Tried first without saving; kept only once the user sees the picture and says so.

@@ -173,10 +173,15 @@ public partial class MainWindow
 
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
         {
-            int hidden = await RunAdminAsync<int>(AdminCommand.Hide, selected.Select(d => d.UpdateId).ToArray());
-            await ForgetInstalled(selected.Select(d => d.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase), rescan: false); // out of the report too
-            foreach (var d in selected) Journal.Add(Journal.Drivers, L.F("{0} : {1}", d.Title, L.T("masqué dans Windows Update")));
-            return L.F("{0} pilote(s) masqué(s).", hidden);
+            var hidden = (await RunAdminAsync<List<string>>(AdminCommand.Hide, selected.Select(d => d.UpdateId).ToArray()))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // All of them leave the lists: those not hidden are no longer offered at all.
+            await ForgetInstalled(selected.Select(d => d.UpdateId).ToHashSet(StringComparer.OrdinalIgnoreCase), rescan: false);
+            foreach (var d in selected.Where(d => hidden.Contains(d.UpdateId)))
+                Journal.Add(Journal.Drivers, L.F("{0} : {1}", d.Title, L.T("masqué dans Windows Update")));
+            return hidden.Count == selected.Count
+                ? L.F("{0} pilote(s) masqué(s).", hidden.Count)
+                : L.F("{0} pilote(s) masqué(s) ; {1} n'étai(en)t plus proposé(s) par Windows Update.", hidden.Count, selected.Count - hidden.Count);
         });
     }
 

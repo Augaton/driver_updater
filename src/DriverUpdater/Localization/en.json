@@ -923,5 +923,8 @@
  "{0} en attente.": "{0} waiting.",
  "Recherche en cours…": "Searching…",
  "Pas encore demandées à Windows Update.": "Not asked of Windows Update yet.",
- "Windows Update n'a pas répondu.": "Windows Update did not answer."
+ "Windows Update n'a pas répondu.": "Windows Update did not answer.",
+ " Les jeux déjà réglés reviennent au choix de Windows depuis le Journal.": " The games already set go back to Windows' choice from the Journal.",
+ "{0} disque(s) en bon état, {1} sans état connu": "{0} disk(s) in good health, {1} with no known state",
+ "{0} pilote(s) masqué(s) ; {1} n'étai(en)t plus proposé(s) par Windows Update.": "{0} driver(s) hidden; {1} no longer offered by Windows Update."
 }

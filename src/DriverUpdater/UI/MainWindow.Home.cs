@@ -277,8 +277,10 @@ public partial class MainWindow
     {
         var list = await Task.Run(SystemInfo.Disks);
         DiskGrid.ItemsSource = list;
-        var bad = list.Where(d => d.Health != L.T("Bon")).ToList();
-        return bad.Count == 0 ? ("OK", L.F("{0} disque(s) en bon état", list.Count)) : (bad.Count.ToString(), L.T("disque(s) à surveiller"));
+        int bad = list.Count(d => d.Worrying), unknown = list.Count(d => d.State == DiskHealth.Unknown);
+        return bad > 0 ? (bad.ToString(), L.T("disque(s) à surveiller"))
+            : unknown > 0 ? ("OK", L.F("{0} disque(s) en bon état, {1} sans état connu", list.Count - unknown, unknown))
+            : ("OK", L.F("{0} disque(s) en bon état", list.Count));
     });
 
     /// <param name="askWindowsUpdate">

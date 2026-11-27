@@ -65,7 +65,9 @@ public static class AdminHelper
                 channel.Progress(L.T("Recherche des pilotes à masquer…"));
                 var toHide = await Task.Run(() => WindowsUpdateDrivers.FindByIds(command.Args));
                 await Task.Run(() => toHide.ForEach(WindowsUpdateDrivers.Hide));
-                return toHide.Count;
+                // Only those Windows Update still offers: one installed or withdrawn meanwhile is not
+                // hidden, and the window must not write that it is.
+                return toHide.Select(d => d.UpdateId).ToList();
 
             case AdminCommand.Unhide:
                 return await Task.Run(WindowsUpdateDrivers.UnhideAll);

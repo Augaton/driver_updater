@@ -37,6 +37,7 @@ public partial class MainWindow
     {
         JournalUndo.Tweak => TweakCatalog.Find(undo.Target) is { } tweak && Tuner.CanUndo(tweak),
         JournalUndo.Startup => StartupEntryFor(undo) is { } entry && entry.Enabled != (undo.Value == "on"),
+        JournalUndo.GpuPreference => GpuPreference.CanUndo(new WindowsRegistry()),
         _ => false,
     };
 
@@ -55,6 +56,10 @@ public partial class MainWindow
         {
             await SetStartup(entry, undo.Value == "on");
             StartupGrid.Items.Refresh();
+        }
+        else if (undo.Kind == JournalUndo.GpuPreference)
+        {
+            await ChangeGpuPreference(force: false);
         }
         await ShowJournal();
     }

@@ -3,7 +3,22 @@ using System.Management;
 namespace DriverUpdater.Maintenance;
 
 public sealed record ProblemDevice(string Name, string Meaning);
-public sealed record Disk(string Name, string Type, string Size, string Health, string Wear, string Temperature);
+/// <summary>What Windows reports of a disk's health (MSFT_PhysicalDisk.HealthStatus).</summary>
+public enum DiskHealth { Good, Warning, Failing, Unknown }
+
+public sealed record Disk(string Name, string Type, string Size, DiskHealth State, string Wear, string Temperature)
+{
+    public string Health => State switch
+    {
+        DiskHealth.Good => L.T("Bon"),
+        DiskHealth.Warning => L.T("Avertissement"),
+        DiskHealth.Failing => L.T("Défaillant"),
+        _ => L.T("Inconnu"),
+    };
+
+    /// <summary>A warning or a failure. A disk behind a RAID or some USB enclosures reports nothing: not a reason to worry.</summary>
+    public bool Worrying => State is DiskHealth.Warning or DiskHealth.Failing;
+}
 public sealed record Battery(string Name, string Designed, string FullCharge, string Health, string Cycles);
 public sealed record RestorePointResult(bool Ok, string Message);
 public sealed record RestorePointInfo(DateTime Created, string Description, int Number);
@@ -45,10 +60,10 @@ public static class SystemInfo
                     Bytes.Format(Convert.ToInt64(disk["Size"])),
                     Convert.ToInt32(disk["HealthStatus"]) switch
                     {
-                        0 => L.T("Bon"),
-                        1 => L.T("Avertissement"),
-                        2 => L.T("Défaillant"),
-                        _ => L.T("Inconnu"),
+                        0 => DiskHealth.Good,
+                        1 => DiskHealth.Warning,
+                        2 => DiskHealth.Failing,
+                        _ => DiskHealth.Unknown,
                     },
                     wear is { } w ? $"{w} %" : "—",
                     temperature is > 0 and var t ? $"{t} °C" : "—"));

@@ -156,7 +156,9 @@ public static class PcChecks
             ? new(L.T("Jeux Steam"), L.T("Tous réglés sur la carte graphique dédiée"), false, L.T("Windows ne les fera pas tourner sur la puce graphique du processeur."),
                 GpuPreference.CanUndo(registry) ? L.T("Annuler") : null, GpuPreference.CanUndo(registry) ? "gpu-preference-undo" : null)
             : new(L.T("Jeux Steam"), L.F("{0} jeu(x) sur {1} laissé(s) au choix de Windows", left, games.Count), true,
-                L.T("Sur un portable à deux puces graphiques, Windows peut faire tourner un jeu sur celle du processeur, bien moins puissante. Ce réglage de Windows (Paramètres → Affichage → Graphiques) les force sur la carte dédiée ; il s'annule d'un clic."),
+                L.T("Sur un portable à deux puces graphiques, Windows peut faire tourner un jeu sur celle du processeur, bien moins puissante. Ce réglage de Windows (Paramètres → Affichage → Graphiques) les force sur la carte dédiée ; il s'annule d'un clic.")
+                // A game installed since: "Forcer" covers it too, and the way back stays in the journal.
+                + (GpuPreference.CanUndo(registry) ? L.T(" Les jeux déjà réglés reviennent au choix de Windows depuis le Journal.") : ""),
                 L.T("Forcer la carte dédiée"), "gpu-preference");
     }
 

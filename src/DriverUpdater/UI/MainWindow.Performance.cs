@@ -1,3 +1,4 @@
+using System.Media;
 using System.Windows;
 
 namespace DriverUpdater.UI;
@@ -6,11 +7,32 @@ namespace DriverUpdater.UI;
 public partial class MainWindow
 {
     async void OnMeasure(object sender, RoutedEventArgs e) =>
-        await RunBusy(L.T("Analyse en cours, utilisez le PC normalement pendant 10 secondes…"), async () =>
+        await Measure(TimeSpan.Zero, TimeSpan.FromSeconds(10), L.T("Analyse en cours, utilisez le PC normalement pendant 10 secondes…"));
+
+    // A game left to click here would be measured in the background. The time to go back into it, a
+    // longer measure, and a sound when it starts and when it ends: the window is behind the game.
+    async void OnMeasureGame(object sender, RoutedEventArgs e) =>
+        await Measure(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30),
+            L.T("Retournez dans le jeu : la mesure commence dans 15 secondes et dure 30 secondes, un son marque son début et sa fin."));
+
+    Task Measure(TimeSpan delay, TimeSpan duration, string message) =>
+        RunBusy(message, async stop =>
         {
             BusyBar.IsIndeterminate = false;
             BusyBar.Maximum = 1;
-            var report = await PerfAnalyzer.MeasureAsync(TimeSpan.FromSeconds(10), new Progress<double>(p => BusyBar.Value = p));
+            if (delay > TimeSpan.Zero)
+            {
+                var start = DateTime.UtcNow;
+                while (DateTime.UtcNow - start < delay)
+                {
+                    await Task.Delay(250, stop);
+                    BusyBar.Value = (DateTime.UtcNow - start) / delay;
+                }
+                SystemSounds.Asterisk.Play();
+                BusyBar.Value = 0;
+            }
+            var report = await PerfAnalyzer.MeasureAsync(duration, new Progress<double>(p => BusyBar.Value = p), stop);
+            if (delay > TimeSpan.Zero) SystemSounds.Asterisk.Play();
 
             var system = report.System;
             (CpuGauge.Value, CpuValue.Text) = (system.Cpu, $"{system.Cpu:0} %");

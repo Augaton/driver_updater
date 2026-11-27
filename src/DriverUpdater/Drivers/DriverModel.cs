@@ -174,16 +174,17 @@ public static class DriverStoreRules
             .ToList();
 
     /// <summary>
-    /// What a backup takes: each driver's newest version, and any other a device uses. Older
-    /// versions nobody uses would only be put back in the store, close to 1 GB each for a
-    /// graphics driver.
+    /// What a backup takes: of each driver, the versions devices use; the newest only when no device
+    /// uses any (one unplugged). A newer version left beside the one in use would win when the backup
+    /// is installed again, and bring back the trouble "Revenir au pilote précédent" got away from.
+    /// Versions nobody uses would only be put back in the store, close to 1 GB each for a graphics driver.
     /// </summary>
     public static List<StorePackage> WorthBackingUp(IEnumerable<StorePackage> packages, ISet<string> inUse) =>
         Families(packages)
             .SelectMany(family =>
             {
-                var newest = family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date).First();
-                return family.Where(p => p == newest || inUse.Contains(p.PublishedName));
+                var used = family.Where(p => inUse.Contains(p.PublishedName)).ToList();
+                return used.Count > 0 ? used : [family.OrderByDescending(p => p.Version).ThenByDescending(p => p.Date).First()];
             })
             .ToList();
 
@@ -207,4 +208,22 @@ public static class HistoryPages
                 if (item is not null && found.Count < max) found.Add(item);
         return found;
     }
+}
+
+/// <summary>What the "Périphériques en erreur" page offers for a device.</summary>
+public enum ProblemAction { None, FindDriver, DeviceManager }
+
+public static class DeviceProblems
+{
+    /// <summary>
+    /// A driver missing, broken or failing (Device Manager codes): a search in the catalog, as for a
+    /// new device without one. A device turned off: Device Manager, where it is turned back on. A
+    /// restart, resources or the hardware itself: nothing a click here would fix.
+    /// </summary>
+    public static ProblemAction ActionFor(int code) => code switch
+    {
+        1 or 3 or 10 or 18 or 24 or 28 or 31 or 39 or 43 => ProblemAction.FindDriver,
+        22 => ProblemAction.DeviceManager,
+        _ => ProblemAction.None,
+    };
 }

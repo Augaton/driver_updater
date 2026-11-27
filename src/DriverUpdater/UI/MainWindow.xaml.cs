@@ -298,9 +298,9 @@ public partial class MainWindow : Window
         foreach (var button in new[]
                  {
                      SearchButton, UnhideButton, SearchSoftwareButton, HealthDetailsButton, ScanTempButton,
-                     CleanWindowsTempButton, SfcButton, DismRestoreButton, DismCleanupButton, BackupButton, RestoreBackupButton,
+                     CleanWindowsTempButton, SfcButton, RepairWindowsButton, DismCleanupButton, BackupButton, RestoreBackupButton,
                      SearchCatalogButton, UnhideCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
-                     BootReportButton, MeasureButton, ScanButton, RefreshInventoryButton, StoreScanButton, DeviceBannerButton,
+                     BootReportButton, MeasureButton, MeasureGameButton, ScanButton, RefreshInventoryButton, StoreScanButton, DeviceBannerButton,
                      GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton, PrivacyAllButton, FakeBoostsScanButton, FakeBoostsAllButton,
                      RestorePointsButton, CreateRestorePointButton, UpdateInstallButton,
                  })

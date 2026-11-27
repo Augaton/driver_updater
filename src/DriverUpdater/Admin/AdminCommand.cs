@@ -19,7 +19,7 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
     public const string CleanWindowsTemp = "clean-windows-temp";
     public const string Health = "health";
     public const string Sfc = "sfc";
-    public const string DismRestore = "dism-restore";
+    public const string RepairWindows = "repair-windows";
     public const string DismCleanup = "dism-cleanup";
     public const string StartupSet = "startup-set";
     public const string Recycle = "recycle";
@@ -114,7 +114,7 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                     || rest[1].Length is 0 or > 260 || rest[1].Any(char.IsControl))
                     throw new ArgumentException(L.T("Entrée de démarrage invalide."));
                 return new(name, rest);
-            case Version or Unhide or CleanWindowsTemp or Health or Sfc or DismRestore or DismCleanup or BootReport or DriverStore or RestorePoints or CreateRestorePoint:
+            case Version or Unhide or CleanWindowsTemp or Health or Sfc or RepairWindows or DismCleanup or BootReport or DriverStore or RestorePoints or CreateRestorePoint:
                 if (rest.Count != 0) throw new ArgumentException(L.F("« {0} » ne prend pas d'argument.", name));
                 return new(name, rest);
             default:

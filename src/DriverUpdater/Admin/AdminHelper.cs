@@ -92,8 +92,12 @@ public static class AdminHelper
             case AdminCommand.Health:
                 return new HealthReport(await Task.Run(SystemInfo.Disks), await Task.Run(SystemInfo.Batteries));
 
-            case AdminCommand.Sfc or AdminCommand.DismRestore or AdminCommand.DismCleanup:
-                return await Repair.RunAsync(command.Name, channel.Progress);
+            case AdminCommand.Sfc:
+                return await Repair.SystemFilesAsync(channel.Progress);
+            case AdminCommand.RepairWindows:
+                return await Repair.WindowsAsync(channel.Progress);
+            case AdminCommand.DismCleanup:
+                return await Repair.ComponentCleanupAsync(channel.Progress);
 
             case AdminCommand.StartupSet:
                 StartupApps.SetEnabled(command.Args[0], command.Args[1], machine: true, enabled: command.Args[2] == "on");

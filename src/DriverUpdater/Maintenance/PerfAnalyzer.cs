@@ -21,14 +21,14 @@ public static partial class PerfAnalyzer
     sealed record Snapshot(CounterSample Cpu, CounterSample? CpuUtility, Dictionary<string, CounterSample>? DiskIdle, CounterSample? CpuSpeed,
         Dictionary<int, ProcessSample> Processes, Dictionary<string, CounterSample>? Gpu);
 
-    public static async Task<PerfReport> MeasureAsync(TimeSpan duration, IProgress<double> progress)
+    public static async Task<PerfReport> MeasureAsync(TimeSpan duration, IProgress<double> progress, CancellationToken stop = default)
     {
         // Counters are slow to read: all of it runs off the window's thread.
         var before = await Task.Run(Take);
         const int steps = 20;
         for (int i = 1; i <= steps; i++)
         {
-            await Task.Delay(duration / steps);
+            await Task.Delay(duration / steps, stop);
             progress.Report((double)i / steps);
         }
         var after = await Task.Run(Take);

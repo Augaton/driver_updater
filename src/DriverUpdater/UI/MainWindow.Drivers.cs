@@ -1,4 +1,7 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace DriverUpdater.UI;
 
@@ -12,12 +15,21 @@ public partial class MainWindow
     {
         var devices = inventory
             .Where(d => d.NeedsAttention && d.Problem != 45) // 45: unplugged right now, not a problem
-            .Select(d => new ProblemDevice(d.Name, SystemInfo.ErrorMeaning(d.Problem)))
+            .Select(d => new ProblemDevice(d, SystemInfo.ErrorMeaning(d.Problem), DeviceProblems.ActionFor(d.Problem)))
             .ToList();
         ProblemList.ItemsSource = devices;
         ProblemHeading.Text = L.F("Périphériques en erreur ({0})", devices.Count);
         ProblemStatus.Text = L.T("Aucun : tous les périphériques fonctionnent.");
         ProblemStatus.Visibility = devices.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    async void OnProblemAction(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: ProblemDevice problem }) return;
+        if (problem.Action == ProblemAction.DeviceManager)
+            Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "devmgmt.msc")) { UseShellExecute = true });
+        else
+            await FindDriverFor([problem.Device], L.F("Recherche d'un pilote pour {0}…", problem.Device.Name));
     }
 
     /// <summary>The PC, its BIOS and graphics cards, read once for the dashboard and this tab.</summary>

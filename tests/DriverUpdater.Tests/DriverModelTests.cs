@@ -70,17 +70,30 @@ public sealed class DriverStoreRulesTests
     }
 
     [Fact]
-    public void A_backup_takes_each_driver_s_newest_and_what_devices_use()
+    public void A_backup_takes_what_devices_use_or_else_the_newest()
     {
+        // The graphics card went back to 31: 32 must not come back with the backup. Nothing uses the
+        // audio driver (its device is unplugged): its newest version stands for it.
         var packages = new[]
         {
             Package("oem5.inf", "30.0.0.1"), Package("oem10.inf", "31.0.15.1"), Package("oem20.inf", "32.0.15.6094"),
-            Package("oem7.inf", "1.0", original: "audio.inf"),
+            Package("oem7.inf", "1.0", original: "audio.inf"), Package("oem8.inf", "2.0", original: "audio.inf"),
         };
 
         var backup = DriverStoreRules.WorthBackingUp(packages, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "oem10.inf" });
 
-        Assert.Equal(["oem10.inf", "oem20.inf", "oem7.inf"], backup.Select(p => p.PublishedName).Order());
+        Assert.Equal(["oem10.inf", "oem8.inf"], backup.Select(p => p.PublishedName).Order());
+    }
+
+    [Fact]
+    public void A_backup_keeps_every_version_in_use()
+    {
+        // Two cards of the same maker, each on its own version of the driver.
+        var packages = new[] { Package("oem5.inf", "30.0"), Package("oem10.inf", "31.0"), Package("oem20.inf", "32.0") };
+
+        var backup = DriverStoreRules.WorthBackingUp(packages, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "oem5.inf", "oem10.inf" });
+
+        Assert.Equal(["oem10.inf", "oem5.inf"], backup.Select(p => p.PublishedName).Order());
     }
 
     [Fact]
@@ -125,4 +138,17 @@ public sealed class DriverStoreKeepsRollbackTests
 
         Assert.Equal(["oem2.inf", "oem1.inf"], removable.Select(p => p.PublishedName).OrderByDescending(n => n));
     }
+}
+
+// "Périphériques en erreur": a button only where a click can help.
+public sealed class DeviceProblemsTests
+{
+    [Theory]
+    [InlineData(28, ProblemAction.FindDriver)] // no driver installed
+    [InlineData(43, ProblemAction.FindDriver)] // stopped after reporting a problem
+    [InlineData(22, ProblemAction.DeviceManager)] // turned off
+    [InlineData(14, ProblemAction.None)] // needs a restart
+    [InlineData(12, ProblemAction.None)] // not enough resources
+    public void Offers_what_can_fix_the_code(int code, ProblemAction expected) =>
+        Assert.Equal(expected, DeviceProblems.ActionFor(code));
 }

@@ -500,14 +500,19 @@
               <StackPanel>
                 <TextBlock x:Name="ProblemHeading" Text="Périphériques en erreur" Style="{StaticResource Heading}" FontSize="16" />
                 <TextBlock x:Name="ProblemStatus" Style="{StaticResource Muted}" Text="Chargement…" />
-                <ItemsControl x:Name="ProblemList">
+                <ItemsControl x:Name="ProblemList" Margin="0,8,0,0">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                      <TextBlock Margin="0,2" TextWrapping="Wrap">
-                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" />
-                        <Run Text=" — " />
-                        <Run Text="{Binding Meaning, Mode=OneWay}" />
-                      </TextBlock>
+                      <Border Style="{StaticResource CardRow}">
+                        <DockPanel>
+                          <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Click="OnProblemAction" VerticalAlignment="Center"
+                                  Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Meaning}" Style="{StaticResource Muted}" />
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -756,9 +761,10 @@
           </Grid.RowDefinitions>
 
           <local:PageHeader Title="Ce qui ralentit le PC"
-                            Description="Observe le PC pendant 10 secondes et classe les applications par ce qu'elles consomment. Lancez-la quand le PC rame. Pour agir : Démarrage (ce qui se lance tout seul) ou Désinstaller.">
+                            Description="Observe le PC pendant 10 secondes et classe les applications par ce qu'elles consomment. Lancez-la quand le PC rame. Pour un jeu, « Mesurer un jeu » laisse 15 secondes pour y retourner. Pour agir : Démarrage (ce qui se lance tout seul) ou Désinstaller.">
             <StackPanel Orientation="Horizontal">
               <Button Content="Gestionnaire des tâches" Tag="taskmgr.exe" Click="OnOpenSetting" Margin="0,0,8,0" />
+              <Button x:Name="MeasureGameButton" Content="Mesurer un jeu" Click="OnMeasureGame" Margin="0,0,8,0" />
               <Button x:Name="MeasureButton" Content="Analyser (10 s)" Style="{DynamicResource AccentButtonStyle}" Click="OnMeasure" />
             </StackPanel>
           </local:PageHeader>
@@ -1156,11 +1162,11 @@
         <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Réparer Windows"
-                              Description="Les outils de Microsoft. SFC vérifie et répare les fichiers système ; DISM répare l'image de Windows dont SFC se sert : lancez-le d'abord si SFC n'y arrive pas. Comptez 10 à 30 minutes."
+                              Description="Les outils de Microsoft, dans l'ordre qu'il conseille : DISM répare l'image de Windows, puis SFC les fichiers système à partir d'elle. Comptez 10 à 30 minutes. « Vérifier seulement » lance SFC seul, plus vite."
                               Note="Windows demandera l'autorisation administrateur pour ces actions.">
               <StackPanel Orientation="Horizontal">
-                <Button x:Name="SfcButton" Content="Vérifier les fichiers système (SFC)" Tag="sfc" Click="OnRepair" Margin="0,0,8,0" />
-                <Button x:Name="DismRestoreButton" Content="Réparer l'image Windows (DISM)" Tag="dism-restore" Click="OnRepair" />
+                <Button x:Name="SfcButton" Content="Vérifier seulement (SFC)" Tag="sfc" Click="OnRepair" Margin="0,0,8,0" />
+                <Button x:Name="RepairWindowsButton" Content="Réparer Windows" Style="{DynamicResource AccentButtonStyle}" Click="OnRepairWindows" />
               </StackPanel>
             </local:PageHeader>
             <Border Style="{StaticResource Card}">

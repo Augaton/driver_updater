@@ -227,9 +227,14 @@ public partial class MainWindow
     async void OnDeviceBanner(object sender, RoutedEventArgs e)
     {
         DeviceBanner.Visibility = Visibility.Collapsed;
+        await FindDriverFor(newDevicesWithoutDriver, L.T("Recherche d'un pilote pour le nouveau périphérique…"));
+    }
+
+    /// <summary>A catalog search for a few devices (a new one, one in error), shown on the "Fabricants" page.</summary>
+    Task FindDriverFor(List<DeviceDriver> devices, string message)
+    {
         Tabs.SelectedItem = CatalogTab;
-        var devices = newDevicesWithoutDriver;
-        await RunBusy(L.T("Recherche d'un pilote pour le nouveau périphérique…"), async stop =>
+        return RunBusy(message, async stop =>
         {
             ShowCatalog(await DriverCatalog.FindAsync(devices, new Progress<string>(SetStatus), cancel: stop));
             return catalogDrivers.Count == 0

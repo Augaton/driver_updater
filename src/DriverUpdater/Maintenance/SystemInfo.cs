@@ -2,7 +2,13 @@ using System.Management;
 
 namespace DriverUpdater.Maintenance;
 
-public sealed record ProblemDevice(string Name, string Meaning);
+/// <summary>A device Device Manager reports in error, what its code means, and what the page offers for it.</summary>
+public sealed record ProblemDevice(DeviceDriver Device, string Meaning, ProblemAction Action)
+{
+    public string Name => Device.Name;
+    public bool HasAction => Action != ProblemAction.None;
+    public string ActionText => Action == ProblemAction.FindDriver ? L.T("Chercher un pilote") : L.T("Gestionnaire de périphériques");
+}
 /// <summary>What Windows reports of a disk's health (MSFT_PhysicalDisk.HealthStatus).</summary>
 public enum DiskHealth { Good, Warning, Failing, Unknown }
 

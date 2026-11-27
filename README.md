@@ -48,14 +48,16 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
   filtrable et cherchable par nom ; mis à jour tout seul quand on branche ou débranche quelque chose. « Revenir
   au pilote précédent » fait comme le Gestionnaire de périphériques.
 - **Périphériques en erreur.** Ce que signale le Gestionnaire de périphériques, avec le sens
-  de chaque code d'erreur.
+  de chaque code d'erreur, et ce qui peut le régler : la recherche d'un pilote quand il manque
+  ou ne marche pas, le Gestionnaire de périphériques pour un appareil désactivé.
 - **Anciennes versions.** Windows garde chaque version installée (près de 1 Go par pilote
   graphique). Celles qu'aucun périphérique n'utilise peuvent partir ; la précédente de
   chaque pilote est gardée, pour pouvoir y revenir.
 - **Sauvegarde.** Les pilotes des fabricants copiés dans un dossier, et réinstallés en une
-  fois après une réinstallation de Windows : la dernière version de chacun et celle qu'un
-  périphérique utilise, pas les anciennes que Windows garde (près de 1 Go chacune pour un
-  pilote graphique).
+  fois après une réinstallation de Windows : de chacun, la version qu'un périphérique utilise
+  (la plus récente seulement si aucun ne l'utilise), pour qu'un retour au pilote précédent
+  tienne après la restauration ; pas les anciennes que Windows garde (près de 1 Go chacune
+  pour un pilote graphique).
 - **Historique.** Ce que Windows Update a installé, quand, et avec quel résultat.
 
 ### Jeux
@@ -97,7 +99,9 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
 
 - **Performances.** Dix secondes d'observation, les applications classées par processeur,
   mémoire, disque et carte graphique, et un verdict en clair. Avec plusieurs disques, c'est
-  le plus occupé qui compte, nommé.
+  le plus occupé qui compte, nommé. « Mesurer un jeu » laisse 15 secondes pour retourner en
+  jeu, mesure 30 secondes et sonne au début et à la fin : quitter le jeu pour cliquer le
+  mesurerait en arrière-plan.
 - **Démarrage.** Les programmes lancés avec Windows, activés ou désactivés comme dans le
   Gestionnaire des tâches, avec le temps que chacun fait perdre d'après les mesures de
   Windows, le graphique des 30 derniers démarrages et, après vos changements, le temps
@@ -124,7 +128,9 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
 - **Disques et batterie.** État, usure et température des disques, santé de la batterie.
 - **Nettoyage.** Fichiers temporaires de plus de 2 jours, anciennes versions des composants
   de Windows (DISM), mise en veille prolongée. Pas de « nettoyage du registre ».
-- **Réparer Windows.** SFC et DISM, les outils de Microsoft.
+- **Réparer Windows.** Les outils de Microsoft dans l'ordre qu'il conseille, sous une seule
+  autorisation : DISM répare l'image de Windows, puis SFC les fichiers système, avec un verdict
+  pour les deux. SFC seul reste à portée, plus rapide.
 
 ### Logiciels
 

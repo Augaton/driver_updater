@@ -220,6 +220,15 @@ public partial class MainWindow
         });
     }
 
+    async void OnRepairWindows(object sender, RoutedEventArgs e) =>
+        await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
+        {
+            var pass = await RunAdminAsync<RepairPass>(AdminCommand.RepairWindows);
+            RepairStatus.Text = L.F("Image de Windows (DISM) :\n{0}\n\nFichiers système (SFC) :\n{1}", pass.Image.Summary, pass.Files.Summary);
+            Journal.Add(Journal.Maintenance, L.F("{0} : {1}", L.T("Réparer Windows"), pass.Verdict));
+            return pass.Verdict;
+        });
+
     async void OnBackup(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog

@@ -530,7 +530,7 @@ public sealed class SmokeTests
         Assert.False(WeeklyCheck.IsEnabled(name));
     }
 
-    // ---- "PC de guerre" and security -------------------------------------------------------
+    // ---- "Réglages de jeu" and security -------------------------------------------------------
 
     [Fact]
     public void Reads_the_state_of_every_tweak_without_changing_it()

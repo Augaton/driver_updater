@@ -5,7 +5,7 @@ using System.Windows.Media;
 
 namespace DriverUpdater.UI;
 
-/// <summary>One "PC de guerre" setting with its state as read from Windows.</summary>
+/// <summary>One "Réglages de jeu" setting with its state as read from Windows.</summary>
 public sealed class TweakRow
 {
     public required Tweak Tweak { get; init; }
@@ -58,7 +58,7 @@ public sealed class GameRow(InstalledGame game)
     public string CfgAction => Game.CfgApplied ? L.T("Retirer le cfg conseillé") : L.T("Ajouter le cfg conseillé");
 }
 
-// "PC de guerre" tab, and the game tips of the "Jeux" tab.
+// "Réglages de jeu" tab, and the game tips of the "Jeux" tab.
 public partial class MainWindow
 {
     List<TweakRow> tweakRows = [];

@@ -1,7 +1,7 @@
 namespace DriverUpdater.Tuning;
 
 /// <summary>
-/// The settings of a "PC de guerre". Each one is in for a reason that can be checked: a
+/// The "Réglages de jeu" settings. Each one is in for a reason that can be checked: a
 /// measured effect, or Microsoft's own documentation; each has an exact undo. Left out on
 /// purpose, though "boost" guides love them, because nothing measured them or they hurt:
 /// TCP/Nagle and network throttling (games use UDP; "SystemResponsiveness=0" is clamped to 20

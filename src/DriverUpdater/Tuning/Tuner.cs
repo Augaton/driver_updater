@@ -51,7 +51,7 @@ public sealed class WindowsRegistry : IRegistry
 public sealed record TweakReport(List<string> Done, List<string> Failures);
 
 /// <summary>
-/// Applies the "PC de guerre" tweaks on Windows: registry ones through <see cref="TweakEngine"/>,
+/// Applies the "Réglages de jeu" tweaks on Windows: registry ones through <see cref="TweakEngine"/>,
 /// the power plan and hibernation through powercfg. Tweaks needing administrator rights only
 /// run in the administrator helper.
 /// </summary>

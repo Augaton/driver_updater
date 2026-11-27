@@ -73,6 +73,13 @@
       <Setter Property="Foreground" Value="{DynamicResource InkMuted}" />
     </Style>
 
+    <!-- Text in a table, centered on the row's height: level with the check box or state beside it, where the
+         default style sticks it to the top. MainWindow gives it to every text column without a style of its
+         own; the others build on it. -->
+    <Style x:Key="CellText" TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     <Style x:Key="Muted" TargetType="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource InkMuted}" />
       <Setter Property="TextWrapping" Value="Wrap" />

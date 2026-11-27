@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         RestorePlacement();
+        CenterTableText(this);
         Translator.Translate(this); // before the menu copies the pages' titles
         VersionText.Text = $"version {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}";
         BuildNav();
@@ -148,6 +149,21 @@ public partial class MainWindow : Window
         if (!target.StartsWith("ms-settings:", StringComparison.Ordinal) && !target.StartsWith("windowsdefender:", StringComparison.Ordinal))
             target = Path.Combine(Environment.SystemDirectory, target);
         Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+    }
+
+    /// <summary>
+    /// Every table's text columns centered on the row's height (App.xaml, CellText), so the text
+    /// sits level with the check box or state beside it. Columns with a style of their own build
+    /// on the same one in the XAML. All the tables are in the logical tree, shown or not.
+    /// </summary>
+    static void CenterTableText(DependencyObject node)
+    {
+        if (node is DataGrid grid)
+            foreach (var column in grid.Columns.OfType<DataGridTextColumn>())
+                if (column.ReadLocalValue(DataGridBoundColumn.ElementStyleProperty) == DependencyProperty.UnsetValue)
+                    column.ElementStyle = (Style)grid.FindResource("CellText");
+        foreach (var child in LogicalTreeHelper.GetChildren(node).OfType<DependencyObject>())
+            CenterTableText(child);
     }
 
     /// <summary>

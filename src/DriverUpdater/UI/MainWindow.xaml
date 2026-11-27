@@ -7,7 +7,7 @@
         Background="{StaticResource Void}" Foreground="{StaticResource Ink}">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIf" />
-    <!-- One hardware check of "PC de guerre": what needs doing, and what is fine (folded away). -->
+    <!-- One hardware check of "Réglages de jeu": what needs doing, and what is fine (folded away). -->
     <DataTemplate x:Key="CheckRowTemplate">
       <Border Style="{StaticResource CardRow}">
         <DockPanel>
@@ -464,7 +464,7 @@
               <!-- Devices with a problem in amber, cell by cell: a RowStyle would replace the theme's own
                    (the Fluent theme sets it through DataGrid, so BasedOn would only find the classic white one). -->
               <DataGrid.Resources>
-                <Style x:Key="AttentionText" TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
+                <Style x:Key="AttentionText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding NeedsAttention}" Value="True">
                       <Setter Property="Foreground" Value="{StaticResource Caution}" />
@@ -606,8 +606,8 @@
 
       <TabItem Header="JEUX" Style="{StaticResource Section}" />
 
-      <!-- "PC de guerre": the gaming settings worth changing, applied and undone exactly -->
-      <TabItem x:Name="TuningTab" Header="PC de guerre" Tag="&#xE945;">
+      <!-- "Réglages de jeu": the gaming settings worth changing, applied and undone exactly -->
+      <TabItem x:Name="TuningTab" Header="Réglages de jeu" Tag="&#xE945;">
         <ScrollViewer Style="{StaticResource PageScroll}">
           <StackPanel>
             <local:PageHeader Title="Tout ce qui se règle pour mieux jouer"
@@ -1273,7 +1273,7 @@
                   <DataGridTextColumn Header="Domaine" Binding="{Binding Area}" Width="110" />
                   <DataGridTextColumn Header="Changement" Binding="{Binding Entry.Text}" Width="*">
                     <DataGridTextColumn.ElementStyle>
-                      <Style TargetType="TextBlock" BasedOn="{x:Static DataGridTextColumn.DefaultElementStyle}">
+                      <Style TargetType="TextBlock" BasedOn="{StaticResource CellText}">
                         <Setter Property="TextWrapping" Value="Wrap" />
                       </Style>
                     </DataGridTextColumn.ElementStyle>

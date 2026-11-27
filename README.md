@@ -60,7 +60,7 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
 
 ### Jeux
 
-- **PC de guerre.** Le compte des réglages appliqués et tous les réglages qui font gagner en jeu, chacun avec ce
+- **Réglages de jeu.** Le compte des réglages appliqués et tous les réglages qui font gagner en jeu, chacun avec ce
   qui le justifie : Mode jeu (activé par défaut, indispensable aux Ryzen X3D),
   enregistrement en arrière-plan coupé (jusqu'à 7 % d'images), optimisations des jeux
   fenêtrés (recommandées par Microsoft), planification GPU (nécessaire au DLSS Frame
@@ -220,7 +220,7 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
 - **Mise à jour de l'application.** L'installateur n'est pris que dans les releases de ce
   dépôt, et n'est lancé que si son empreinte SHA-256 est celle publiée avec lui dans
   `SHA256SUMS.txt`.
-- **Réglages « PC de guerre ».** Avant chaque modification, la valeur d'origine est
+- **Réglages de jeu.** Avant chaque modification, la valeur d'origine est
   gardée sous `HKCU\Software\Driver Updater\Tweaks` ; « Annuler » la remet telle quelle,
   ou supprime la valeur si elle n'existait pas. Le module administrateur n'accepte que les
   identifiants de réglages de sa propre liste.
@@ -340,7 +340,7 @@ le pipeline.
 | `Admin/` | Élévation : lancement du module administrateur, canal privé avec la fenêtre, commandes admises et leur vérification, exécution |
 | `Drivers/` | Windows Update, catalogue Microsoft Update, inventaire, détection des branchements, rapport de tous les pilotes, magasin de pilotes, sauvegarde, retour au pilote précédent, vérification hebdomadaire |
 | `Maintenance/` | Matériel et santé (WMI), sécurité, points de restauration, performances, démarrage de Windows, programmes au démarrage, réparation (SFC, DISM), fichiers temporaires, diagnostic |
-| `Tuning/` | « PC de guerre » : réglages réversibles et leur liste, faux boosts et leur correction, vérifications du matériel et leurs règles, écrans et leur fréquence, carte graphique des jeux sur portable, jeux Steam et leurs conseils |
+| `Tuning/` | « Réglages de jeu » : réglages réversibles et leur liste, faux boosts et leur correction, vérifications du matériel et leurs règles, écrans et leur fréquence, carte graphique des jeux sur portable, jeux Steam et leurs conseils |
 | `Software/` | winget, programmes installés et désinstallation, restes, composants de jeu |
 | `Common/` | Textes et langue (`L.cs`), paramètres, journal des changements, messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
 | `Localization/` | `en.json` : l'anglais de chaque texte français |

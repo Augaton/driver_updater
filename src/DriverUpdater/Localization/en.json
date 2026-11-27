@@ -404,7 +404,6 @@
  "{0} pilote(s) sauvegardé(s) dans {1}": "{0} driver(s) backed up in {1}",
  "Sauvegarde terminée.": "Backup finished.",
  "Dossier de sauvegarde à restaurer": "Backup folder to restore",
- "Installer les pilotes de « {0} » ?\n\nUn point de restauration système sera créé avant.": "Install the drivers from “{0}”?\n\nA system restore point will be created first.",
  "Restauration annulée.": "Restore cancelled.",
  "Pilotes restaurés.": "Drivers restored.",
  " Redémarrez l'ordinateur pour terminer.": " Restart the computer to finish.",
@@ -990,5 +989,10 @@
  "Protection du système désactivée : aucun point de restauration ne peut être créé, pas même avant l'installation d'un pilote.": "System protection off: no restore point can be made, not even before installing a driver.",
  "Protection du système indisponible : ": "System protection unavailable: ",
  "Restauration du système coupée par une stratégie": "System Restore turned off by a policy",
- "Windows n'a pas activé la protection du système (code {0}).": "Windows did not turn system protection on (code {0})."
+ "Windows n'a pas activé la protection du système (code {0}).": "Windows did not turn system protection on (code {0}).",
+ " et {0} autre(s)": " and {0} more",
+ "Ce dossier n'est pas une sauvegarde de Driver Updater : choisissez le dossier « Pilotes … » que « Sauvegarder… » a créé.": "This folder is not a Driver Updater backup: choose the “Drivers …” folder that “Back up…” made.",
+ "Ce dossier n'est pas une sauvegarde de Driver Updater.": "This folder is not a Driver Updater backup.",
+ "Installer les {0} pilote(s) de « {1} » ?\n\n{2}\n\nUn point de restauration système sera créé avant.": "Install the {0} driver(s) of “{1}”?\n\n{2}\n\nA system restore point will be made first.",
+ "Restaurer une sauvegarde": "Restore a backup"
 }

@@ -57,7 +57,8 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
   fois après une réinstallation de Windows : de chacun, la version qu'un périphérique utilise
   (la plus récente seulement si aucun ne l'utilise), pour qu'un retour au pilote précédent
   tienne après la restauration ; pas les anciennes que Windows garde (près de 1 Go chacune
-  pour un pilote graphique).
+  pour un pilote graphique). La restauration n'accepte qu'un dossier de sauvegarde et liste
+  ses pilotes avant de les installer.
 - **Historique.** Ce que Windows Update a installé, quand, et avec quel résultat.
 
 ### Jeux
@@ -262,6 +263,10 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
 - **Sauvegarde des pilotes.** Le dossier de sauvegarde est créé neuf (jamais un lien posé à
   sa place), réservé aux administrateurs pendant que `pnputil` le remplit, puis il reprend
   les droits du dossier qui le contient, même si la sauvegarde échoue en cours de route.
+  À la restauration, `pnputil` installe chaque INF qu'il trouve : seul un dossier fait comme
+  une sauvegarde (un sous-dossier `oemNN.inf` par pilote, aucun lien) est accepté, vérifié
+  par la fenêtre puis par le module, et copié dans un dossier réservé aux administrateurs
+  avant l'installation, comme les pilotes du catalogue.
 - **Restes de désinstallation.** Seulement dans Program Files, ProgramData et AppData
   (dont `%LocalAppData%\Programs`, jamais ce dossier lui-même),
   jamais un dossier partagé par plusieurs programmes (Microsoft, Common Files…) ou encore

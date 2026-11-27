@@ -140,6 +140,36 @@ public sealed class DriverStoreKeepsRollbackTests
     }
 }
 
+// Restoring a backup installs every INF of the folder, as administrator: only a backup is accepted.
+public sealed class BackupLayoutTests
+{
+    static (string, IReadOnlyList<string>) Folder(string name, params string[] infs) => (name, infs);
+
+    [Fact]
+    public void Lists_the_drivers_of_a_backup()
+    {
+        var drivers = BackupLayout.Drivers([Folder("oem12.inf", "nv_dispi.inf"), Folder("oem7.inf", "rt640x64.inf"), Folder("oem3.inf")], topLevelInfs: 0);
+        Assert.Equal(["nv_dispi.inf", "rt640x64.inf"], drivers); // the empty one: a driver pnputil would not export
+    }
+
+    [Fact]
+    public void Refuses_any_other_folder()
+    {
+        Assert.Null(BackupLayout.Drivers([Folder("Windows", "a.inf"), Folder("oem1.inf", "b.inf")], 0)); // C:\ picked by mistake
+        Assert.Null(BackupLayout.Drivers([Folder("oem1.inf", "b.inf")], topLevelInfs: 1)); // INFs of its own
+        Assert.Null(BackupLayout.Drivers([Folder("oem1.inf")], 0)); // nothing to install
+        Assert.Null(BackupLayout.Drivers([], 0));
+    }
+
+    [Theory]
+    [InlineData("oem12.inf", true)]
+    [InlineData("OEM7.INF", true)]
+    [InlineData("oem.inf", false)]
+    [InlineData("oem12a.inf", false)]
+    [InlineData("nv_dispi.inf", false)]
+    public void Knows_a_store_package_name(string name, bool expected) => Assert.Equal(expected, BackupLayout.IsPackageName(name));
+}
+
 // "Périphériques en erreur": a button only where a click can help.
 public sealed class DeviceProblemsTests
 {

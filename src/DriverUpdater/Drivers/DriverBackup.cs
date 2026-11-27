@@ -85,16 +85,62 @@ public static class DriverBackup
         return security;
     }
 
-    /// <summary>Installs every driver found in a backup folder; returns true if Windows must restart.</summary>
+    /// <summary>The INF names of the drivers in a backup folder, or null when it is not one (<see cref="BackupLayout"/>).</summary>
+    public static List<string>? Read(string folder)
+    {
+        var top = new DirectoryInfo(folder);
+        if (!top.Exists) return null;
+        var subfolders = top.GetDirectories();
+        // A backup holds plain folders: a link inside is not followed, it refuses the folder.
+        if (subfolders.Any(d => d.Attributes.HasFlag(FileAttributes.ReparsePoint))) return null;
+        return BackupLayout.Drivers(subfolders.Select(d => (d.Name, (IReadOnlyList<string>)InfsIn(d))).ToList(),
+            top.EnumerateFiles("*.inf").Count());
+    }
+
+    static List<string> InfsIn(DirectoryInfo folder) =>
+        folder.EnumerateFiles("*.inf", SearchOption.AllDirectories).Select(f => f.Name).ToList();
+
+    /// <summary>
+    /// Installs the drivers of a backup folder (checked again here); returns true if Windows must
+    /// restart. pnputil runs as administrator, so it reads a copy only administrators can write to,
+    /// not the user's folder, where any program could swap a file between the check and the install.
+    /// </summary>
     public static async Task<bool> ImportAsync(string folder)
     {
-        int code = await PnpUtilAsync("/add-driver", Path.Combine(folder, "*.inf"), "/subdirs", "/install");
-        return code switch
+        if (Read(folder) is null) throw new InvalidOperationException(L.T("Ce dossier n'est pas une sauvegarde de Driver Updater."));
+        var copy = DriverCatalog.ProtectedFolder();
+        try
         {
-            Success or NothingToInstall => false,
-            RebootRequired => true,
-            _ => throw new InvalidOperationException(L.F("La restauration a échoué (pnputil, code {0}).", code)),
-        };
+            foreach (var driver in new DirectoryInfo(folder).EnumerateDirectories().Where(d => BackupLayout.IsPackageName(d.Name)))
+                CopyFiles(driver, Directory.CreateDirectory(Path.Combine(copy.FullName, driver.Name)));
+            int code = await PnpUtilAsync("/add-driver", Path.Combine(copy.FullName, "*.inf"), "/subdirs", "/install");
+            return code switch
+            {
+                Success or NothingToInstall => false,
+                RebootRequired => true,
+                _ => throw new InvalidOperationException(L.F("La restauration a échoué (pnputil, code {0}).", code)),
+            };
+        }
+        finally
+        {
+            try
+            {
+                copy.Delete(recursive: true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // In use: Windows' temporary folder is cleaned anyway.
+            }
+        }
+    }
+
+    // A driver's files, its subfolders too, never through a link.
+    static void CopyFiles(DirectoryInfo from, DirectoryInfo to)
+    {
+        foreach (var file in from.EnumerateFiles().Where(f => !f.Attributes.HasFlag(FileAttributes.ReparsePoint)))
+            file.CopyTo(Path.Combine(to.FullName, file.Name));
+        foreach (var sub in from.EnumerateDirectories().Where(d => !d.Attributes.HasFlag(FileAttributes.ReparsePoint)))
+            CopyFiles(sub, to.CreateSubdirectory(sub.Name));
     }
 
     internal static async Task<int> PnpUtilAsync(params string[] arguments)

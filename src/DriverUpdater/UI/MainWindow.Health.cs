@@ -278,7 +278,15 @@ public partial class MainWindow
     {
         var dialog = new OpenFolderDialog { Title = L.T("Dossier de sauvegarde à restaurer") };
         if (dialog.ShowDialog(this) != true) return;
-        if (Ask(L.F("Installer les pilotes de « {0} » ?\n\nUn point de restauration système sera créé avant.", dialog.FolderName)) != MessageBoxResult.Yes)
+        // Any other folder would have every INF in it installed, as administrator.
+        if (DriverBackup.Read(dialog.FolderName) is not { } drivers)
+        {
+            MessageBox.Show(this, L.T("Ce dossier n'est pas une sauvegarde de Driver Updater : choisissez le dossier « Pilotes … » que « Sauvegarder… » a créé."),
+                L.T("Restaurer une sauvegarde"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var names = string.Join(", ", drivers.Take(12)) + (drivers.Count > 12 ? L.F(" et {0} autre(s)", drivers.Count - 12) : "");
+        if (Ask(L.F("Installer les {0} pilote(s) de « {1} » ?\n\n{2}\n\nUn point de restauration système sera créé avant.", drivers.Count, dialog.FolderName, names)) != MessageBoxResult.Yes)
             return;
 
         await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>

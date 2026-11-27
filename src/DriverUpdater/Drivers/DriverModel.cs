@@ -227,3 +227,27 @@ public static class DeviceProblems
         _ => ProblemAction.None,
     };
 }
+
+/// <summary>
+/// What "Sauvegarde" makes: a folder with one subfolder per driver, named after its package in the
+/// store ("oem12.inf"), each holding the driver's own INF. Restoring installs every INF it finds,
+/// as administrator: any other folder (C:\, Downloads) would have all of its INFs installed.
+/// </summary>
+public static class BackupLayout
+{
+    /// <summary>
+    /// The INF names of the drivers in a backup, or null when the folder is not one: an INF of its
+    /// own, a subfolder not named like a store package, or no driver at all. A subfolder left empty
+    /// (a driver pnputil refused to export) is no reason to refuse the rest.
+    /// </summary>
+    public static List<string>? Drivers(IReadOnlyList<(string Name, IReadOnlyList<string> Infs)> subfolders, int topLevelInfs)
+    {
+        if (topLevelInfs > 0 || subfolders.Count == 0 || subfolders.Any(s => !IsPackageName(s.Name))) return null;
+        var drivers = subfolders.SelectMany(s => s.Infs).Order(StringComparer.OrdinalIgnoreCase).ToList();
+        return drivers.Count == 0 ? null : drivers;
+    }
+
+    public static bool IsPackageName(string name) =>
+        name.Length > 7 && name.StartsWith("oem", StringComparison.OrdinalIgnoreCase)
+        && name.EndsWith(".inf", StringComparison.OrdinalIgnoreCase) && name[3..^4].All(char.IsAsciiDigit) && name.Length <= 12;
+}

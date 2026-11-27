@@ -18,3 +18,7 @@ updates:
       # Runs inside the .NET 10 SDK: version 11 needs the .NET 11 SDK.
       - dependency-name: Microsoft.NET.ILLink.Tasks
         update-types: ["version-update:semver-major"]
+      # Kept on the .NET line of the bundled runtime; the next major comes with the move
+      # to that .NET version.
+      - dependency-name: System.*
+        update-types: ["version-update:semver-major"]

@@ -49,8 +49,8 @@
       },
       "System.Management": {
         "type": "Transitive",
-        "resolved": "10.0.13",
-        "contentHash": "cL8qiJmJtlSIcAoZH4s07VTxTdddvEP12MFeM+KBZagn4CuD/0SFQsmKn5g9MLfiSrYjdAxIwOTO0kATY9A0UA=="
+        "resolved": "10.0.15",
+        "contentHash": "U21LynVbH2ayLFLTqlLnd3hx52Fe/acpCXO4BAUIqfWs8CwFWT0zxlg8WR2+LZ7zcLgi/d08eq7rp4iLMMt+4w=="
       },
       "xunit.abstractions": {
         "type": "Transitive",
@@ -95,7 +95,7 @@
       "driverupdater": {
         "type": "Project",
         "dependencies": {
-          "System.Management": "[10.0.13, )"
+          "System.Management": "[10.0.15, )"
         }
       }
     }

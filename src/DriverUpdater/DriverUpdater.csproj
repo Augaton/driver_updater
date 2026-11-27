@@ -32,7 +32,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Management" Version="10.0.13" />
+    <!-- Same .NET line as the runtime: Dependabot ignores its major versions. -->
+    <PackageReference Include="System.Management" Version="10.0.15" />
     <!-- The single-file analyzer comes in this package. Left implicit, its version follows the
          SDK, so each monthly .NET patch broke the locked restore (NU1004); written here, it
          changes only through a Dependabot pull request, which updates the lock file too.

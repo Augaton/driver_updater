@@ -9,7 +9,7 @@ public sealed class StartupEntry
 {
     /// <summary>The Run value name, or the shortcut's file name in a Startup folder.</summary>
     public required string Name { get; init; }
-    public required string Kind { get; init; } // StartupApps.Run, Run32 or Folder
+    public required string Kind { get; init; } // StartupApps.Run, Run32, Folder, Store or Task
     public required bool Machine { get; init; } // for every user: changing it needs administrator rights
     public required string Command { get; init; }
     public required string Program { get; init; }
@@ -29,10 +29,11 @@ public sealed class StartupEntry
 /// Programs Windows starts at sign-in, from the same places Task Manager reads, switched
 /// on and off the same way (see <see cref="StartupApproval"/>). Nothing is ever deleted.
 /// Store apps' startup tasks are listed too, only to be seen: Windows' Settings switch them.
+/// So are the scheduled tasks that start a program at sign-in (<see cref="StartupTasks"/>).
 /// </summary>
 public static class StartupApps
 {
-    public const string Run = "run", Run32 = "run32", Folder = "folder", Store = "store";
+    public const string Run = "run", Run32 = "run32", Folder = "folder", Store = "store", Task = "task";
     const string AppModel = @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\";
     const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     const string Run32Key = @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run";
@@ -47,12 +48,18 @@ public static class StartupApps
         AddShortcuts(list, machine: false);
         AddShortcuts(list, machine: true);
         AddStoreTasks(list);
+        AddLogonTasks(list);
         return list.OrderBy(e => e.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
     /// <summary>Switches an entry on or off. It must exist: nothing is created for a name that isn't there.</summary>
     public static void SetEnabled(string kind, string name, bool machine, bool enabled)
     {
+        if (kind == Task)
+        {
+            StartupTasks.SetEnabled(name, enabled);
+            return;
+        }
         if (!Exists(kind, name, machine)) throw new InvalidOperationException(L.F("Programme de démarrage introuvable : {0}", name));
         using var key = Hive(machine).CreateSubKey(ApprovedKey + ApprovedSubkey(kind));
         key.SetValue(name, StartupApproval.Value(enabled, DateTime.UtcNow), RegistryValueKind.Binary);
@@ -125,6 +132,30 @@ public static class StartupApps
                 });
             }
         }
+    }
+
+    /// <summary>
+    /// The scheduled tasks that start a program at sign-in. Unreadable (no Task Scheduler, a policy):
+    /// the rest of the list stands without them.
+    /// </summary>
+    static void AddLogonTasks(List<StartupEntry> list)
+    {
+        List<LogonTask> tasks;
+        try
+        {
+            tasks = StartupTasks.List();
+        }
+        catch (Exception e) when (e is COMException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return;
+        }
+        foreach (var task in tasks)
+            list.Add(new StartupEntry
+            {
+                Name = task.Path, Kind = Task, Machine = task.AllUsers, Command = $"{task.Program} {task.Arguments}".Trim(),
+                Program = task.Program, Publisher = PublisherOf(task.Program), Enabled = task.Enabled,
+                DisplayName = L.F("{0} (tâche planifiée)", task.Name),
+            });
     }
 
     // "MSTeams_8wekyb3d8bbwe" is "Microsoft Teams" in the package's own name, often a resource

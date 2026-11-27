@@ -37,11 +37,14 @@ public partial class MainWindow
         box.IsChecked = entry.Enabled;
     }
 
-    /// <summary>Turns one startup program on or off, from its page or from the journal.</summary>
+    /// <summary>
+    /// Turns one startup program on or off, from its page or from the journal. A scheduled task always
+    /// goes through the administrator helper: those installers register can only be changed by it.
+    /// </summary>
     Task SetStartup(StartupEntry entry, bool enable) =>
-        RunBusy(entry.Machine ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
+        RunBusy(NeedsAdmin(entry) ? L.T("En attente de l'autorisation administrateur…") : L.T("Modification…"), async () =>
         {
-            if (entry.Machine)
+            if (NeedsAdmin(entry))
                 await RunAdminAsync<bool>(AdminCommand.StartupSet, entry.Kind, entry.Name, enable ? "on" : "off");
             else
                 StartupApps.SetEnabled(entry.Kind, entry.Name, machine: false, enable);
@@ -52,6 +55,8 @@ public partial class MainWindow
                 enable ? L.F("{0} démarrera avec Windows.", entry.Title) : L.F("{0} ne démarrera plus avec Windows.", entry.Title),
                 new JournalUndo(JournalUndo.Startup, StartupTarget(entry), enable ? "off" : "on"));
         });
+
+    static bool NeedsAdmin(StartupEntry entry) => entry.Machine || entry.Kind == StartupApps.Task;
 
     async void OnBootReport(object sender, RoutedEventArgs e) =>
         await RunBusy(L.T("Lecture des mesures de démarrage…"), async () =>

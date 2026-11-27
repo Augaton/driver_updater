@@ -681,7 +681,7 @@
  "Processus": "Processes",
  "Lancez une analyse pour voir ce qui consomme.": "Run an analysis to see what uses resources.",
  "Démarrage": "Startup",
- "Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages.": "Untick what does not need to start with Windows: it can be undone, and Task Manager sees the same setting. “Measure their impact” reads the times Windows itself measured during the last boots.",
+ "Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. Les tâches planifiées lancées à l'ouverture de session sont là aussi ; laissez celles d'un anti-triche ou d'un pilote. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages.": "Untick what does not need to start with Windows: it can be undone, and Task Manager sees the same setting. The scheduled tasks started at sign-in are here too; leave those of an anti-cheat or a driver. “Measure their impact” reads the times Windows itself measured during the last startups.",
  "Mesurer leur impact": "Measure their impact",
  "Actif": "On",
  "Programme": "Program",
@@ -898,7 +898,7 @@
  "Service de réparation de Windows Update désactivé": "Windows Update repair service disabled",
  "Un outil a dit à Windows de chercher ses mises à jour sur un serveur d'entreprise qui est en fait ce PC lui-même : il n'en trouve donc jamais. Une vraie entreprise donne l'adresse de son serveur.": "A tool told Windows to look for its updates on a company server that is in fact this PC itself: so it never finds any. A real company gives its server's address.",
  "Windows Update envoyé vers un serveur qui n'existe pas": "Windows Update sent to a server that does not exist",
- "Les entrées « Tous les utilisateurs », et parfois la mesure, demandent l'autorisation administrateur. Les applications du Store, grisées ici, se règlent dans Paramètres.": "“All users” entries, and sometimes the measurement, need administrator permission. Store apps, greyed out here, are set in Settings.",
+ "Les entrées « Tous les utilisateurs », les tâches planifiées et parfois la mesure demandent l'autorisation administrateur. Les applications du Store, grisées ici, se règlent dans Paramètres.": "“All users” entries, scheduled tasks and sometimes the measure need administrator permission. Store apps, greyed out here, are set in Settings.",
  "Applications du Store": "Store apps",
  "Pare-feu": "Firewall",
  "Driver Updater est déjà ouvert, lancé en administrateur : revenez à sa fenêtre, ou fermez-la d'abord.": "Driver Updater is already open, started as administrator: go back to its window, or close it first.",
@@ -932,5 +932,8 @@
  "DISM a réparé l'image de Windows ; SFC s'est terminé avec le code {0} : voir le résumé.": "DISM repaired the Windows image; SFC ended with code {0}: see the summary.",
  "Mesurer un jeu": "Measure a game",
  "Retournez dans le jeu : la mesure commence dans 15 secondes et dure 30 secondes, un son marque son début et sa fin.": "Go back into the game: the measure starts in 15 seconds and lasts 30 seconds, a sound marks its start and its end.",
- "Recherche d'un pilote pour {0}…": "Looking for a driver for {0}…"
+ "Recherche d'un pilote pour {0}…": "Looking for a driver for {0}…",
+ "Planificateur de tâches indisponible.": "Task Scheduler unavailable.",
+ "Tâche de démarrage introuvable : {0}": "Startup task not found: {0}",
+ "{0} (tâche planifiée)": "{0} (scheduled task)"
 }

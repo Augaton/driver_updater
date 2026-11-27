@@ -859,8 +859,8 @@
           </Grid.RowDefinitions>
 
           <local:PageHeader Title="Programmes au démarrage"
-                            Description="Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages."
-                            Note="Les entrées « Tous les utilisateurs », et parfois la mesure, demandent l'autorisation administrateur. Les applications du Store, grisées ici, se règlent dans Paramètres.">
+                            Description="Décochez ce qui n'a pas besoin de démarrer avec Windows : c'est réversible, et le Gestionnaire des tâches voit le même réglage. Les tâches planifiées lancées à l'ouverture de session sont là aussi ; laissez celles d'un anti-triche ou d'un pilote. « Mesurer leur impact » lit les temps que Windows a lui-même mesurés lors des derniers démarrages."
+                            Note="Les entrées « Tous les utilisateurs », les tâches planifiées et parfois la mesure demandent l'autorisation administrateur. Les applications du Store, grisées ici, se règlent dans Paramètres.">
             <StackPanel Orientation="Horizontal">
               <Button Content="Applications du Store" Tag="ms-settings:startupapps" Click="OnOpenSetting" Margin="0,0,8,0" />
               <Button x:Name="RefreshStartupButton" Content="Actualiser" Click="OnRefreshStartup" Margin="0,0,8,0" />

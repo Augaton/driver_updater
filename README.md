@@ -103,7 +103,8 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
   jeu, mesure 30 secondes et sonne au début et à la fin : quitter le jeu pour cliquer le
   mesurerait en arrière-plan.
 - **Démarrage.** Les programmes lancés avec Windows, activés ou désactivés comme dans le
-  Gestionnaire des tâches, avec le temps que chacun fait perdre d'après les mesures de
+  Gestionnaire des tâches, et les tâches planifiées qui lancent un programme à l'ouverture de
+  session (jamais celles de Windows), activées ou désactivées comme dans le Planificateur, avec le temps que chacun fait perdre d'après les mesures de
   Windows, le graphique des 30 derniers démarrages et, après vos changements, le temps
   gagné d'après les démarrages suivants. Les applications du Store (le nouveau Teams,
   WhatsApp…) sont listées aussi ; elles se règlent dans Paramètres, que la page ouvre.

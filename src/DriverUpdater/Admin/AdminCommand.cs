@@ -109,9 +109,11 @@ public sealed partial record AdminCommand(string Name, IReadOnlyList<string> Arg
                     throw new ArgumentException(L.T("Noms de paquets de pilotes invalides."));
                 return new(name, rest.Select(n => n.ToLowerInvariant()).ToList());
             case StartupSet:
-                // <run|run32|folder> <name> <on|off>, for an entry of all users.
-                if (rest.Count != 3 || rest[0] is not ("run" or "run32" or "folder") || rest[2] is not ("on" or "off")
-                    || rest[1].Length is 0 or > 260 || rest[1].Any(char.IsControl))
+                // <run|run32|folder|task> <name> <on|off>, for an entry of all users, or a scheduled
+                // task given by its path, never one of Windows' own.
+                if (rest.Count != 3 || rest[0] is not ("run" or "run32" or "folder" or "task") || rest[2] is not ("on" or "off")
+                    || rest[1].Length is 0 or > 260 || rest[1].Any(char.IsControl)
+                    || rest[0] == "task" && (!rest[1].StartsWith('\\') || DriverUpdater.Maintenance.StartupTasks.IsWindowsOwn(rest[1])))
                     throw new ArgumentException(L.T("Entrée de démarrage invalide."));
                 return new(name, rest);
             case Version or Unhide or CleanWindowsTemp or Health or Sfc or RepairWindows or DismCleanup or BootReport or DriverStore or RestorePoints or CreateRestorePoint:

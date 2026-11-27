@@ -38,6 +38,7 @@
     <Compile Include="..\..\src\DriverUpdater\Tuning\HardwareRules.cs" Link="Tuning\HardwareRules.cs" />
     <Compile Include="..\..\src\DriverUpdater\Maintenance\SecurityModel.cs" Link="Maintenance\SecurityModel.cs" />
     <Compile Include="..\..\src\DriverUpdater\Maintenance\Repair.cs" Link="Maintenance\Repair.cs" />
+    <Compile Include="..\..\src\DriverUpdater\Maintenance\StartupTasks.cs" Link="Maintenance\StartupTasks.cs" />
   </ItemGroup>
 
   <ItemGroup>

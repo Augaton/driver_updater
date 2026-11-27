@@ -139,11 +139,12 @@ public partial class MainWindow
                 var app = selected[i];
                 SetStatus(L.F("Logiciel {0} sur {1} : {2}…", i + 1, selected.Count, app.Name));
                 int code = await WinGet.UpgradeAsync(app.Id);
-                switch (WingetResults.Of(code).Outcome)
+                var outcome = WingetResults.Of(code).Outcome;
+                switch (outcome)
                 {
                     case WingetOutcome.Done or WingetOutcome.DoneRestart:
                         done.Add(app);
-                        restart |= WingetResults.Of(code).Outcome == WingetOutcome.DoneRestart;
+                        restart |= outcome == WingetOutcome.DoneRestart;
                         Journal.Add(Journal.Software, L.F("{0} : {1} → {2}", app.Name, app.Version, app.Available));
                         break;
                     case WingetOutcome.AlreadyThere:

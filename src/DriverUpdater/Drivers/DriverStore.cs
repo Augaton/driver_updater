@@ -1,7 +1,5 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Text;
 using System.Text.Json;
 
 namespace DriverUpdater.Drivers;
@@ -16,12 +14,13 @@ public sealed record StoreDeleteResult(string PublishedName, bool Deleted, strin
 public static class DriverStore
 {
     // Fixed text, nothing from outside goes into it. UTF-8 output so providers' names keep their accents.
+    // Run by SystemPowerShell: its commands named with their module, imported from System32.
     const string ListScript =
         "[Console]::OutputEncoding = [Text.Encoding]::UTF8; " +
-        "$d = @(Get-WindowsDriver -Online | ForEach-Object { [pscustomobject]@{ " +
+        "$d = @(Dism\\Get-WindowsDriver -Online | ForEach-Object { [pscustomobject]@{ " +
         "Driver = $_.Driver; OriginalFileName = $_.OriginalFileName; ProviderName = $_.ProviderName; " +
         "ClassName = $_.ClassName; Version = $_.Version; Date = $_.Date.ToString('yyyy-MM-dd'); BootCritical = $_.BootCritical } }); " +
-        "ConvertTo-Json -InputObject $d -Compress";
+        "Microsoft.PowerShell.Utility\\ConvertTo-Json -InputObject $d -Compress";
 
     sealed record Listed(string Driver, string OriginalFileName, string? ProviderName, string? ClassName,
         string? Version, string? Date, bool BootCritical);
@@ -75,16 +74,8 @@ public static class DriverStore
     /// <param name="sizes">Each package's size on disk: every file of the store is walked for it.</param>
     static async Task<List<StorePackage>> ListAsync(bool sizes)
     {
-        var powershell = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
-        var start = new ProcessStartInfo(powershell)
-        {
-            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, StandardOutputEncoding = Encoding.UTF8,
-        };
-        foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-Command", ListScript }) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start)!;
-        var json = await process.StandardOutput.ReadToEndAsync();
-        await process.WaitForExitAsync();
-        if (process.ExitCode != 0) throw new InvalidOperationException(L.F("Lecture du magasin de pilotes impossible (code {0}).", process.ExitCode));
+        var (exitCode, json) = await SystemPowerShell.RunAsync(ListScript, "Microsoft.PowerShell.Utility", "Dism");
+        if (exitCode != 0) throw new InvalidOperationException(L.F("Lecture du magasin de pilotes impossible (code {0}).", exitCode));
 
         var listed = JsonSerializer.Deserialize<List<Listed>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
         return listed.Select(p => new StorePackage(

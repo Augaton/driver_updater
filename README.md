@@ -281,7 +281,11 @@ gh attestation verify DriverUpdater-Setup-x.y.z.exe --repo Augaton/driver_update
 - **Emplacement.** L'installateur place l'application dans `Program Files`, que seul un
   administrateur peut modifier : personne ne peut remplacer l'exe que Windows élèvera.
 - **Programmes lancés.** Les outils Windows sont appelés par leur chemin complet dans
-  `System32`, jamais par leur seul nom.
+  `System32`, jamais par leur seul nom. Le PowerShell que lance le module administrateur
+  (magasin de pilotes, cache de l'Optimisation de distribution) ne charge aucun module tout
+  seul : il chercherait d'abord dans `Documents\WindowsPowerShell\Modules`, où n'importe quel
+  programme de l'utilisateur peut écrire. Chaque module de Windows est importé par son chemin
+  dans `System32`, et chaque commande appelée avec le nom de son module.
 - **DLL.** Les DLL natives sont livrées à côté de l'exe, pas décompressées dans `%TEMP%`.
 - **Dépendances.** Elles sont verrouillées (`packages.lock.json`) et contrôlées contre les
   vulnérabilités connues. Tous les analyseurs de sécurité .NET sont actifs. En CI, le

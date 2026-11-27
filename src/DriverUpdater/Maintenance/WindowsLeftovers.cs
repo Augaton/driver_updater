@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -31,7 +30,7 @@ public static class WindowsLeftovers
         // Where the cache usually is, to tell what was freed; Windows' own command does the work.
         var cache = Path.Combine(windows, "ServiceProfiles", "NetworkService", "AppData", "Local", "Microsoft", "Windows", "DeliveryOptimization", "Cache");
         long before = FolderSize(cache);
-        bool cleared = await PowerShellAsync("Delete-DeliveryOptimizationCache -Force") == 0;
+        bool cleared = (await SystemPowerShell.RunAsync("DeliveryOptimization\\Delete-DeliveryOptimizationCache -Force -ErrorAction Stop", "DeliveryOptimization")).ExitCode == 0;
         long freed = Math.Max(0, before - FolderSize(cache));
         return new LeftoversReport(dumps.Deleted + fullDumps, dumps.FreedBytes + fullBytes, cleared, freed);
     }
@@ -70,23 +69,6 @@ public static class WindowsLeftovers
         }
     }
 
-    static async Task<int> PowerShellAsync(string command)
-    {
-        // Full path: a bare "powershell.exe" could be picked up from the current folder.
-        var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"))
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-Command", command }) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start)!;
-        var output = process.StandardOutput.ReadToEndAsync();
-        var errors = process.StandardError.ReadToEndAsync();
-        await Task.WhenAll(output, errors, process.WaitForExitAsync());
-        return process.ExitCode;
-    }
 }
 
 /// <summary>The recycle bin of every drive, as Explorer shows it (no administrator rights needed).</summary>

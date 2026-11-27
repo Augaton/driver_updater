@@ -225,10 +225,13 @@ public partial class MainWindow
 
     long recycleItems;
 
-    /// <summary>What the recycle bin holds, read again at each visit of the page.</summary>
-    void ShowRecycleBin()
+    /// <summary>
+    /// What the recycle bin holds, read again at each visit of the page; off the window's thread,
+    /// since Windows walks every drive's bin for it.
+    /// </summary>
+    async Task ShowRecycleBin()
     {
-        var (items, bytes) = RecycleBin.Query();
+        var (items, bytes) = await Task.Run(RecycleBin.Query);
         recycleItems = items;
         RecycleStatus.Text = items == 0 ? L.T("La corbeille est vide.") : L.F("La corbeille contient {0} élément(s), {1}.", items, Bytes.Format(bytes));
         UpdateButtons();
@@ -236,13 +239,13 @@ public partial class MainWindow
 
     async void OnEmptyRecycleBin(object sender, RoutedEventArgs e)
     {
-        var (items, bytes) = RecycleBin.Query();
+        var (items, bytes) = await Task.Run(RecycleBin.Query);
         if (items == 0 || Ask(L.F("Vider la corbeille ({0} élément(s), {1}) ?\n\nIls ne pourront plus être récupérés.", items, Bytes.Format(bytes))) != MessageBoxResult.Yes)
             return;
         await RunBusy(L.T("Vidage de la corbeille…"), async () =>
         {
             await Task.Run(RecycleBin.Empty);
-            ShowRecycleBin();
+            await ShowRecycleBin();
             return Logged(Journal.Cleanup, L.F("Corbeille vidée : {0} libérés.", Bytes.Format(bytes)));
         });
     }
@@ -314,8 +317,9 @@ public partial class MainWindow
     {
         var dialog = new OpenFolderDialog { Title = L.T("Dossier de sauvegarde à restaurer") };
         if (dialog.ShowDialog(this) != true) return;
-        // Any other folder would have every INF in it installed, as administrator.
-        if (DriverBackup.Read(dialog.FolderName) is not { } drivers)
+        // Any other folder would have every INF in it installed, as administrator. A graphics driver
+        // alone holds hundreds of files: walked off the window's thread.
+        if (await Task.Run(() => DriverBackup.Read(dialog.FolderName)) is not { } drivers)
         {
             MessageBox.Show(this, L.T("Ce dossier n'est pas une sauvegarde de Driver Updater : choisissez le dossier « Pilotes … » que « Sauvegarder… » a créé."),
                 L.T("Restaurer une sauvegarde"), MessageBoxButton.OK, MessageBoxImage.Warning);

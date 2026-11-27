@@ -115,3 +115,41 @@ public static partial class WingetOutput
     [GeneratedRegex(@"\x1B\[[0-9;?]*[A-Za-z]")]
     private static partial Regex AnsiEscape();
 }
+
+public enum WingetOutcome { Done, DoneRestart, AlreadyThere, Failed }
+
+/// <summary>
+/// What winget's exit code means for the user: done, done but a restart finishes it, already there,
+/// or failed with the reason in plain words where winget gives one. The codes are winget's own
+/// (github.com/microsoft/winget-cli, doc/windows/package-manager/winget/returnCodes.md).
+/// </summary>
+public static class WingetResults
+{
+    public static (WingetOutcome Outcome, string? Reason) Of(int code) => unchecked((uint)code) switch
+    {
+        0 => (WingetOutcome.Done, null),
+        // An installer's 3010 is already 0 with a warning; this is the same, said by the installer's own table.
+        0x8A150109 => (WingetOutcome.DoneRestart, null),
+        0x8A15010D or 0x8A150061 => (WingetOutcome.AlreadyThere, null),
+        0x8A150101 or 0x8A150111 or 0x8A150103 => (WingetOutcome.Failed, L.T("le programme est ouvert : fermez-le puis réessayez")),
+        0x8A150102 => (WingetOutcome.Failed, L.T("une autre installation est en cours : réessayez quand elle aura fini")),
+        0x8A15010A => (WingetOutcome.Failed, L.T("un redémarrage est nécessaire avant : redémarrez puis réessayez")),
+        0x8A15010B => (WingetOutcome.Failed, L.T("l'installateur a lancé un redémarrage")),
+        0x8A15010C => (WingetOutcome.Failed, L.T("annulé")),
+        0x8A15010E => (WingetOutcome.Failed, L.T("une version plus récente est déjà installée")),
+        0x8A15002B => (WingetOutcome.Failed, L.T("aucune version plus récente ne convient à ce PC")),
+        0x8A150010 => (WingetOutcome.Failed, L.T("aucun installateur pour ce PC")),
+        0x8A150104 or 0x8A150110 => (WingetOutcome.Failed, L.T("un composant dont il a besoin n'a pas pu s'installer")),
+        0x8A150105 => (WingetOutcome.Failed, L.T("disque plein")),
+        0x8A150106 => (WingetOutcome.Failed, L.T("mémoire insuffisante")),
+        0x8A150107 or 0x8A150008 => (WingetOutcome.Failed, L.T("téléchargement impossible : vérifiez la connexion")),
+        0x8A150011 => (WingetOutcome.Failed, L.T("le fichier téléchargé n'est pas celui attendu : il n'a pas été lancé")),
+        0x8A15010F or 0x8A15003A => (WingetOutcome.Failed, L.T("bloqué par une stratégie de l'entreprise ou du PC")),
+        0x8A150068 => (WingetOutcome.Failed, L.T("épinglé : winget le garde tel quel")),
+        _ => (WingetOutcome.Failed, null),
+    };
+
+    /// <summary>"Discord (le programme est ouvert…)", or the code itself when winget gives no reason.</summary>
+    public static string Failure(string name, int code) =>
+        Of(code).Reason is { } reason ? $"{name} ({reason})" : $"{name} (0x{code:X8})";
+}

@@ -935,5 +935,21 @@
  "Recherche d'un pilote pour {0}…": "Looking for a driver for {0}…",
  "Planificateur de tâches indisponible.": "Task Scheduler unavailable.",
  "Tâche de démarrage introuvable : {0}": "Startup task not found: {0}",
- "{0} (tâche planifiée)": "{0} (scheduled task)"
+ "{0} (tâche planifiée)": "{0} (scheduled task)",
+ " Redémarrez le PC pour terminer.": " Restart the PC to finish.",
+ "annulé": "cancelled",
+ "aucun installateur pour ce PC": "no installer for this PC",
+ "aucune version plus récente ne convient à ce PC": "no newer version suits this PC",
+ "bloqué par une stratégie de l'entreprise ou du PC": "blocked by a company or PC policy",
+ "disque plein": "disk full",
+ "l'installateur a lancé un redémarrage": "the installer started a restart",
+ "le fichier téléchargé n'est pas celui attendu : il n'a pas été lancé": "the downloaded file is not the expected one: it was not run",
+ "le programme est ouvert : fermez-le puis réessayez": "the program is open: close it and try again",
+ "mémoire insuffisante": "not enough memory",
+ "téléchargement impossible : vérifiez la connexion": "download impossible: check the connection",
+ "un composant dont il a besoin n'a pas pu s'installer": "a component it needs could not be installed",
+ "un redémarrage est nécessaire avant : redémarrez puis réessayez": "a restart is needed first: restart and try again",
+ "une autre installation est en cours : réessayez quand elle aura fini": "another installation is running: try again when it is done",
+ "une version plus récente est déjà installée": "a newer version is already installed",
+ "épinglé : winget le garde tel quel": "pinned: winget keeps it as it is"
 }

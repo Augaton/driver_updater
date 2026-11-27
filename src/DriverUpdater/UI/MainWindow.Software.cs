@@ -73,6 +73,7 @@ public partial class MainWindow
             BusyBar.Maximum = selected.Count;
             var done = new List<SoftwareUpdate>();
             var failed = new List<string>();
+            bool restart = false;
             int i = 0;
             // "Arrêter" lets the current installer finish: one cut short can leave the program broken.
             for (; i < selected.Count && !stop.IsCancellationRequested; i++)
@@ -80,14 +81,19 @@ public partial class MainWindow
                 var app = selected[i];
                 SetStatus(L.F("Logiciel {0} sur {1} : {2}…", i + 1, selected.Count, app.Name));
                 int code = await WinGet.UpgradeAsync(app.Id);
-                if (code == 0)
+                switch (WingetResults.Of(code).Outcome)
                 {
-                    done.Add(app);
-                    Journal.Add(Journal.Software, L.F("{0} : {1} → {2}", app.Name, app.Version, app.Available));
-                }
-                else
-                {
-                    failed.Add($"{app.Name} (0x{code:X8})");
+                    case WingetOutcome.Done or WingetOutcome.DoneRestart:
+                        done.Add(app);
+                        restart |= WingetResults.Of(code).Outcome == WingetOutcome.DoneRestart;
+                        Journal.Add(Journal.Software, L.F("{0} : {1} → {2}", app.Name, app.Version, app.Available));
+                        break;
+                    case WingetOutcome.AlreadyThere:
+                        done.Add(app); // nothing to do after all: it leaves the list, with nothing to note
+                        break;
+                    default:
+                        failed.Add(WingetResults.Failure(app.Name, code));
+                        break;
                 }
                 BusyBar.Value = i + 1;
             }
@@ -96,6 +102,7 @@ public partial class MainWindow
             return (failed.Count == 0
                     ? L.F("{0} logiciel(s) mis à jour.", done.Count)
                     : L.F("{0} sur {1} mis à jour. Échec : {2}.", done.Count, selected.Count, string.Join(", ", failed)))
+                   + (restart ? L.T(" Redémarrez le PC pour terminer.") : "")
                    + (i < selected.Count ? L.F(" Arrêté avant les {0} autre(s).", selected.Count - i) : "");
         });
     }

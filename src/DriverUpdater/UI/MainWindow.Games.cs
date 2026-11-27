@@ -222,6 +222,7 @@ public partial class MainWindow
             BusyBar.IsIndeterminate = false;
             BusyBar.Maximum = chosen.Count;
             var failed = new List<string>();
+            bool restart = false;
             int i = 0;
             // "Arrêter" lets the current installer finish: one cut short can leave a component broken.
             for (; i < chosen.Count && !stop.IsCancellationRequested; i++)
@@ -229,8 +230,11 @@ public partial class MainWindow
                 var row = chosen[i];
                 SetStatus(L.F("Composant {0} sur {1} : {2} (Windows peut demander une autorisation)…", i + 1, chosen.Count, row.Component.Name));
                 int code = row.Installed ? await WinGet.UpgradeAsync(row.Component.WingetId) : await WinGet.InstallAsync(row.Component.WingetId);
-                if (code != 0) failed.Add($"{row.Component.Name} (0x{code:X8})");
-                else Journal.Add(Journal.Software, L.F("{0} : {1}", row.Component.Name, row.Installed ? L.T("mis à jour") : L.T("installé")));
+                var outcome = WingetResults.Of(code).Outcome;
+                restart |= outcome == WingetOutcome.DoneRestart;
+                if (outcome == WingetOutcome.Failed) failed.Add(WingetResults.Failure(row.Component.Name, code));
+                else if (outcome != WingetOutcome.AlreadyThere)
+                    Journal.Add(Journal.Software, L.F("{0} : {1}", row.Component.Name, row.Installed ? L.T("mis à jour") : L.T("installé")));
                 BusyBar.Value = i + 1;
             }
             upgrades = null; // just updated: ask winget again
@@ -238,6 +242,7 @@ public partial class MainWindow
             return (failed.Count == 0
                     ? L.F("{0} composant(s) installé(s).", i)
                     : L.F("{0} sur {1} installé(s). Échec : {2}.", i - failed.Count, chosen.Count, string.Join(", ", failed)))
+                   + (restart ? L.T(" Redémarrez le PC pour terminer.") : "")
                    + (i < chosen.Count ? L.F(" Arrêté avant les {0} autre(s).", chosen.Count - i) : "");
         });
     }

@@ -14,3 +14,7 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # Runs inside the .NET 10 SDK: version 11 needs the .NET 11 SDK.
+      - dependency-name: Microsoft.NET.ILLink.Tasks
+        update-types: ["version-update:semver-major"]

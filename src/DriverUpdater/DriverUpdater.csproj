@@ -33,6 +33,11 @@
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="10.0.13" />
+    <!-- The single-file analyzer comes in this package. Left implicit, its version follows the
+         SDK, so each monthly .NET patch broke the locked restore (NU1004); written here, it
+         changes only through a Dependabot pull request, which updates the lock file too.
+         Stay on 10.x (see .github/dependabot.yml): a newer major needs a newer SDK. -->
+    <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="10.0.15" PrivateAssets="all" />
     <!-- EventLog and PerformanceCounter come with the Windows Desktop framework (WPF): a
          package reference would be redundant, and the Windows build rejects it (NU1510). -->
   </ItemGroup>

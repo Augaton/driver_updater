@@ -31,6 +31,7 @@ public partial class MainWindow : Window
         Translator.Translate(this); // before the menu copies the pages' titles
         VersionText.Text = $"version {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}";
         BuildNav();
+        ShowPinned();
         Loaded += async (_, _) =>
         {
             ShowLastScan();
@@ -311,7 +312,8 @@ public partial class MainWindow : Window
         ComponentsInstallButton.IsEnabled = !busy && componentRows.Any(r => r.CanInstall);
         InstallCatalogButton.IsEnabled = HideCatalogButton.IsEnabled = !busy && catalogDrivers.Count > 0;
         InstallButton.IsEnabled = HideButton.IsEnabled = !busy && drivers.Count > 0;
-        UpgradeSoftwareButton.IsEnabled = !busy && software.Count > 0;
+        UpgradeSoftwareButton.IsEnabled = PinSoftwareButton.IsEnabled = !busy && software.Count > 0;
+        UnpinSoftwareButton.IsEnabled = !busy;
         CleanTempButton.IsEnabled = !busy && tempScan is { Files.Count: > 0 };
     }
 

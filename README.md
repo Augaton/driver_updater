@@ -137,7 +137,11 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
 
 - **Mises à jour.** Les logiciels installés, mis à jour via winget. Un logiciel dont winget
   coupe le nom ne peut pas être désigné d'ici : la page le dit plutôt que de le taire.
-  « Arrêter » laisse finir le logiciel en cours.
+  « Arrêter » laisse finir le logiciel en cours. Un échec dit sa raison en clair (programme
+  ouvert, disque plein, réseau…), et une installation qui attend seulement un redémarrage compte
+  comme réussie. « Ne plus proposer » épingle un logiciel dans winget, qui ne le propose plus
+  (ici, chaque semaine, ni par « winget upgrade --all ») ; « Réafficher les logiciels écartés »
+  ne retire que les épinglages posés par l'application.
 - **Désinstaller.** Le désinstalleur du programme, puis les dossiers laissés derrière lui,
   mis à la corbeille, y compris pour un programme installé pour un seul utilisateur
   (`%LocalAppData%\Programs`). Un dossier qu'un autre programme installé utilise encore

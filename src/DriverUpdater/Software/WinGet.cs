@@ -53,6 +53,16 @@ public static class WinGet
         return code;
     }
 
+    /// <summary>
+    /// Pins a package: winget stops offering it, here as in "winget upgrade --all", until
+    /// <see cref="UnpinAsync"/>. Named on its own, "winget upgrade --id" still updates it.
+    /// </summary>
+    public static async Task<int> PinAsync(string id) =>
+        (await RunAsync(CancellationToken.None, "pin", "add", "--id", id, "--exact", "--accept-source-agreements", "--disable-interactivity")).ExitCode;
+
+    public static async Task<int> UnpinAsync(string id) =>
+        (await RunAsync(CancellationToken.None, "pin", "remove", "--id", id, "--exact", "--accept-source-agreements", "--disable-interactivity")).ExitCode;
+
     // Installs are never cut short (a half-run installer can break the program): they get no token.
     static async Task<(int ExitCode, string Output)> RunAsync(CancellationToken cancel, params string[] arguments)
     {

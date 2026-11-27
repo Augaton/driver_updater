@@ -106,6 +106,16 @@ public static class Settings
         set => Write("CatalogKept", value.ToArray());
     }
 
+    /// <summary>
+    /// The programs this app pinned in winget ("Ne plus proposer"): only those are unpinned by "Réafficher",
+    /// never a pin the user set elsewhere.
+    /// </summary>
+    public static IReadOnlySet<string> SoftwarePinned
+    {
+        get => ReadList("SoftwarePinned");
+        set => Write("SoftwarePinned", value.ToArray());
+    }
+
     static HashSet<string> ReadList(string name) =>
         (Read(name) as string[] ?? []).ToHashSet(StringComparer.OrdinalIgnoreCase);
 

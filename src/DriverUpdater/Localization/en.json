@@ -951,5 +951,18 @@
  "un redémarrage est nécessaire avant : redémarrez puis réessayez": "a restart is needed first: restart and try again",
  "une autre installation est en cours : réessayez quand elle aura fini": "another installation is running: try again when it is done",
  "une version plus récente est déjà installée": "a newer version is already installed",
- "épinglé : winget le garde tel quel": "pinned: winget keeps it as it is"
+ "épinglé : winget le garde tel quel": "pinned: winget keeps it as it is",
+ " Échec : {0}.": " Failed: {0}.",
+ "Ne plus proposer": "Stop offering",
+ "Ne plus proposer {0} logiciel(s) ?\n\nwinget les épingle : ils ne sont plus proposés, ici, par la vérification hebdomadaire ni par « winget upgrade --all ». ": "Stop offering {0} program(s)?\n\nwinget pins them: they are no longer offered, here, by the weekly check or by “winget upgrade --all”. ",
+ "« Réafficher les logiciels écartés » les fait revenir.": "“Show the set-aside programs again” brings them back.",
+ "Retrait des épinglages…": "Removing the pins…",
+ "Réafficher les logiciels écartés": "Show the set-aside programs again",
+ "n'est plus proposé (épinglé dans winget)": "no longer offered (pinned in winget)",
+ "{0} logiciel(s) de nouveau proposé(s) : « Rechercher » les montre.": "{0} program(s) offered again: “Search” shows them.",
+ "{0} logiciel(s) de nouveau proposé(s) par winget.": "{0} program(s) offered again by winget.",
+ "{0} logiciel(s) écarté(s) : winget ne les propose plus.": "{0} program(s) set aside: winget no longer offers them.",
+ "{0} logiciel(s) écarté(s).": "{0} program(s) set aside.",
+ "{0} logiciel(s) écarté(s). Échec : {1}.": "{0} program(s) set aside. Failed: {1}.",
+ "Épinglage dans winget…": "Pinning in winget…"
 }

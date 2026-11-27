@@ -1185,10 +1185,16 @@
                             Description="Via winget, le gestionnaire de logiciels intégré à Windows. Un logiciel à jour, c'est des failles de sécurité en moins. Windows peut demander une autorisation pour certains d'entre eux.">
             <StackPanel Orientation="Horizontal">
               <Button x:Name="SearchSoftwareButton" Content="Rechercher" Click="OnSearchSoftware" Margin="0,0,8,0" />
+              <Button x:Name="PinSoftwareButton" Content="Ne plus proposer" Click="OnPinSoftware" Margin="0,0,8,0" IsEnabled="False" />
               <Button x:Name="UpgradeSoftwareButton" Content="Mettre à jour la sélection" Style="{DynamicResource AccentButtonStyle}"
                       Click="OnUpgradeSoftware" IsEnabled="False" />
             </StackPanel>
           </local:PageHeader>
+          <!-- The programs "Ne plus proposer" pinned, and the way back. -->
+          <DockPanel x:Name="PinnedPanel" DockPanel.Dock="Bottom" Margin="0,0,0,12" Visibility="Collapsed">
+            <Button x:Name="UnpinSoftwareButton" DockPanel.Dock="Right" Content="Réafficher les logiciels écartés" Click="OnUnpinSoftware" />
+            <TextBlock x:Name="PinnedText" Style="{StaticResource Muted}" VerticalAlignment="Center" />
+          </DockPanel>
           <TextBlock x:Name="SoftwareNote" DockPanel.Dock="Bottom" Style="{StaticResource Muted}" TextWrapping="Wrap"
                      Margin="0,0,0,12" Visibility="Collapsed" />
           <Border Style="{StaticResource Card}" Padding="0">

@@ -55,7 +55,65 @@ public partial class MainWindow
         SoftwareGrid.ItemsSource = software;
         SoftwarePlaceholder.Text = L.T("Aucun logiciel à mettre à jour.");
         SoftwarePlaceholder.Visibility = software.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ShowPinned();
         UpdateButtons();
+    }
+
+    async void OnPinSoftware(object sender, RoutedEventArgs e)
+    {
+        var selected = software.Where(s => s.Selected).ToList();
+        if (selected.Count == 0)
+        {
+            SetStatus(L.T("Cochez au moins un logiciel."));
+            return;
+        }
+        if (Ask(L.F("Ne plus proposer {0} logiciel(s) ?\n\nwinget les épingle : ils ne sont plus proposés, ici, par la vérification hebdomadaire ni par « winget upgrade --all ». ", selected.Count) +
+                L.T("« Réafficher les logiciels écartés » les fait revenir.")) != MessageBoxResult.Yes)
+            return;
+
+        await RunBusy(L.T("Épinglage dans winget…"), async () =>
+        {
+            var pinned = new List<SoftwareUpdate>();
+            var failed = new List<string>();
+            foreach (var app in selected)
+            {
+                int code = await WinGet.PinAsync(app.Id);
+                if (code == 0) pinned.Add(app);
+                else failed.Add(WingetResults.Failure(app.Name, code));
+            }
+            Settings.SoftwarePinned = Settings.SoftwarePinned.Union(pinned.Select(p => p.Id), StringComparer.OrdinalIgnoreCase).ToHashSet();
+            foreach (var app in pinned) Journal.Add(Journal.Software, L.F("{0} : {1}", app.Name, L.T("n'est plus proposé (épinglé dans winget)")));
+            ShowSoftware(software.Except(pinned).ToList());
+            return failed.Count == 0
+                ? L.F("{0} logiciel(s) écarté(s).", pinned.Count)
+                : L.F("{0} logiciel(s) écarté(s). Échec : {1}.", pinned.Count, string.Join(", ", failed));
+        });
+    }
+
+    async void OnUnpinSoftware(object sender, RoutedEventArgs e)
+    {
+        var ids = Settings.SoftwarePinned.ToList();
+        await RunBusy(L.T("Retrait des épinglages…"), async () =>
+        {
+            var failed = new List<string>();
+            foreach (var id in ids)
+                if (await WinGet.UnpinAsync(id) is not 0 and var code) failed.Add(WingetResults.Failure(id, code));
+            // Forgotten either way: a pin that fails to go is most often one removed elsewhere already.
+            Settings.SoftwarePinned = new HashSet<string>();
+            Journal.Add(Journal.Software, L.F("{0} logiciel(s) de nouveau proposé(s) par winget.", ids.Count - failed.Count));
+            ShowPinned();
+            upgrades = null; // the next look asks winget again
+            return L.F("{0} logiciel(s) de nouveau proposé(s) : « Rechercher » les montre.", ids.Count - failed.Count)
+                   + (failed.Count > 0 ? L.F(" Échec : {0}.", string.Join(", ", failed)) : "");
+        });
+    }
+
+    /// <summary>How many programs this app stopped winget offering, and the way back.</summary>
+    void ShowPinned()
+    {
+        int count = Settings.SoftwarePinned.Count;
+        PinnedPanel.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        PinnedText.Text = L.F("{0} logiciel(s) écarté(s) : winget ne les propose plus.", count);
     }
 
     async void OnUpgradeSoftware(object sender, RoutedEventArgs e)

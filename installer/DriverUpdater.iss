@@ -32,7 +32,7 @@ UninstallDisplayIcon={app}\DriverUpdater.exe
 UninstallDisplayName=Driver Updater
 ; Intended: uninstalling clears what the weekly check stored for this user (HKCU).
 UsedUserAreasWarning=no
-; The look of the app: dark, neon, its own icon and artwork (installer\art\make-art.py).
+; The look of the app in its dark theme: its own icon and artwork (installer\art\make-art.py).
 WizardStyle=modern dark hidebevels
 WizardImageFile=art\wizard.bmp,art\wizard-200.bmp
 WizardSmallImageFile=art\small.bmp,art\small-200.bmp

@@ -135,6 +135,9 @@ public static class AdminHelper
             case AdminCommand.RestorePoints:
                 return await Task.Run(SystemInfo.RestorePoints);
 
+            case AdminCommand.CleanLeftovers:
+                return await WindowsLeftovers.CleanAsync(channel.Progress);
+
             case AdminCommand.RestoreEnable:
                 return await Task.Run(SystemInfo.EnableRestoreProtection);
 

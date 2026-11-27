@@ -999,5 +999,20 @@
  "Jeux": "Games",
  "Jeux {0}": "{0} games",
  "{0} jeu(x) sur un disque dur : {1}": "{0} game(s) on a hard disk: {1}",
- "{0} jeu(x), aucun sur un disque dur": "{0} game(s), none on a hard disk"
+ "{0} jeu(x), aucun sur un disque dur": "{0} game(s), none on a hard disk",
+ "Cache de l'Optimisation de distribution vidé : {0} libérés.": "Delivery Optimization cache emptied: {0} freed.",
+ "Ce que Windows laisse grossir": "What Windows lets grow",
+ "Corbeille vidée : {0} libérés.": "Recycle Bin emptied: {0} freed.",
+ "La corbeille ; les vidages de plantage, dont ceux de moins de 30 jours restent (ils expliquent un plantage récent) ; le cache de l'Optimisation de distribution, des mises à jour déjà installées gardées pour les partager, que Windows refait au besoin.": "The Recycle Bin; crash dumps, of which those under 30 days old stay (they explain a recent crash); the Delivery Optimization cache, updates already installed kept to share them, which Windows remakes when needed.",
+ "La corbeille contient {0} élément(s), {1}.": "The Recycle Bin holds {0} item(s), {1}.",
+ "La corbeille est vide.": "The Recycle Bin is empty.",
+ "Le cache de l'Optimisation de distribution n'a pas pu être vidé.": "The Delivery Optimization cache could not be emptied.",
+ "Suppression des anciens vidages de plantage…": "Deleting old crash dumps…",
+ "Vidage de la corbeille…": "Emptying the Recycle Bin…",
+ "Vidage du cache de l'Optimisation de distribution…": "Emptying the Delivery Optimization cache…",
+ "Vidages et cache des mises à jour": "Dumps and update cache",
+ "Vider la corbeille": "Empty the Recycle Bin",
+ "Vider la corbeille ({0} élément(s), {1}) ?\n\nIls ne pourront plus être récupérés.": "Empty the Recycle Bin ({0} item(s), {1})?\n\nThey can no longer be recovered.",
+ "Windows demandera l'autorisation administrateur.": "Windows will ask for administrator permission.",
+ "{0} vidage(s) de plantage supprimé(s), {1} libérés. ": "{0} crash dump(s) deleted, {1} freed. "
 }

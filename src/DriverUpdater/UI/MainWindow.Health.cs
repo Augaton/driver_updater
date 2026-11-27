@@ -223,6 +223,42 @@ public partial class MainWindow
             return L.T("Nettoyage terminé.");
         });
 
+    long recycleItems;
+
+    /// <summary>What the recycle bin holds, read again at each visit of the page.</summary>
+    void ShowRecycleBin()
+    {
+        var (items, bytes) = RecycleBin.Query();
+        recycleItems = items;
+        RecycleStatus.Text = items == 0 ? L.T("La corbeille est vide.") : L.F("La corbeille contient {0} élément(s), {1}.", items, Bytes.Format(bytes));
+        UpdateButtons();
+    }
+
+    async void OnEmptyRecycleBin(object sender, RoutedEventArgs e)
+    {
+        var (items, bytes) = RecycleBin.Query();
+        if (items == 0 || Ask(L.F("Vider la corbeille ({0} élément(s), {1}) ?\n\nIls ne pourront plus être récupérés.", items, Bytes.Format(bytes))) != MessageBoxResult.Yes)
+            return;
+        await RunBusy(L.T("Vidage de la corbeille…"), async () =>
+        {
+            await Task.Run(RecycleBin.Empty);
+            ShowRecycleBin();
+            return Logged(Journal.Cleanup, L.F("Corbeille vidée : {0} libérés.", Bytes.Format(bytes)));
+        });
+    }
+
+    async void OnCleanLeftovers(object sender, RoutedEventArgs e) =>
+        await RunBusy(L.T("En attente de l'autorisation administrateur…"), async () =>
+        {
+            var report = await RunAdminAsync<LeftoversReport>(AdminCommand.CleanLeftovers);
+            LeftoversStatus.Text = L.F("{0} vidage(s) de plantage supprimé(s), {1} libérés. ", report.Dumps, Bytes.Format(report.DumpBytes))
+                                   + (report.CacheCleared
+                                       ? L.F("Cache de l'Optimisation de distribution vidé : {0} libérés.", Bytes.Format(report.CacheBytes))
+                                       : L.T("Le cache de l'Optimisation de distribution n'a pas pu être vidé."));
+            Journal.Add(Journal.Cleanup, LeftoversStatus.Text);
+            return L.T("Nettoyage terminé.");
+        });
+
     static string Describe(TempCleaner.CleanResult result) =>
         L.F("{0} libérés ({1} fichier(s)). ", Bytes.Format(result.FreedBytes), result.Deleted) +
         L.F("{0} laissé(s) en place : en cours d'utilisation, modifiés ou protégés.", result.Skipped);

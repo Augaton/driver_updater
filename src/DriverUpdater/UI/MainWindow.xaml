@@ -1155,6 +1155,23 @@
 
             <Border Style="{StaticResource Card}">
               <StackPanel>
+                <TextBlock Text="Ce que Windows laisse grossir" Style="{StaticResource Heading}" FontSize="17" />
+                <TextBlock Style="{StaticResource Muted}"
+                           Text="La corbeille ; les vidages de plantage, dont ceux de moins de 30 jours restent (ils expliquent un plantage récent) ; le cache de l'Optimisation de distribution, des mises à jour déjà installées gardées pour les partager, que Windows refait au besoin." />
+                <DockPanel Margin="0,10,0,0">
+                  <Button x:Name="EmptyRecycleButton" DockPanel.Dock="Right" Content="Vider la corbeille" Click="OnEmptyRecycleBin" Margin="12,0,0,0" />
+                  <TextBlock x:Name="RecycleStatus" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </DockPanel>
+                <DockPanel Margin="0,10,0,0">
+                  <Button x:Name="CleanLeftoversButton" DockPanel.Dock="Right" Content="Vidages et cache des mises à jour" Click="OnCleanLeftovers" Margin="12,0,0,0" />
+                  <TextBlock x:Name="LeftoversStatus" Style="{StaticResource Muted}" VerticalAlignment="Center"
+                             Text="Windows demandera l'autorisation administrateur." />
+                </DockPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
                 <TextBlock Text="Espace réservé par Windows" Style="{StaticResource Heading}" FontSize="17" />
                 <ItemsControl x:Name="TweakListSpace" ItemTemplate="{StaticResource TweakRowTemplate}" Margin="0,8,0,0" />
               </StackPanel>

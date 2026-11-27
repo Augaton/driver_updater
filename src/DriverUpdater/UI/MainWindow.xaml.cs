@@ -66,6 +66,7 @@ public partial class MainWindow : Window
         ShowInNav(tab);
         if (tab == JournalTab) await ShowJournal(); // changes come from every page: read again each time
         if (tab == RestoreTab) ShowRestoreProtection(); // the "Faux boosts" page can change it
+        if (tab == CleanupTab) ShowRecycleBin(); // files are deleted all the time
         if (!openedTabs.Add(tab)) return;
         if (tab == DisksTab) await Task.WhenAll(LoadDisks(), LoadBatteries());
         else if (tab == SecurityTab) await (fullSecurity ??= LoadSecurity(askWindowsUpdate: true));
@@ -300,7 +301,7 @@ public partial class MainWindow : Window
         foreach (var button in new[]
                  {
                      SearchButton, UnhideButton, SearchSoftwareButton, HealthDetailsButton, ScanTempButton,
-                     CleanWindowsTempButton, SfcButton, RepairWindowsButton, DismCleanupButton, BackupButton, RestoreBackupButton,
+                     CleanWindowsTempButton, CleanLeftoversButton, SfcButton, RepairWindowsButton, DismCleanupButton, BackupButton, RestoreBackupButton,
                      SearchCatalogButton, UnhideCatalogButton, UninstallButton, FindLeftoversButton, RecycleButton, RefreshStartupButton,
                      BootReportButton, MeasureButton, MeasureGameButton, ScanButton, RefreshInventoryButton, StoreScanButton, DeviceBannerButton,
                      GpuCheckButton, ComponentsCheckButton, TuneAllButton, TuningRefreshButton, RollbackButton, PrivacyAllButton, FakeBoostsScanButton, FakeBoostsAllButton,
@@ -316,6 +317,7 @@ public partial class MainWindow : Window
         UpgradeSoftwareButton.IsEnabled = PinSoftwareButton.IsEnabled = !busy && software.Count > 0;
         UnpinSoftwareButton.IsEnabled = !busy;
         CleanTempButton.IsEnabled = !busy && tempScan is { Files.Count: > 0 };
+        EmptyRecycleButton.IsEnabled = !busy && recycleItems > 0;
     }
 
     void SetStatus(string text)

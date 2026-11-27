@@ -139,7 +139,9 @@ dès l'ouverture, et le bandeau du bas suit ce qui est fait sur les autres pages
   de 24 heures.
 - **Disques et batterie.** État, usure et température des disques, santé de la batterie.
 - **Nettoyage.** Fichiers temporaires de plus de 2 jours, anciennes versions des composants
-  de Windows (DISM), mise en veille prolongée. Pas de « nettoyage du registre ».
+  de Windows (DISM), mise en veille prolongée, corbeille, vidages de plantage de plus de
+  30 jours (les récents restent : ils expliquent un plantage), cache de l'Optimisation de
+  distribution (vidé par la commande de Windows). Pas de « nettoyage du registre ».
 - **Réparer Windows.** Les outils de Microsoft dans l'ordre qu'il conseille, sous une seule
   autorisation : DISM répare l'image de Windows, puis SFC les fichiers système, avec un verdict
   pour les deux. SFC seul reste à portée, plus rapide.

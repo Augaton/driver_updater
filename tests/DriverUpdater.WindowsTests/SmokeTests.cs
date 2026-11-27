@@ -39,7 +39,10 @@ public sealed class SmokeTests
                 // The captures in French, or in English when the pipeline asks (DRIVERUPDATER_LANG=en).
                 var language = Environment.GetEnvironmentVariable("DRIVERUPDATER_LANG") ?? "fr";
                 App.UseLanguage(language);
-                app.ApplyTheme();
+                // Dark whatever this PC uses, or light when the pipeline asks (DRIVERUPDATER_THEME=light):
+                // the readability check below then covers that palette.
+                var light = Environment.GetEnvironmentVariable("DRIVERUPDATER_THEME") == "light";
+                app.ApplyTheme(light);
                 var window = new MainWindow
                 {
                     WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = 0,
@@ -72,7 +75,7 @@ public sealed class SmokeTests
                     window.Tabs.SelectedItem = tab;
                     Settle(root);
                     Assert.Same(tab, (window.Nav.SelectedItem as TreeViewItem)?.Tag); // the menu follows the page
-                    var prefix = language == "en" ? "en-" : "";
+                    var prefix = (language == "en" ? "en-" : "") + (light ? "light-" : "");
                     Save(Render(root, background), Path.Combine(folder, $"{prefix}{++index:00}-{tab.Name}.png"));
                     AssertAccessible(tab);
                     if (language == "en") AssertNoFrenchLeft(root);

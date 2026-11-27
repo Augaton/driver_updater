@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace DriverUpdater.UI;
 
@@ -29,12 +28,13 @@ public sealed class TweakRow
     };
     public string Glyph => Info && State == TweakState.NotApplied ? ""
         : State == TweakState.Applied ? "" : State == TweakState.NotApplicable ? "" : "";
-    public Brush Color => (Brush)Application.Current.FindResource(Info && State == TweakState.NotApplied ? "Accent" : State switch
+    /// <summary>The palette key of the state's color (UI/ThemeColor.cs).</summary>
+    public string ColorKey => Info && State == TweakState.NotApplied ? "Accent" : State switch
     {
         TweakState.Applied => "Success",
         TweakState.NotApplied => "Caution",
         _ => "InkMuted",
-    });
+    };
     public string Why => Note is null ? Tweak.Why : $"{Tweak.Why} {Note}";
     public string Badges => string.Concat(
         Tweak.NeedsAdmin ? "   ADMIN" : "",
@@ -49,7 +49,8 @@ public sealed class CheckRow(PcCheck check)
     public string? ActionText => Check.ActionText;
     public string? Action => Check.Action;
     public string Glyph => Check.NeedsAttention ? "" : "";
-    public Brush Color => (Brush)Application.Current.FindResource(Check.NeedsAttention ? "Caution" : "Success");
+    /// <summary>The palette key of the state's color (UI/ThemeColor.cs).</summary>
+    public string ColorKey => Check.NeedsAttention ? "Caution" : "Success";
 }
 
 public sealed class GameRow(InstalledGame game)

@@ -21,11 +21,12 @@ public sealed class KeepDisplayDialog : Window
         SizeToContent = SizeToContent.WidthAndHeight;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = (System.Windows.Media.Brush)FindResource("Panel");
-        Foreground = (System.Windows.Media.Brush)FindResource("Ink");
+        SetResourceReference(BackgroundProperty, "Panel");
+        SetResourceReference(ForegroundProperty, "Ink");
 
         var message = new TextBlock { Text = L.F("{0}. L'image s'affiche-t-elle bien ?", change), TextWrapping = TextWrapping.Wrap, MaxWidth = 420, FontSize = 14 };
-        var timer = new TextBlock { Foreground = (System.Windows.Media.Brush)FindResource("InkMuted"), Margin = new Thickness(0, 6, 0, 16) };
+        var timer = new TextBlock { Margin = new Thickness(0, 6, 0, 16) };
+        timer.SetResourceReference(TextBlock.ForegroundProperty, "InkMuted");
         // Enter, pressed blindly on a black screen, goes back: keeping takes a deliberate click.
         var keep = new Button { Content = L.T("Garder"), Margin = new Thickness(0, 0, 8, 0), MinWidth = 100 };
         var revert = new Button { Content = L.T("Revenir"), IsDefault = true, IsCancel = true, MinWidth = 100 };

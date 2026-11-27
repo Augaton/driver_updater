@@ -1,7 +1,6 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using Microsoft.Win32;
 
 namespace DriverUpdater.UI;
@@ -22,13 +21,14 @@ public sealed record SecurityRow(string Title, string Detail, SecurityLevel Leve
         _ => "", // info
     };
 
-    public Brush Color => (Brush)Application.Current.FindResource(Level switch
+    /// <summary>The palette key of the state's color (UI/ThemeColor.cs).</summary>
+    public string ColorKey => Level switch
     {
         SecurityLevel.Good => "Success",
         SecurityLevel.ToDo => "Caution",
         SecurityLevel.Bad => "Critical",
         _ => "InkMuted",
-    });
+    };
 }
 
 // "Santé et nettoyage" and "Sauvegarde" tabs.

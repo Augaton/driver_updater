@@ -69,6 +69,12 @@ jobs:
           DRIVERUPDATER_LANG: en
         run: dotnet test tests/DriverUpdater.WindowsTests -c Release --no-build --filter "FullyQualifiedName~Main_window_loads_and_every_section_renders"
 
+      # And in Windows' light theme, prefixed "light-": the readability check covers that palette too.
+      - name: Light captures
+        env:
+          DRIVERUPDATER_THEME: light
+        run: dotnet test tests/DriverUpdater.WindowsTests -c Release --no-build --filter "FullyQualifiedName~Main_window_loads_and_every_section_renders"
+
       # Every section of the window, rendered by the tests: the look can be checked from here.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

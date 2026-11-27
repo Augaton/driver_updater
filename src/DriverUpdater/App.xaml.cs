@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Microsoft.Win32;
 
 namespace DriverUpdater;
 
@@ -36,6 +37,7 @@ public partial class App : Application
             try
             {
                 new MainWindow().Show();
+                FollowWindowsTheme();
             }
             catch (Exception ex)
             {
@@ -130,37 +132,107 @@ public partial class App : Application
     public static void UseLanguage(string language) => L.Use(language);
 
     /// <summary>
-    /// Windows 11 controls in their dark variant, with the accent color chosen in Windows. Set here rather than in
-    /// App.xaml so it merges into the resources App.xaml has already loaded instead of racing them. With high contrast
-    /// on, Windows' own colors instead: the user chose them to be able to read at all.
+    /// The palette, each color with its dark and light value: Windows 11's neutral grays, the overlays of a hovered
+    /// or chosen item, and the state colors (on the light side a step deeper than Windows' own, so they keep 4.5:1
+    /// on a chosen table row too). Accent and Chart come from the accent chosen in Windows (<see cref="ApplyTheme"/>).
     /// </summary>
-    public void ApplyTheme()
+    static readonly (string Key, string? Dark, string? Light)[] Palette =
+    [
+        ("Void", "#202020", "#F3F3F3"), // window and pages
+        ("Chrome", "#1B1B1B", "#EBEBEB"), // menu and status bar
+        ("Panel", "#2B2B2B", "#FBFBFB"), // cards
+        ("Edge", "#383838", "#E0E0E0"), // borders and dividers
+        ("Ink", "#F3F3F3", "#1B1B1B"),
+        ("InkMuted", "#ADADAD", "#5C5C5C"),
+        ("SubtleHover", "#0AFFFFFF", "#09000000"),
+        ("SubtleSelected", "#14FFFFFF", "#0F000000"),
+        ("SubtlePressed", "#06FFFFFF", "#05000000"),
+        ("Success", "#6CCB5F", "#0E6E0E"),
+        ("Caution", "#FCE100", "#8A5100"),
+        ("Critical", "#FF99A4", "#B42719"),
+    ];
+
+    /// <summary>
+    /// The Fluent theme's own keys, matched to the palette: its cards, and a chosen table row in a neutral gray rather
+    /// than the accent fill, on which the states drawn in their own color could not be read. On light, its disabled
+    /// controls too: Windows fades them below 3:1, where they can no longer be read. The theme copies a base key into
+    /// each control's own when it loads, so those are named one by one. Null keeps the theme's own.
+    /// </summary>
+    static readonly (string Key, string? Dark, string? Light)[] FluentKeys =
+    [
+        ("CardBackgroundFillColorDefaultBrush", "#2B2B2B", "#FBFBFB"),
+        ("CardStrokeColorDefaultBrush", "#383838", "#E0E0E0"),
+        ("TextFillColorSecondaryBrush", "#ADADAD", "#5C5C5C"),
+        ("DataGridRowSelectedBackgroundThemeBrush", "#3D3D3D", "#E5E5E5"),
+        ("DataGridRowSelectedForegroundThemeBrush", "#F3F3F3", "#1B1B1B"),
+        ("TextFillColorDisabledBrush", null, "#767676"),
+        ("ButtonForegroundDisabled", null, "#767676"),
+        ("CheckBoxForegroundUncheckedDisabled", null, "#767676"),
+        ("AccentButtonBackgroundDisabled", null, "#E0E0E0"),
+        ("AccentButtonForegroundDisabled", null, "#6E6E6E"),
+    ];
+
+    (bool HighContrast, bool Light, Color Accent)? appliedTheme;
+
+    /// <summary>
+    /// The Windows 11 controls and the palette in the theme Windows gives apps, light or dark, with the accent chosen
+    /// in Windows. Set here rather than in App.xaml so it merges into the resources App.xaml has already loaded
+    /// instead of racing them; the palette goes in the application's own resources, where its keys win over the
+    /// Fluent theme's dictionary. With high contrast on, Windows' own colors instead: the user chose them to be able
+    /// to read at all.
+    /// </summary>
+    /// <param name="light">Light or dark whatever Windows says (the window test); null follows Windows.</param>
+    public void ApplyTheme(bool? light = null)
     {
-        if (!SystemParameters.HighContrast)
-        {
-            ThemeMode = ThemeMode.Dark;
-            // The light variants of the accent: the ones Windows 11 itself draws on a dark surface. Light2 is the
-            // theme's accent button, so the menu mark and the states match the buttons.
-            Resources["Accent"] = Frozen(SystemColors.AccentColorLight2);
-            Resources["Chart"] = Frozen(SystemColors.AccentColorLight1);
-        }
-        else
+        (bool HighContrast, bool Light, Color Accent) theme = (SystemParameters.HighContrast, light ?? WindowsUsesLightTheme(), SystemColors.AccentColor);
+        if (theme == appliedTheme) return;
+        appliedTheme = theme;
+        if (theme.HighContrast)
         {
             ThemeMode = ThemeMode.System; // the Fluent controls in their high contrast variant
-            // The palette, before any window reads it: each page's text, surfaces and states.
             foreach (var key in new[] { "Void", "Chrome", "Panel" }) Resources[key] = SystemColors.WindowBrush;
             foreach (var key in new[] { "Ink", "InkMuted", "Edge" }) Resources[key] = SystemColors.WindowTextBrush;
-            foreach (var key in new[] { "Accent", "Chart", "Success", "Caution", "Critical" })
-                Resources[key] = SystemColors.HotTrackBrush;
-            // The Fluent theme's own high contrast colors, rather than the dark palette's.
-            foreach (var key in new[]
-                     {
-                         "CardBackgroundFillColorDefaultBrush", "CardStrokeColorDefaultBrush", "TextFillColorSecondaryBrush",
-                         "DataGridRowSelectedBackgroundThemeBrush", "DataGridRowSelectedForegroundThemeBrush",
-                     })
-                Resources.Remove(key);
+            foreach (var key in new[] { "Accent", "Chart", "Success", "Caution", "Critical" }) Resources[key] = SystemColors.HotTrackBrush;
+            foreach (var key in new[] { "SubtleHover", "SubtleSelected", "SubtlePressed" }) Resources[key] = Brushes.Transparent;
+            foreach (var (key, _, _) in FluentKeys) Resources.Remove(key); // the theme's own high contrast colors
+            return;
         }
+        ThemeMode = theme.Light ? ThemeMode.Light : ThemeMode.Dark;
+        foreach (var (key, dark, lightValue) in Palette.Concat(FluentKeys))
+            if ((theme.Light ? lightValue : dark) is { } hex) Resources[key] = Frozen(hex);
+            else Resources.Remove(key);
+        // The variants of the accent Windows 11 itself draws on that surface: its lighter ones on dark, its darker
+        // ones on light. The first is the theme's accent button, so the menu mark and the states match the buttons.
+        Resources["Accent"] = Frozen(theme.Light ? SystemColors.AccentColorDark1 : SystemColors.AccentColorLight2);
+        Resources["Chart"] = Frozen(theme.Light ? SystemColors.AccentColorDark1 : SystemColors.AccentColorLight1);
     }
+
+    /// <summary>The app mode chosen in Windows (Personalization, Colors); light when unset, as for Windows itself.</summary>
+    static bool WindowsUsesLightTheme()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+        return key?.GetValue("AppsUseLightTheme") is not int value || value != 0;
+    }
+
+    /// <summary>Raised once a change of theme in Windows is applied, for what draws itself (the gauges).</summary>
+    public static event Action? ThemeChanged;
+
+    /// <summary>
+    /// A change of theme, accent or high contrast in Windows repaints the open window, which reads the palette as
+    /// DynamicResource. Windows announces it as a change of "general" settings (ImmersiveColorSet), of colors, or of
+    /// accessibility; <see cref="ApplyTheme"/> skips the many that change nothing here.
+    /// </summary>
+    void FollowWindowsTheme() =>
+        SystemEvents.UserPreferenceChanged += (_, args) =>
+        {
+            if (args.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color or UserPreferenceCategory.Accessibility)
+                Dispatcher.BeginInvoke(() =>
+                {
+                    var before = appliedTheme;
+                    ApplyTheme();
+                    if (appliedTheme != before) ThemeChanged?.Invoke();
+                });
+        };
 
     static SolidColorBrush Frozen(Color color)
     {
@@ -168,6 +240,8 @@ public partial class App : Application
         brush.Freeze();
         return brush;
     }
+
+    static SolidColorBrush Frozen(string hex) => Frozen((Color)ColorConverter.ConvertFromString(hex));
 
     void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {

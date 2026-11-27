@@ -1,7 +1,7 @@
 # Driver Updater
 
 Petite application Windows 10/11, dans l'esprit de Driver Booster, mais honnête :
-elle ne propose que ce qui marche vraiment. En français ou en anglais.
+elle ne propose que ce qui marche vraiment. En français ou en anglais, claire ou sombre comme Windows.
 
 ## Ce qu'elle fait
 
@@ -287,7 +287,7 @@ compile, lance tous les tests (y compris ceux qui interrogent le vrai Windows et
 aller-retour réel avec le module administrateur), publie, construit l'installateur, puis
 l'installe et le désinstalle pour de vrai. Le test de la fenêtre la parcourt comme un
 utilisateur (menu, branches, bandeau de l'accueil), vérifie que chaque contrôle a un nom pour les lecteurs
-d'écran, et garde une capture de chaque page, en français puis en anglais : elles sont
+d'écran, et garde une capture de chaque page, en français, en anglais et en thème clair : elles sont
 jointes à chaque exécution (artefact `screenshots`). Dependabot tient à jour les actions et
 les paquets.
 
@@ -345,7 +345,7 @@ le pipeline.
 | `Common/` | Textes et langue (`L.cs`), paramètres, journal des changements, messages d'erreur, tailles, nouvelle version de l'application, signatures Authenticode, opérations sur fichiers sûres en administrateur |
 | `Localization/` | `en.json` : l'anglais de chaque texte français |
 | `UI/` | La fenêtre, son menu en arbre (`MainWindow.Nav.cs`), un fichier par domaine (`MainWindow.Home.cs`, `.Games.cs`…), l'en-tête commun des pages, la jauge, la traduction des textes du XAML, la question « garder cet affichage ? » |
-| (racine) | `App.xaml` (thème : le sombre de Windows 11, l'accent choisi dans Windows), manifeste, icône, projet |
+| (racine) | `App.xaml` et `App.xaml.cs` (thème : clair ou sombre comme Windows 11, avec l'accent choisi dans Windows), manifeste, icône, projet |
 
 | Ailleurs | Contenu |
 |---|---|
@@ -353,4 +353,4 @@ le pipeline.
 | `installer/art/make-art.py` | Dessine l'icône et les images de l'installateur |
 | `build/sign.ps1` | Signature avec votre propre certificat |
 | `tests/DriverUpdater.Tests` | Tests portables : nettoyeur, commandes administrateur, catalogue, rapport, restes, démarrage, verdicts, composants, réglages et leur annulation, cfg de jeu, sécurité, mise à jour, règles du matériel (XMP, écrans), réponses de NVIDIA (Game Ready et Studio), faux boosts, carte graphique des portables, vérification hebdomadaire, temps de démarrage gagné, journal, traduction complète |
-| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre parcourue comme un utilisateur, accessibilité, capture de chaque section en français et en anglais, réglages dans le vrai registre, signatures Authenticode, service de NVIDIA, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |
+| `tests/DriverUpdater.WindowsTests` | Tests sur le vrai Windows : fenêtre parcourue comme un utilisateur, accessibilité, capture de chaque section en français, en anglais et en clair, avec le contraste de chaque texte, réglages dans le vrai registre, signatures Authenticode, service de NVIDIA, WMI, Windows Update, tâche planifiée, module administrateur, compteurs de performance, magasin de pilotes, catalogue en direct |

@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:DriverUpdater.UI"
         Title="Driver Updater" Width="1240" Height="800" MinWidth="1000" MinHeight="620"
         WindowStartupLocation="CenterScreen" FontSize="13" FontFamily="Segoe UI Variable Text, Segoe UI"
-        Background="{StaticResource Void}" Foreground="{StaticResource Ink}">
+        Background="{DynamicResource Void}" Foreground="{DynamicResource Ink}">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="VisibleIf" />
     <!-- One hardware check of "Réglages de jeu": what needs doing, and what is fine (folded away). -->
@@ -14,7 +14,7 @@
           <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding Action}" Click="OnCheckAction"
                   VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
           <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
-                     Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                     local:ThemeColor.Foreground="{Binding ColorKey}" VerticalAlignment="Center" Margin="0,0,14,0" />
           <StackPanel>
             <TextBlock TextWrapping="Wrap">
               <Run Text="{Binding Check.Title, Mode=OneWay}" FontWeight="SemiBold" />
@@ -32,11 +32,11 @@
           <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding}" Click="OnTweakAction" IsEnabled="{Binding CanAct}"
                   VerticalAlignment="Center" MinWidth="120" Margin="12,0,0,0" Visibility="{Binding HasAction, Converter={StaticResource VisibleIf}}" />
           <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
-                     Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                     local:ThemeColor.Foreground="{Binding ColorKey}" VerticalAlignment="Center" Margin="0,0,14,0" />
           <StackPanel>
             <TextBlock TextWrapping="Wrap">
               <Run Text="{Binding Tweak.Title, Mode=OneWay}" FontWeight="SemiBold" />
-              <Run Text="{Binding Badges, Mode=OneWay}" Foreground="{StaticResource InkMuted}" FontSize="11" />
+              <Run Text="{Binding Badges, Mode=OneWay}" Foreground="{DynamicResource InkMuted}" FontSize="11" />
             </TextBlock>
             <TextBlock Text="{Binding Why}" Style="{StaticResource Muted}" />
           </StackPanel>
@@ -60,10 +60,10 @@
     </Grid.ColumnDefinitions>
 
     <!-- The menu: a tree built from the pages below, one branch per group (MainWindow.Nav.cs). -->
-    <Border Background="{StaticResource Chrome}" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,1,0">
+    <Border Background="{DynamicResource Chrome}" BorderBrush="{DynamicResource Edge}" BorderThickness="0,0,1,0">
       <DockPanel>
         <TextBlock DockPanel.Dock="Top" Text="Driver Updater" FontFamily="{StaticResource Display}" FontSize="18" Margin="25,20,18,8" />
-        <TextBlock x:Name="VersionText" DockPanel.Dock="Bottom" Foreground="{StaticResource InkMuted}" FontSize="11" Margin="25,6,0,14" />
+        <TextBlock x:Name="VersionText" DockPanel.Dock="Bottom" Foreground="{DynamicResource InkMuted}" FontSize="11" Margin="25,6,0,14" />
         <TreeView x:Name="Nav" Style="{StaticResource NavTree}" SelectedItemChanged="OnNavSelected"
                   AutomationProperties.Name="Sections de l'application" />
       </DockPanel>
@@ -126,13 +126,13 @@
                 <!-- While the scan runs, along the top of the report. -->
                 <ProgressBar x:Name="ScanProgress" DockPanel.Dock="Top" Height="3" IsIndeterminate="True" Visibility="Collapsed"
                              Margin="8,0" />
-                <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="{StaticResource Edge}" BorderThickness="0,0,0,1">
+                <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="{DynamicResource Edge}" BorderThickness="0,0,0,1">
                   <DockPanel>
                     <Button x:Name="UpdateAllButton" DockPanel.Dock="Right" Content="Mettre à jour la sélection"
                             Style="{DynamicResource AccentButtonStyle}" Click="OnUpdateAll" IsEnabled="False" />
                     <CheckBox x:Name="ShowUpToDate" DockPanel.Dock="Right" Content="Afficher aussi les pilotes à jour"
                               Click="OnShowUpToDate" VerticalAlignment="Center" Margin="0,0,16,0" />
-                    <TextBlock x:Name="ScanStatus" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{StaticResource InkMuted}"
+                    <TextBlock x:Name="ScanStatus" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource InkMuted}"
                                Text="« Analyser les pilotes » compare chaque pilote aux dernières versions de Windows Update et des fabricants." />
                   </DockPanel>
                 </Border>
@@ -154,22 +154,22 @@
                         <DataGridTemplateColumn.CellTemplate>
                           <DataTemplate>
                             <TextBlock x:Name="State" Text="{Binding VerdictText}" FontWeight="SemiBold" VerticalAlignment="Center"
-                                       Foreground="{StaticResource Success}" />
+                                       Foreground="{DynamicResource Success}" />
                             <DataTemplate.Triggers>
                               <DataTrigger Binding="{Binding Verdict}" Value="Update">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource Accent}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{DynamicResource Accent}" />
                               </DataTrigger>
                               <DataTrigger Binding="{Binding Verdict}" Value="NoDriver">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource Caution}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{DynamicResource Caution}" />
                               </DataTrigger>
                               <DataTrigger Binding="{Binding Verdict}" Value="Problem">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource Critical}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{DynamicResource Critical}" />
                               </DataTrigger>
                               <DataTrigger Binding="{Binding Verdict}" Value="Disabled">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource InkMuted}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{DynamicResource InkMuted}" />
                               </DataTrigger>
                               <DataTrigger Binding="{Binding Verdict}" Value="Unchecked">
-                                <Setter TargetName="State" Property="Foreground" Value="{StaticResource InkMuted}" />
+                                <Setter TargetName="State" Property="Foreground" Value="{DynamicResource InkMuted}" />
                               </DataTrigger>
                             </DataTemplate.Triggers>
                           </DataTemplate>
@@ -203,7 +203,7 @@
                 <Button Grid.Column="0" Style="{StaticResource StatusCell}" Tag="SoftwareTab" Click="OnTile" AutomationProperties.Name="Logiciels à mettre à jour">
                   <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="&#xE71D;" FontFamily="{StaticResource Icons}" FontSize="20"
-                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                               Foreground="{DynamicResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
                     <StackPanel>
                       <TextBlock Text="Logiciels" Style="{StaticResource Caption}" />
                       <TextBlock x:Name="TileSoftwareValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
@@ -211,11 +211,11 @@
                     </StackPanel>
                   </DockPanel>
                 </Button>
-                <Rectangle Grid.Column="1" Width="1" Fill="{StaticResource Edge}" Margin="0,12" />
+                <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource Edge}" Margin="0,12" />
                 <Button Grid.Column="2" Style="{StaticResource StatusCell}" Tag="StartupTab" Click="OnTile" AutomationProperties.Name="Programmes au démarrage">
                   <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="&#xE7E8;" FontFamily="{StaticResource Icons}" FontSize="20"
-                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                               Foreground="{DynamicResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
                     <StackPanel>
                       <TextBlock Text="Démarrage" Style="{StaticResource Caption}" />
                       <TextBlock x:Name="TileStartupValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
@@ -223,11 +223,11 @@
                     </StackPanel>
                   </DockPanel>
                 </Button>
-                <Rectangle Grid.Column="3" Width="1" Fill="{StaticResource Edge}" Margin="0,12" />
+                <Rectangle Grid.Column="3" Width="1" Fill="{DynamicResource Edge}" Margin="0,12" />
                 <Button Grid.Column="4" Style="{StaticResource StatusCell}" Tag="SecurityTab" Click="OnTile" AutomationProperties.Name="Sécurité">
                   <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="&#xEA18;" FontFamily="{StaticResource Icons}" FontSize="20"
-                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                               Foreground="{DynamicResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
                     <StackPanel>
                       <TextBlock Text="Sécurité" Style="{StaticResource Caption}" />
                       <TextBlock x:Name="TileSecurityValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
@@ -235,11 +235,11 @@
                     </StackPanel>
                   </DockPanel>
                 </Button>
-                <Rectangle Grid.Column="5" Width="1" Fill="{StaticResource Edge}" Margin="0,12" />
+                <Rectangle Grid.Column="5" Width="1" Fill="{DynamicResource Edge}" Margin="0,12" />
                 <Button Grid.Column="6" Style="{StaticResource StatusCell}" Tag="DisksTab" Click="OnTile" AutomationProperties.Name="Disques">
                   <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Text="&#xE95E;" FontFamily="{StaticResource Icons}" FontSize="20"
-                               Foreground="{StaticResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
+                               Foreground="{DynamicResource InkMuted}" VerticalAlignment="Top" Margin="0,2,14,0" />
                     <StackPanel>
                       <TextBlock Text="Disques" Style="{StaticResource Caption}" />
                       <TextBlock x:Name="TileDisksValue" Text="—" FontFamily="{StaticResource Display}" FontSize="20" Margin="0,2,0,0" />
@@ -385,12 +385,12 @@
                                 Visibility="{Binding HasTool, Converter={StaticResource VisibleIf}}" />
                       </StackPanel>
                       <TextBlock DockPanel.Dock="Left" Text="&#xE7F4;" FontFamily="{StaticResource Icons}" FontSize="24"
-                                 Foreground="{StaticResource InkMuted}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                 Foreground="{DynamicResource InkMuted}" VerticalAlignment="Center" Margin="0,0,16,0" />
                       <StackPanel>
                         <TextBlock Text="{Binding Name}" FontFamily="{StaticResource Display}" FontSize="16" TextWrapping="Wrap" />
                         <TextBlock Style="{StaticResource Muted}">
-                          <Run Text="{local:Translate 'Installé :'}" /> <Run Text="{Binding Installed, Mode=OneWay}" Foreground="{StaticResource Ink}" />
-                          <Run Text="{local:Translate '   Dernier publié :'}" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{StaticResource Accent}" />
+                          <Run Text="{local:Translate 'Installé :'}" /> <Run Text="{Binding Installed, Mode=OneWay}" Foreground="{DynamicResource Ink}" />
+                          <Run Text="{local:Translate '   Dernier publié :'}" /> <Run Text="{Binding Latest, Mode=OneWay}" Foreground="{DynamicResource Accent}" />
                         </TextBlock>
                       </StackPanel>
                     </DockPanel>
@@ -439,7 +439,7 @@
           <local:PageHeader DockPanel.Dock="Top" Title="Tous vos pilotes"
                             Description="Chaque périphérique du PC, son pilote et son état. La liste se met à jour toute seule quand vous branchez ou débranchez quelque chose. Un nouveau pilote pose problème ? Sélectionnez le périphérique : « Revenir au pilote précédent » fait comme le Gestionnaire de périphériques.">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="Rechercher" Foreground="{StaticResource InkMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <TextBlock Text="Rechercher" Foreground="{DynamicResource InkMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
               <TextBox x:Name="InventorySearch" Width="150" Margin="0,0,8,0" VerticalContentAlignment="Center"
                        TextChanged="OnInventorySearchChanged" AutomationProperties.Name="Rechercher un périphérique" />
               <ComboBox x:Name="InventoryFilter" Width="200" Margin="0,0,8,0" SelectedIndex="0"
@@ -456,7 +456,7 @@
               <Button x:Name="RefreshInventoryButton" Content="Actualiser" Click="OnRefreshInventory" />
             </StackPanel>
           </local:PageHeader>
-          <TextBlock DockPanel.Dock="Top" x:Name="InventorySummary" Foreground="{StaticResource InkMuted}" Margin="0,0,0,10" />
+          <TextBlock DockPanel.Dock="Top" x:Name="InventorySummary" Foreground="{DynamicResource InkMuted}" Margin="0,0,0,10" />
           <Border Style="{StaticResource Card}" Padding="0">
             <DataGrid x:Name="InventoryGrid" AutomationProperties.Name="Inventaire des pilotes"
                       AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
@@ -467,7 +467,7 @@
                 <Style x:Key="AttentionText" TargetType="TextBlock" BasedOn="{StaticResource CellText}">
                   <Style.Triggers>
                     <DataTrigger Binding="{Binding NeedsAttention}" Value="True">
-                      <Setter Property="Foreground" Value="{StaticResource Caution}" />
+                      <Setter Property="Foreground" Value="{DynamicResource Caution}" />
                     </DataTrigger>
                   </Style.Triggers>
                 </Style>
@@ -529,7 +529,7 @@
                       Click="OnStoreDelete" IsEnabled="False" />
             </StackPanel>
           </local:PageHeader>
-          <TextBlock DockPanel.Dock="Top" x:Name="StoreSummary" Margin="0,0,0,10" TextWrapping="Wrap" Foreground="{StaticResource InkMuted}"
+          <TextBlock DockPanel.Dock="Top" x:Name="StoreSummary" Margin="0,0,0,10" TextWrapping="Wrap" Foreground="{DynamicResource InkMuted}"
                      Text="Cliquez sur « Chercher les anciennes versions » : la liste vient de Windows lui-même." />
           <Border Style="{StaticResource Card}" Padding="0">
             <DataGrid x:Name="StoreGrid" AutomationProperties.Name="Anciennes versions de pilotes"
@@ -723,7 +723,7 @@
                           <Button Content="{Binding Game.Tip.LinkText}" ContentStringFormat="{local:Translate 'Ouvrir {0}'}" Tag="{Binding Game.Tip.Link}" Click="OnOpenLink"
                                   Visibility="{Binding Game.HasLink, Converter={StaticResource VisibleIf}}" />
                         </StackPanel>
-                        <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{StaticResource InkMuted}"
+                        <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{DynamicResource InkMuted}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
                         <TextBlock Text="{Binding Game.Tip.Game}" FontFamily="{StaticResource Display}" FontSize="16" VerticalAlignment="Center" />
                       </DockPanel>
@@ -806,7 +806,7 @@
             </Border>
             <Border Style="{StaticResource Card}" Margin="0,0,14,14" Width="200">
               <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="&#xE945;" FontFamily="{StaticResource Icons}" FontSize="24" Foreground="{StaticResource InkMuted}" />
+                <TextBlock Text="&#xE945;" FontFamily="{StaticResource Icons}" FontSize="24" Foreground="{DynamicResource InkMuted}" />
                 <TextBlock Text="Alimentation" Style="{StaticResource Caption}" Margin="0,10,0,2" />
                 <TextBlock x:Name="PowerValue" Style="{StaticResource Heading}" TextWrapping="Wrap" />
               </StackPanel>
@@ -900,10 +900,10 @@
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <!-- Recessive scale: the top of the scale, its half and the baseline. Bars are 110 px at the top. -->
-                <Border Grid.ColumnSpan="2" Height="110" VerticalAlignment="Bottom" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0" />
-                <Border Grid.ColumnSpan="2" Height="55" VerticalAlignment="Bottom" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,1" />
-                <TextBlock x:Name="BootScaleTop" Foreground="{StaticResource InkMuted}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,103" />
-                <TextBlock x:Name="BootScaleMid" Foreground="{StaticResource InkMuted}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,48" />
+                <Border Grid.ColumnSpan="2" Height="110" VerticalAlignment="Bottom" BorderBrush="{DynamicResource Edge}" BorderThickness="0,1,0,0" />
+                <Border Grid.ColumnSpan="2" Height="55" VerticalAlignment="Bottom" BorderBrush="{DynamicResource Edge}" BorderThickness="0,1,0,1" />
+                <TextBlock x:Name="BootScaleTop" Foreground="{DynamicResource InkMuted}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,103" />
+                <TextBlock x:Name="BootScaleMid" Foreground="{DynamicResource InkMuted}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,48" />
                 <ItemsControl x:Name="BootBars" Grid.Column="1">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -916,15 +916,15 @@
                       <Grid Height="130" Margin="1,0" Background="Transparent" ToolTip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
                         <StackPanel VerticalAlignment="Bottom">
                           <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,3" />
-                          <Border Width="16" Height="{Binding Height}" CornerRadius="2,2,0,0" Background="{StaticResource Chart}" />
+                          <Border Width="16" Height="{Binding Height}" CornerRadius="2,2,0,0" Background="{DynamicResource Chart}" />
                         </StackPanel>
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,4,0,0">
-                  <TextBlock x:Name="BootLastDate" DockPanel.Dock="Right" Foreground="{StaticResource InkMuted}" FontSize="11" />
-                  <TextBlock x:Name="BootFirstDate" Foreground="{StaticResource InkMuted}" FontSize="11" />
+                  <TextBlock x:Name="BootLastDate" DockPanel.Dock="Right" Foreground="{DynamicResource InkMuted}" FontSize="11" />
+                  <TextBlock x:Name="BootFirstDate" Foreground="{DynamicResource InkMuted}" FontSize="11" />
                 </DockPanel>
               </Grid>
               <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
@@ -980,7 +980,7 @@
                 <Button x:Name="FakeBoostsAllButton" Content="Tout rétablir" Tag="Faux boosts" Style="{DynamicResource AccentButtonStyle}" Click="OnTuneAll" />
               </StackPanel>
             </local:PageHeader>
-            <TextBlock x:Name="FakeBoostsStatus" Foreground="{StaticResource InkMuted}" Margin="0,0,0,10" Text="Analyse en cours…" />
+            <TextBlock x:Name="FakeBoostsStatus" Foreground="{DynamicResource InkMuted}" Margin="0,0,0,10" Text="Analyse en cours…" />
             <ItemsControl x:Name="FakeBoostList" ItemTemplate="{StaticResource TweakRowTemplate}" />
           </StackPanel>
         </ScrollViewer>
@@ -1004,7 +1004,7 @@
                       <Button DockPanel.Dock="Right" Content="{Binding ActionText}" Tag="{Binding Target}" Click="OnOpenSetting"
                               VerticalAlignment="Center" Margin="12,0,0,0" />
                       <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="{StaticResource Icons}" FontSize="18"
-                                 Foreground="{Binding Color}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                                 local:ThemeColor.Foreground="{Binding ColorKey}" VerticalAlignment="Center" Margin="0,0,14,0" />
                       <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding Detail}" Style="{StaticResource Muted}" />
@@ -1040,7 +1040,7 @@
                       <TextBlock Margin="0,2">
                         <Run Text="{Binding Created, Mode=OneWay, StringFormat=dd/MM/yyyy HH:mm}" FontWeight="SemiBold" />
                         <Run Text=" — " />
-                        <Run Text="{Binding Description, Mode=OneWay}" Foreground="{StaticResource InkMuted}" />
+                        <Run Text="{Binding Description, Mode=OneWay}" Foreground="{DynamicResource InkMuted}" />
                       </TextBlock>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -1220,7 +1220,7 @@
           <local:PageHeader DockPanel.Dock="Top" Title="Programmes installés"
                             Description="Désinstaller lance le désinstalleur du programme. Ensuite, « Chercher les restes » propose les dossiers qu'il a laissés ; ils partent à la corbeille, donc rien n'est perdu. Le registre n'est pas « nettoyé » : ça ne fait rien gagner et c'est la cause de casse n° 1.">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="Rechercher" Foreground="{StaticResource InkMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <TextBlock Text="Rechercher" Foreground="{DynamicResource InkMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
               <TextBox x:Name="ProgramFilter" Width="200" Margin="0,0,8,0" VerticalContentAlignment="Center"
                        TextChanged="OnProgramFilterChanged" AutomationProperties.Name="Filtrer les programmes" />
               <Button x:Name="UninstallButton" Content="Désinstaller…" Click="OnUninstall" Margin="0,0,8,0" />
@@ -1373,17 +1373,17 @@
     </TabControl>
 
     <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
-      <Border x:Name="DeviceBanner" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0"
+      <Border x:Name="DeviceBanner" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Edge}" BorderThickness="0,1,0,0"
               Padding="20,10" Visibility="Collapsed">
         <DockPanel>
           <Button x:Name="DeviceBannerButton" DockPanel.Dock="Right" Content="Chercher un pilote" Style="{DynamicResource AccentButtonStyle}"
                   Click="OnDeviceBanner" />
           <TextBlock DockPanel.Dock="Left" Text="&#xE772;" FontFamily="{StaticResource Icons}" FontSize="18"
-                     Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                     Foreground="{DynamicResource Accent}" VerticalAlignment="Center" Margin="0,0,12,0" />
           <TextBlock x:Name="DeviceBannerText" VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>
-      <Border x:Name="UpdateBanner" Background="{StaticResource Panel}" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0"
+      <Border x:Name="UpdateBanner" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Edge}" BorderThickness="0,1,0,0"
               Padding="20,10" Visibility="Collapsed">
         <DockPanel>
           <Button x:Name="UpdateBannerButton" DockPanel.Dock="Right" Content="Voir les nouveautés" Click="OnOpenLink" />
@@ -1392,14 +1392,14 @@
           <TextBlock x:Name="UpdateBannerText" VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>
-      <Border Background="{StaticResource Chrome}" BorderBrush="{StaticResource Edge}" BorderThickness="0,1,0,0" Padding="20,8">
+      <Border Background="{DynamicResource Chrome}" BorderBrush="{DynamicResource Edge}" BorderThickness="0,1,0,0" Padding="20,8">
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="Copier le diagnostic" Click="OnCopyDiagnostics" Margin="12,0,0,0" />
           <ProgressBar x:Name="BusyBar" DockPanel.Dock="Right" Width="180" Height="4" VerticalAlignment="Center"
                        IsIndeterminate="True" Visibility="Collapsed" />
           <Button x:Name="StopButton" DockPanel.Dock="Right" Content="Arrêter" Click="OnStopBusy" Margin="0,0,12,0" Visibility="Collapsed" />
           <TextBlock x:Name="StatusText" Text="Prêt." VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                     Foreground="{StaticResource InkMuted}" AutomationProperties.LiveSetting="Polite" />
+                     Foreground="{DynamicResource InkMuted}" AutomationProperties.LiveSetting="Polite" />
         </DockPanel>
       </Border>
     </StackPanel>

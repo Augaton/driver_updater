@@ -25,6 +25,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         RestorePlacement();
         CenterTableText(this);
+        // The gauges draw themselves with the palette's colors: after a change of theme, again.
+        App.ThemeChanged += RedrawGauges;
+        Closed += (_, _) => App.ThemeChanged -= RedrawGauges;
         Translator.Translate(this); // before the menu copies the pages' titles
         VersionText.Text = $"version {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)}";
         BuildNav();
@@ -156,6 +159,11 @@ public partial class MainWindow : Window
     /// sits level with the check box or state beside it. Columns with a style of their own build
     /// on the same one in the XAML. All the tables are in the logical tree, shown or not.
     /// </summary>
+    void RedrawGauges()
+    {
+        foreach (var gauge in new[] { CpuGauge, MemoryGauge, DiskGauge, GpuGauge }) gauge.InvalidateVisual();
+    }
+
     static void CenterTableText(DependencyObject node)
     {
         if (node is DataGrid grid)

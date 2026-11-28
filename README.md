@@ -297,7 +297,8 @@ Windows).
 
 Les rapports de bug, idées et contributions sont les bienvenus. Lis
 [CONTRIBUTING.md](CONTRIBUTING.md) avant d'ouvrir une pull request, et [SECURITY.md](SECURITY.md)
-pour signaler une faille.
+pour signaler une faille. Les changements de chaque version sont dans le
+[CHANGELOG](CHANGELOG.md).
 
 ## Licence
 

@@ -97,6 +97,7 @@ désinstalle pour de vrai. Les captures de chaque page sont jointes à chaque ex
 `screenshots`).
 
 Pour publier une version, change `<Version>` dans `src/DriverUpdater/DriverUpdater.csproj`,
+décris ce qui change dans [CHANGELOG.md](CHANGELOG.md) sous un titre `## <version> — <date>`,
 committe, puis pousse un tag du même numéro :
 
 ```sh
@@ -105,7 +106,8 @@ git push origin v1.2.3
 ```
 
 La CI crée alors la Release : installateur, zip portable, `SHA256SUMS.txt` et attestation de
-provenance.
+provenance. Ses notes reprennent la section du CHANGELOG, suivies de la liste de GitHub ; c'est
+la page que le bandeau « Voir les nouveautés » de l'appli ouvre.
 
 ## Signature de code
 
